@@ -1,0 +1,49 @@
+วิธีติดตั้ง TikTok Manager Pro แบบง่าย
+
+1. สิ่งที่ต้องมีในเครื่อง
+   - Python 3.12 ขึ้นไป
+   - ADB / Android Platform Tools
+   - scrcpy ถ้าต้องการกดปุ่มเปิดจอมือถือจากโปรแกรม
+   - มือถือเปิด USB debugging แล้ว
+   - TikTok ติดตั้งในมือถือแล้ว
+
+2. ติดตั้งครั้งแรก
+   - เข้าโฟลเดอร์ Automate Tik
+   - ดับเบิลคลิก install.bat
+   - รอจนขึ้น Install finished
+   - ถ้าขึ้นว่าไม่เจอ ADB ให้ติดตั้ง Android Platform Tools แล้วเพิ่ม adb เข้า PATH
+   - ถ้าต้องการใช้ปุ่มเปิดจอ ให้ติดตั้ง scrcpy แล้วเพิ่มเข้า PATH
+     หรือวาง scrcpy.exe ไว้ในโฟลเดอร์เดียวกับ TikTokManagerPro.exe
+
+3. สร้างไฟล์โปรแกรม .exe
+   - ดับเบิลคลิก build_exe.bat
+   - รอจนสร้างเสร็จ
+   - ไฟล์โปรแกรมจะอยู่ที่ dist\TikTokManagerPro\TikTokManagerPro.exe
+
+4. เพิ่มโปรแกรมเข้า Start Menu / Programs
+   - ดับเบิลคลิก install_program_shortcut.bat
+   - หลังจากนั้นเปิดจาก Start Menu ได้ในชื่อ TikTok Manager Pro
+
+5. วิธีเข้าใช้งาน
+   - เสียบมือถือกับคอม
+   - เปิด USB debugging
+   - เปิด TikTok Manager Pro จาก Start Menu หรือเปิด dist\TikTokManagerPro\TikTokManagerPro.exe
+   - ใส่ License แล้วกด Login
+   - กด Scan ADB เพื่อหาเครื่อง
+   - เพิ่มเครื่องเข้า Device Channel
+   - เลือกโฟลเดอร์วิดีโอใน Video Library
+   - เลือกวิดีโอ แล้วกด Add to Queue หรือใช้ Random Distribute / Auto random
+   - กด Start ที่ช่อง Device เพื่อเริ่มโพสต์
+
+6. โฟลเดอร์สำคัญ
+   - uploads: โฟลเดอร์รับวิดีโอเข้าโปรแกรม
+   - Bin: วิดีโอที่โพสต์สำเร็จแล้ว
+   - failed: วิดีโอที่ทำงานไม่สำเร็จ
+   - caption: ไฟล์แคปชั่น
+   - thumbs: รูปปกวิดีโอที่ระบบสร้าง
+
+7. ถ้าโปรแกรมมีปัญหา
+   - ปิดโปรแกรมแล้วเปิดใหม่
+   - เช็กมือถือด้วยคำสั่ง adb devices
+   - ถ้าไม่เห็นเครื่อง ให้ถอดสาย USB แล้วเสียบใหม่
+   - ถ้า queue ค้าง ให้กด Stop แล้ว Start ใหม่

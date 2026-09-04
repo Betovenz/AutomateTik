@@ -1,0 +1,44 @@
+{
+  "ok": true,
+  "jobId": "test-image-1787925937630",
+  "mediaType": "image",
+  "updatedAt": "2026-08-28T14:06:43.681Z",
+  "payload": {
+    "action": "generate",
+    "mediaType": "image",
+    "mediaUrl": "https://flow-content.google/image/3c97b67f-8c6e-4375-86b4-bccb487f8855?Expires=1787947550&KeyName=labs-flow-prod-cdn-key&Signature=uSW-ZC-_HbqdtUQV4bw9v_Zb9fw",
+    "localUrl": "/lib/media-core/flow-results/1787926002084-test-image-1787925937630-image.png",
+    "resultUrl": "https://flow-content.google/image/3c97b67f-8c6e-4375-86b4-bccb487f8855?Expires=1787947550&KeyName=labs-flow-prod-cdn-key&Signature=uSW-ZC-_HbqdtUQV4bw9v_Zb9fw",
+    "imageUrl": "/lib/media-core/flow-results/1787926002084-test-image-1787925937630-image.png",
+    "videoUrl": "",
+    "saved": {
+      "ok": true,
+      "file": "C:\\Users\\Blue\\Documents\\Automate Tik\\ai_studio\\lib\\media-core\\flow-results\\1787926002084-test-image-1787925937630-image.png",
+      "url": "/lib/media-core/flow-results/1787926002084-test-image-1787925937630-image.png"
+    },
+    "raw": {
+      "ok": true,
+      "mediaUrl": "https://flow-content.google/image/3c97b67f-8c6e-4375-86b4-bccb487f8855?Expires=1787947550&KeyName=labs-flow-prod-cdn-key&Signature=uSW-ZC-_HbqdtUQV4bw9v_Zb9fw",
+      "mediaType": "image",
+      "mediaId": "3c97b67f-8c6e-4375-86b4-bccb487f8855",
+      "workflowId": "e3c49adf-1d6b-432f-be5a-247c566c425c",
+      "sceneId": "",
+      "width": 768,
+      "height": 1376,
+      "projectId": "b33516b5-f747-47f2-8f10-bc83776f6298",
+      "referenceImageIds": [
+        "e3e87e66-9e5f-4269-a55a-2244fdd8d56b"
+      ],
+      "refRoot": "C:\\Users\\Blue\\Documents\\Automate Tik\\ai_studio\\lib\\media-core\\flow_engine"
+    },
+    "mediaId": "3c97b67f-8c6e-4375-86b4-bccb487f8855",
+    "workflowId": "e3c49adf-1d6b-432f-be5a-247c566c425c",
+    "sceneId": "",
+    "projectId": "b33516b5-f747-47f2-8f10-bc83776f6298",
+    "startImageMediaId": "",
+    "referenceImageIds": [
+      "e3e87e66-9e5f-4269-a55a-2244fdd8d56b"
+    ],
+    "canExtend": false
+  }
+}

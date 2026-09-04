@@ -1,0 +1,78 @@
+{
+  "manifest_version": 3,
+  "name": "AutoGT Pro Extension",
+  "version": "0.1.11",
+  "description": "AutoGT Pro browser automation bridge",
+  "action": {
+    "default_title": "AutoGT Pro Extension",
+    "default_popup": "src/popup/popup.html"
+  },
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "alarms",
+    "storage",
+    "scripting",
+    "tabs",
+    "cookies",
+    "nativeMessaging",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*",
+    "https://labs.google/*",
+    "https://*.google.com/*",
+    "https://*.googleusercontent.com/*",
+    "https://flow-content.google/*",
+    "https://*.tiktok.com/*",
+    "https://*.shopee.co.th/*",
+    "https://*.shopee.com/*",
+    "https://*.facebook.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://labs.google/*"
+      ],
+      "js": [
+        "src/content/dom.js",
+        "src/content/overlay.js",
+        "src/content/google-labs.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://*.tiktok.com/*"
+      ],
+      "js": [
+        "src/content/dom.js",
+        "src/content/overlay.js",
+        "src/content/tiktok.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://affiliate.shopee.co.th/offer/product_offer*"
+      ],
+      "js": [
+        "src/content/shopee-affiliate-capture-main.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://affiliate.shopee.co.th/offer/product_offer*"
+      ],
+      "js": [
+        "src/content/shopee-affiliate-capture.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}

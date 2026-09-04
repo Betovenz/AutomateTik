@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Kill the WebView2 (Edge) native right-click menu (Emoji/Inspect/Writing Direction)
+         as EARLY as possible — inline + capture phase so it's active before app.js loads and
+         can't be bypassed. This is a packaged desktop app, not a browser. Ctrl+C/V/X/A still
+         work. -->
+    <script>
+      window.addEventListener("contextmenu", function (e) { e.preventDefault(); }, true);
+
+      // ── Boot-veil safety net (registered BEFORE app.js) ──────────────────────
+      // app.js owns the normal #bootVeil dismissal + an 8s hard fallback, but those
+      // live ~6500 lines deep and die with the very script they protect: ANY top-level
+      // throw in app.js (e.g. a WebView2 localStorage SecurityError) — or a blocked /
+      // truncated /static/app.js load — would leave the user stuck on the
+      // "กำลังเตรียมระบบ" splash forever. This tiny net runs no matter what app.js does.
+      (function () {
+        function dropVeil() {
+          var v = document.getElementById("bootVeil");
+          if (!v) return; // already dismissed by app.js on the happy path → no-op
+          v.classList.add("is-hiding");
+          setTimeout(function () { if (v && v.parentNode) v.remove(); }, 900);
+        }
+        // A fatal init error must reveal the UI, not trap the user behind the splash.
+        window.addEventListener("error", function () { setTimeout(dropVeil, 0); });
+        // Hard ceiling regardless of cause.
+        setTimeout(dropVeil, 8000);
+      })();
+    </script>
+    <!-- Critical CSS: paint a dark canvas + dark boot-veil background on the VERY first
+         frame, before styles.css finishes loading. Without this, the brief gap between
+         the splash→page swap (load_url) and the cold HTTP load of styles.css can let
+         WebView2 flash white. styles.css loads right after and takes over. -->
+    <style>
+      html, body { margin: 0; height: 100%; background: #141414; }
+      #bootVeil { position: fixed; inset: 0; z-index: 10000; background: #141414; }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="/static/logo.png" />
+    <link rel="stylesheet" href="/static/styles.css" />
+    <title>GT Pro Beta 0 ยท Control Panel</title>
+  </head>
+  <body data-section="home" style="background-color:#141414">
+    <!-- boot veil: branded splash covering the app until the first ui.state
+         lands (matches the native launch splash; dismissed in app.js). -->
+      <div id="bootVeil" class="boot-veil" role="status" aria-live="polite" aria-label="กำลังเปิด GT Pro Beta 0 กำลังเตรียมระบบ" aria-hidden="true" style="background-color:#141414">
+  <div class="bv-scanlines" aria-hidden="true"></div>
+  <div class="bv-stage">
+      <div class="bv-mark" role="img" aria-label="GT Pro Beta 0">
+      <div class="bv-glow" aria-hidden="true"></div>
+      <div class="bv-ring-track" aria-hidden="true"></div>
+      <div class="bv-ring" aria-hidden="true"></div>
+
+      <div class="bv-tile">
+        <svg class="bv-badge" viewBox="0 0 100 100" aria-hidden="true">
+          <defs>
+            <linearGradient id="bvAmberGrad" x1="14" y1="8" x2="86" y2="92" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#ffc53d" />
+              <stop offset="0.55" stop-color="#fb9514" />
+              <stop offset="1" stop-color="#f2740c" />
+            </linearGradient>
+            <linearGradient id="bvSheen" x1="20" y1="14" x2="60" y2="70" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#ffffff" stop-opacity="0.45" />
+              <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.05" />
+              <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+            </linearGradient>
+            <linearGradient id="bvCharge" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+              <stop offset="0"    stop-color="#ffe9b0" stop-opacity="0" />
+              <stop offset="0.42" stop-color="#fff3cf" stop-opacity="0.95" />
+              <stop offset="0.5"  stop-color="#ffffff" stop-opacity="1" />
+              <stop offset="0.58" stop-color="#ffd97a" stop-opacity="0.95" />
+              <stop offset="1"    stop-color="#ffc53d" stop-opacity="0" />
+            </linearGradient>
+            <path id="bvBoltPath" d="M57 18 L33 54 H47 L42 82 L68 43 H53 Z" />
+            <clipPath id="bvBoltClip"><use href="#bvBoltPath" /></clipPath>
+          </defs>
+
+          <rect x="8" y="8" width="84" height="84" rx="24" fill="url(#bvAmberGrad)" />
+          <rect x="8" y="8" width="84" height="84" rx="24" fill="url(#bvSheen)" />
+          <rect x="8.75" y="8.75" width="82.5" height="82.5" rx="23.25"
+                fill="none" stroke="#ffe7b0" stroke-opacity="0.22" stroke-width="1.5" />
+
+          <use href="#bvBoltPath" fill="#140f08" />
+
+          <g clip-path="url(#bvBoltClip)">
+            <rect class="bv-bolt-charge" x="30" y="14" width="42" height="36" fill="url(#bvCharge)" />
+          </g>
+        </svg>
+      </div>
+
+      <div class="bv-spark-orbit" aria-hidden="true"><span class="bv-spark"></span></div>
+    </div>
+
+    <div class="bv-copy">
+      <p class="bv-eyebrow">Automation</p>
+      <h1 class="bv-headline">กำลังเปิด GT Pro Beta 0</h1>
+      <div class="bv-track" aria-hidden="true"></div>
+      <div class="bv-status">
+        <span>กำลังเตรียมระบบ</span>
+        <span class="bv-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- ============ LOGIN GATE (overlay; covers the app until unlocked) ============ -->
+
+
+    <!-- ============ SETUP WIZARD (shown after login; covers the app until the
+         one-time setup is done). All THREE steps on one screen, each a row with its
+         action on the RIGHT: โ‘  install the extension (Chrome Web Store, or the manual
+         Load-unpacked fallback), โ‘ก choose the save folder, โ‘ข add an AI API key. Each
+         step auto-ticks (green check) from the live ui.state (extensionConnected /
+         downloadDir / keys.configured). Dismissible ("ตั้งค่าภายหลัง") — reappears next
+         launch while still incomplete, never shows again once done. See
+         renderSetupGate() in app.js. -->
+    <div id="setupGate" class="setup-gate" role="dialog" aria-modal="true" aria-labelledby="setupGateTitle" hidden>
+      <div class="setup-card" tabindex="-1">
+        <div class="auth-brand">
+          <img src="/static/logo.png" alt="" width="46" height="46" />
+          <div class="auth-brand-text">
+            <strong id="setupGateTitle">เริ่มต้นใช้งาน GT Pro Beta 0</strong>
+            <span>ตั้งค่า 3 ขั้นตอนสั้น ๆ ก่อนเริ่มสร้างคลิป</span>
+          </div>
+        </div>
+
+        <div class="setup-progress">
+          <div class="setup-progress-track"><span id="setupProgressFill"></span></div>
+          <span class="setup-progress-text" id="setupProgressText">ทำไปแล้ว 0/3</span>
+        </div>
+
+        <!-- โ‘  install the extension -->
+        <section class="s-step" id="setupStepExt" data-done="false">
+          <div class="s-head">
+            <span class="s-badge" aria-hidden="true"><span class="s-n">1</span><svg class="s-check" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg></span>
+            <div class="s-title">
+              <strong>ติดตั้งส่วนขยาย (Extension)</strong>
+              <span>ส่วนขยาย Chrome ที่ให้โปรแกรมทำงานบนเบราว์เซอร์อัตโนมัติ — กดติดตั้งแล้วเลือก “เพิ่มลงใน Chrome”</span>
+            </div>
+            <button type="button" class="btn primary s-action" id="setupInstallExt">🧩 กดเพื่อติดตั้ง ▸</button>
+          </div>
+          <div class="s-body">
+            <p class="setup-wait" id="setupExtWait">
+              <span class="setup-spinner" aria-hidden="true"></span>
+              กำลังรอการเชื่อมต่อ… เมื่อติดตั้งส่วนขยายสำเร็จ ขั้นนี้จะติ๊กถูกให้เอง
+            </p>
+          </div>
+        </section>
+
+        <!-- โ‘ก choose the SAVE folder -->
+        <section class="s-step" id="setupStepFolder" data-done="false">
+          <div class="s-head">
+            <span class="s-badge" aria-hidden="true"><span class="s-n">2</span><svg class="s-check" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg></span>
+            <div class="s-title">
+              <strong>เลือกโฟลเดอร์ปลายทาง</strong>
+              <span>โฟลเดอร์ที่จะเซฟงาน (รูป/คลิปที่สร้าง) — ใช้ค่าเริ่มต้นได้ หรือเลือกเอง</span>
+            </div>
+            <button type="button" class="btn ghost s-action" id="setupFolderBrowse">📁 เลือก…</button>
+            <span class="s-lock" aria-hidden="true">🔒</span>
+          </div>
+          <div class="s-body">
+            <div class="setup-path"><code id="setupFolderPath" aria-live="polite">…</code></div>
+          </div>
+        </section>
+
+        <!-- โ‘ข AI API key — fill ONE of OpenAI / OpenRouter -->
+        <section class="s-step" id="setupStepKey" data-done="false">
+          <div class="s-head">
+            <span class="s-badge" aria-hidden="true"><span class="s-n">3</span><svg class="s-check" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg></span>
+            <div class="s-title">
+              <strong>ใส่ API Key (AI)</strong>
+              <span>ใช้ AI ช่วยคิดสคริปต์ขาย — กรอกช่อง OpenAI หรือ OpenRouter ช่องใดช่องหนึ่งก็พอ</span>
+            </div>
+            <span class="s-lock" aria-hidden="true">🔒</span>
+          </div>
+          <div class="s-body">
+            <div class="s-keys">
+              <div class="s-keys-inputs">
+                <div class="apikey-input">
+                  <input id="setupKeyOpenai" type="password" placeholder="OpenAI key (sk-…)" autocomplete="off" />
+                  <button type="button" class="apikey-eye" data-setup-eye="setupKeyOpenai" title="แสดง/ซ่อน" aria-label="แสดง/ซ่อน">👁</button>
+                </div>
+                <div class="setup-or"><span>หรือ</span></div>
+                <div class="apikey-input">
+                  <input id="setupKeyOpenrouter" type="password" placeholder="OpenRouter key (sk-or-…)" autocomplete="off" />
+                  <button type="button" class="apikey-eye" data-setup-eye="setupKeyOpenrouter" title="แสดง/ซ่อน" aria-label="แสดง/ซ่อน">👁</button>
+                </div>
+              </div>
+              <button type="button" class="btn primary s-keys-save" id="setupSaveKey">บันทึก</button>
+            </div>
+            <p class="setup-key-msg" id="setupKeyMsg" hidden></p>
+            <p class="setup-getkey-line">ขอ key ได้ที่:
+              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI</a> ยท
+              <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">OpenRouter</a>
+            </p>
+          </div>
+        </section>
+
+        <div class="setup-foot">
+          <!-- hard gate: enabled only once all 3 steps are done (no skip). -->
+          <button type="button" class="btn primary wide setup-finish" id="setupFinish" disabled>ทำให้ครบทุกขั้นก่อน</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-shell">
+      <!-- ============ LEFT SIDEBAR ============ -->
+      <aside class="sidebar" aria-label="Main navigation">
+        <div class="sb-brand">
+          <button type="button" class="sb-back" id="sbBack" title="กลับหน้าแรก" aria-label="กลับหน้าแรก">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+          </button>
+          <img src="/static/logo.png" alt="" width="38" height="38" />
+          <div class="sb-brand-text">
+            <strong id="sbBrandName">GT Pro Beta 0</strong>
+            <span>Automation</span>
+          </div>
+        </div>
+
+        <nav class="sb-nav">
+          <!-- Dashboard (the GT Pro Beta 0 home) is reached via the "← back" arrow on the
+               brand (workspace only) — it's not a tool, so it's not listed here. -->
+
+          <!-- ===== Product Showcase (TikTok) — standalone, above Flow; default landing ===== -->
+          <button type="button" class="nav-item active" data-nav="product-showcase">
+            <img class="nav-ico nav-logo nav-logo-invert" src="/static/tiktok.webp" alt="" width="19" height="19" />
+            <span>Product Showcase</span>
+          </button>
+
+          <!-- ===== Flow (labs.google) ===== -->
+          <div class="nav-group" data-group="flow">
+            <button type="button" class="nav-item nav-parent" data-group-toggle="flow"
+                    aria-expanded="false" aria-controls="sub-flow">
+              <img class="nav-ico nav-logo" src="/static/labsflow.png" alt="" width="19" height="19" />
+              <span>Google Flow</span>
+              <svg class="nav-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+            <div class="nav-sub" id="sub-flow" data-sub="flow" hidden>
+              <button type="button" class="nav-item nav-child" data-nav="flow-clip8"><span>Clip 8s</span></button>
+              <button type="button" class="nav-item nav-child" data-nav="flow-extend"><span>Extend Clip</span></button>
+              <button type="button" class="nav-item nav-child" data-nav="flow-loop"><span>Loop</span></button>
+              <!-- Hidden per operator request — remove `hidden` to restore. -->
+              <button type="button" class="nav-item nav-child" data-nav="flow-storyboard" hidden><span>Storyboard</span></button>
+              <button type="button" class="nav-item nav-child" data-nav="flow-viral" hidden><span>Viral Google Flow</span></button>
+            </div>
+          </div>
+
+          <!-- ===== SuperGrok (grok) ===== -->
+          <div class="nav-group" data-group="supergrok">
+            <button type="button" class="nav-item nav-parent" data-group-toggle="supergrok"
+                    aria-expanded="false" aria-controls="sub-supergrok">
+              <img class="nav-ico nav-logo nav-logo-invert" src="/static/grok-ai-icon.webp" alt="" width="19" height="19" />
+              <span>SuperGrok</span>
+              <svg class="nav-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+            <div class="nav-sub" id="sub-supergrok" data-sub="supergrok" hidden>
+              <button type="button" class="nav-item nav-child" data-nav="grok-clip10"><span>Clip 10s</span></button>
+              <button type="button" class="nav-item nav-child" data-nav="grok-extend"><span>Extend Clip</span></button>
+              <!-- Hidden per operator request — remove `hidden` to restore. -->
+              <button type="button" class="nav-item nav-child" data-nav="grok-viral" hidden><span>Viral Grok</span></button>
+            </div>
+          </div>
+
+          <!-- ===== Post TikTok (standalone) — โพสต์คลิปที่มีอยู่แล้วขึ้น TikTok โดยไม่ต้องสร้าง.
+               Sits directly below SuperGrok. Reuses the shared generate view (form + jobs grid +
+               Run/Stop) via a postOnly NAV mode in app.js. [[tiktok-post-only-mode]] ===== -->
+          <button type="button" class="nav-item" data-nav="tiktok-post">
+            <img class="nav-ico nav-logo nav-logo-invert" src="/static/tiktok.webp" alt="" width="19" height="19" />
+            <span>โพสต์ TikTok</span>
+          </button>
+
+          <!-- ===== KIE (kie.ai) — hidden per operator request; remove `hidden` to restore ===== -->
+          <div class="nav-group" data-group="kie" hidden>
+            <button type="button" class="nav-item nav-parent" data-group-toggle="kie"
+                    aria-expanded="false" aria-controls="sub-kie">
+              <img class="nav-ico nav-logo" src="/static/kie.png" alt="" width="19" height="19" />
+              <span>KIE</span>
+              <svg class="nav-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+            <div class="nav-sub" id="sub-kie" data-sub="kie" hidden>
+              <button type="button" class="nav-item nav-child" data-nav="kie-clip8"><span>Clip 8s</span></button>
+              <button type="button" class="nav-item nav-child" data-nav="kie-extend"><span>Extend Clip</span></button>
+              <button type="button" class="nav-item nav-child" data-nav="kie-motion"><span>Motion Control</span></button>
+              <button type="button" class="nav-item nav-child" data-nav="kie-swap"><span>Character Swap</span></button>
+            </div>
+          </div>
+
+          <!-- ===== Loop Post TikTok (standalone) — hidden per operator request; remove `hidden` to restore ===== -->
+          <button type="button" class="nav-item" data-nav="loop-post" hidden>
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M17 2l4 4-4 4" />
+              <path d="M3 11V9a4 4 0 014-4h14" />
+              <path d="M7 22l-4-4 4-4" />
+              <path d="M21 13v2a4 4 0 01-4 4H3" />
+            </svg>
+            <span>Loop Post TikTok</span>
+          </button>
+
+          <div class="nav-sep" role="separator"></div>
+
+          <!-- Webhook hidden per operator request; remove `hidden` to restore. -->
+          <button type="button" class="nav-item" data-nav="webhook" hidden>
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10 13a4 4 0 005.6 0l2.8-2.8a4 4 0 00-5.6-5.6L11 6" />
+              <path d="M14 11a4 4 0 00-5.6 0L5.6 13.8a4 4 0 005.6 5.6L13 18" />
+            </svg>
+            <span>Webhook</span>
+          </button>
+
+          <!-- Prompt Hub hidden per operator request; remove `hidden` to restore. -->
+          <button type="button" class="nav-item" data-nav="prompt-hub" hidden>
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+            </svg>
+            <span>Prompt Hub</span>
+          </button>
+
+          <!-- Log is not a page — this button opens the activity log as a SEPARATE
+               window (real OS window via pywebview, or a browser popup) so it can be
+               dragged anywhere, including outside the app. See openLogWindow() in app.js. -->
+          <button type="button" class="nav-item" id="logToggle"
+                  title="เปิด Log เป็นหน้าต่างแยก — ลากออกไปนอกโปรแกรมได้">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <path d="M14 2v6h6" />
+              <path d="M8 13h8M8 17h5" />
+            </svg>
+            <span>Log</span>
+            <span class="nav-dot" id="logDot" hidden><span class="sr-only">— unread entries</span></span>
+          </button>
+        </nav>
+
+        <!-- bottom-pinned utility nav — ที่เก็บไฟล์ sits just above Settings, both
+             parked in the bottom-left corner (flex:1 on .sb-nav pushes this down). -->
+        <div class="sb-bottom">
+          <button type="button" class="nav-item" data-nav="downloads">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            </svg>
+            <span>ที่เก็บไฟล์</span>
+          </button>
+<button type="button" class="nav-item" data-nav="settings">
+            <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 13a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-2.9 1.2V21a2 2 0 01-4 0v-.2a1.7 1.7 0 00-2.9-1.2l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.7 1.7 0 004.6 13H4a2 2 0 010-4h.2a1.7 1.7 0 001.2-2.9l-.1-.1A2 2 0 118.1 3.2l.1.1A1.7 1.7 0 0011 4.6V4a2 2 0 014 0v.2a1.7 1.7 0 002.9 1.2l.1-.1a2 2 0 112.8 2.8l-.1.1A1.7 1.7 0 0019.4 11H20a2 2 0 010 4z" />
+            </svg>
+            <span>Settings</span>
+          </button>
+        </div>
+
+        <div class="sb-footer">
+          <button type="button" class="sb-status" id="sbStatus" data-on="false" title="Connection status">
+            <span class="sb-status-dot"></span>
+            <span id="sbStatusText">Extension offline</span>
+          </button>
+          <span class="sb-version"></span>
+          <!-- reopens the "What's new" changelog popup (shown by app.js renderWhatsNew);
+               hidden until a release with notes is known -->
+          <button type="button" class="sb-whatsnew" id="sbWhatsNew" hidden>มีอะไรใหม่</button>
+        </div>
+      </aside>
+
+      <!-- ============ MAIN AREA ============ -->
+      <div class="main">
+        <span class="sr-only" id="navAnnounce" aria-live="polite" aria-atomic="true"></span>
+        <header class="main-head">
+          <div class="mh-title">
+            <h1 id="viewTitle">Google Flow ยท Clip 8s</h1>
+            <p class="mh-sub" id="viewSub">labs.google ยท 8-second video clip</p>
+          </div>
+          <div class="mh-right">
+            <span class="pill" id="extPill" data-on="false">
+              <span class="pill-dot"></span>
+              <span id="extPillText">Extension offline</span>
+            </span>
+            <span class="acct-chip" id="acctChip" hidden>
+              <span class="acct-email" id="acctEmail"></span>
+            </span>
+            <button class="btn ghost" id="openExtensions">Open Extensions ▸</button>
+          </div>
+        </header>
+
+        <!-- auto-update banner — shown by app.js (renderUpdate) when the release
+             manifest reports a newer build than the one running -->
+        <div class="update-banner" id="updateBanner" hidden>
+          <span class="ub-ico" aria-hidden="true">🆕</span>
+          <span class="ub-text" id="updateText"></span>
+          <button type="button" class="ub-btn" id="updateBtn">ดาวน์โหลด</button>
+          <button type="button" class="ub-x" id="updateDismiss" aria-label="ปิดแจ้งเตือน">✕</button>
+        </div>
+
+        <!-- Full-screen "updating" overlay: covers the app while the new build downloads,
+             shows a real % from the server, then the app auto-restarts at 100%. -->
+        <div class="update-overlay" id="updateOverlay" role="status" aria-live="polite" aria-label="กำลังอัปเดต" hidden>
+          <div class="uo-card">
+            <img class="uo-logo" src="/static/logo.png" alt="" width="60" height="60" />
+            <div class="uo-title">กำลังอัปเดตเป็น <span id="uoVersion"></span></div>
+            <div class="uo-bar"><div class="uo-fill" id="uoFill"></div></div>
+            <div class="uo-meta">
+              <span class="uo-pct" id="uoPct">0%</span>
+              <span class="uo-status" id="uoStatus">กำลังดาวน์โหลด…</span>
+            </div>
+            <div class="uo-hint">อย่าปิดโปรแกรม — จะรีสตาร์ทเองเมื่อเสร็จ</div>
+          </div>
+        </div>
+
+        <div class="main-body" id="mainBody">
+          <!-- ---------- DASHBOARD VIEW (GT Pro Beta 0 home — launches into GT Pro Beta 0) ---------- -->
+          <section class="view" data-view="dashboard">
+            <div class="dash-home">
+              <div class="dash-home-head">
+                <h2>เลือกแอปที่ต้องการใช้งาน</h2>
+                <p class="muted-text">GT Pro Beta 0 รวมเครื่องมืออัตโนมัติไว้ในที่เดียว — กดเข้าใช้งานได้เลย</p>
+              </div>
+              <div class="dash-apps">
+                <article class="poster-card">
+                  <div class="poster-title">GT Pro Beta 0</div>
+                  <button type="button" class="poster-art js-enter-bot" aria-label="เข้าใช้งาน GT Pro Beta 0">
+                    <span class="poster-bolt" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M13 2 4.5 13.5H11l-1 8.5L19.5 10H13z" /></svg>
+                    </span>
+                    <span class="poster-play" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                    </span>
+                  </button>
+                  <div class="poster-sub">สร้างคลิป + โพสต์ TikTok</div>
+                  <div class="poster-actions">
+                    <button type="button" class="poster-btn primary js-enter-bot">เข้าใช้งาน</button>
+                    <button type="button" class="poster-btn ghost js-bot-details">รายละเอียด</button>
+                  </div>
+                </article>
+                <!-- แอปถัดไปของ GT Pro Beta 0 เพิ่มเป็น <article class="poster-card"> ใบใหม่ตรงนี้ได้ -->
+              </div>
+            </div>
+          </section>
+
+          <!-- ---------- GENERATE VIEW (per-mode form rendered by app.js) ---------- -->
+          <section class="view active" data-view="generate">
+            <!-- connect-gate — replaces the whole mode page until its account group
+                 (generation login + TikTok) is fully connected. Driven by
+                 updateConnectGates() in app.js; the hub enforces the same rule
+                 server-side, so this is UX, not the security boundary. -->
+            <div class="connect-gate" id="connectGateGen" hidden>
+              <div class="cg-card">
+                <div class="cg-ico" aria-hidden="true">🔗</div>
+                <h3 class="cg-title">ยังเชื่อมบัญชีไม่ครบ</h3>
+                <p class="cg-sub" id="connectGateGenSub"></p>
+                <ul class="cg-list" id="connectGateGenList"></ul>
+                <button type="button" class="btn primary cg-btn" id="connectGateGenBtn">+ เพิ่มบัญชี labs.google</button>
+              </div>
+            </div>
+            <div class="gen-grid">
+              <!-- config / prompt — form body is rendered per mode into #genForm -->
+              <div class="card form-card">
+                <div class="card-head">
+                  <h2>Configuration &amp; Prompt</h2>
+                  <div class="head-right">
+                    <div class="head-chips">
+                      <span class="ctx-chip" id="modeChip">Clip 8s</span>
+                      <span class="ctx-chip alt" id="sourceChip">labs.google</span>
+                    </div>
+                    <!-- per-mode System Prompt editor — gear opens the Custom Prompt modal
+                         (label/hint live in the title). Hidden by refreshPromptButton()
+                         for modes with no PROMPT_SCHEMA. -->
+                    <button type="button" class="sp-gear" id="openCustomPrompt" hidden
+                            title="Custom Prompt — ตั้งค่า Prompt เนื้อหา / ภาพ / วิดีโอ / คำต้องห้าม ของโหมดนี้ (ใช้ทุกงานอัตโนมัติ)"
+                            aria-label="Custom Prompt">
+                      <svg class="sp-gear-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <p class="mode-note" id="modeNote" hidden></p>
+                <div id="genForm"><!-- rendered by renderModeForm() in app.js --></div>
+              </div>
+
+              <!-- per-mode job tally — total / success / failed for the open mode,
+                   sits between Configuration & Prompt and Recent Jobs -->
+              <div class="gen-stats" aria-label="สรุปงานของโหมดนี้">
+                <div class="gen-stat">
+                  <span class="gen-stat-n" data-genstat="total">0</span>
+                  <span class="gen-stat-l">ทั้งหมด</span>
+                </div>
+                <div class="gen-stat is-done">
+                  <span class="gen-stat-n" data-genstat="done">0</span>
+                  <span class="gen-stat-l">สำเร็จ</span>
+                </div>
+                <div class="gen-stat is-failed" id="genStatFailed">
+                  <span class="gen-stat-n" data-genstat="failed">0</span>
+                  <span class="gen-stat-l">ไม่สำเร็จ</span>
+                  <span class="gen-stat-hint">🔍 กดดูสาเหตุ</span>
+                </div>
+              </div>
+
+              <!-- recent jobs — read-only grid: #, reference, prompt, result, progress -->
+              <div class="card jobs-card">
+                <div class="card-head">
+                  <h2>Recent jobs</h2>
+                  <div class="head-actions">
+                    <button type="button" class="btn btn-retryall" id="retryFailed" hidden>
+                      <span class="btn-ico" aria-hidden="true">
+                        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11.3 5.2A4.6 4.6 0 1 0 11.9 7.4"/><path d="M11.9 2.3v3h-3"/></svg>
+                      </span>
+                      <span class="btn-label">ลองใหม่ทั้งหมด</span>
+                    </button>
+                    <!-- "โพสต์ใหม่ทั้งหมด": bulk re-run of the TikTok post for every row whose
+                         clip is DONE but the post failed/staged (reuses the clip, no regen).
+                         Reuses .btn-retryall styling (one amber accent); shown by
+                         renderJobsGrid only when this mode has retryable posts. -->
+                    <button type="button" class="btn btn-retryall" id="republishFailed" hidden>
+                      <span class="btn-ico" aria-hidden="true">
+                        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11.3 5.2A4.6 4.6 0 1 0 11.9 7.4"/><path d="M11.9 2.3v3h-3"/></svg>
+                      </span>
+                      <span class="btn-label">โพสต์ใหม่ทั้งหมด</span>
+                    </button>
+                    <button type="button" class="btn btn-run" id="runQueue">
+                      <span class="btn-ico" aria-hidden="true">
+                        <svg viewBox="0 0 12 12" fill="currentColor"><path d="M3.2 1.9 10.2 6 3.2 10.1Z"/></svg>
+                      </span>
+                      <span class="btn-label">Run</span>
+                    </button>
+                    <button type="button" class="btn btn-stop" id="stopQueue" hidden>
+                      <span class="btn-ico" aria-hidden="true">
+                        <svg viewBox="0 0 12 12" fill="currentColor"><rect x="2.6" y="2.6" width="6.8" height="6.8" rx="1.2"/></svg>
+                      </span>
+                      <span class="btn-label">Stop</span>
+                    </button>
+                    <button type="button" class="btn btn-clear" id="clearJobs">
+                      <span class="btn-ico" aria-hidden="true">
+                        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 3.6h8.8M5.4 3.6V2.7a1 1 0 0 1 1-1h1.2a1 1 0 0 1 1 1v.9M3.7 3.6l.4 7.2a1 1 0 0 0 1 .95h3.8a1 1 0 0 0 1-.95l.4-7.2"/></svg>
+                      </span>
+                      <span class="btn-label">Clear</span>
+                    </button>
+                    <!-- selection-mode toolbar (เลือกลบเฉพาะแถว) — CSS swaps these in for
+                         Run/Stop/Clear/retry while .jobs-card.selecting is set -->
+                    <button type="button" class="btn btn-selall sel-only" id="selectAll">
+                      <span class="btn-label">เลือกทั้งหมด</span>
+                    </button>
+                    <button type="button" class="btn btn-delsel sel-only" id="deleteSelected" disabled>
+                      <span class="btn-ico" aria-hidden="true">
+                        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 3.6h8.8M5.4 3.6V2.7a1 1 0 0 1 1-1h1.2a1 1 0 0 1 1 1v.9M3.7 3.6l.4 7.2a1 1 0 0 0 1 .95h3.8a1 1 0 0 0 1-.95l.4-7.2"/></svg>
+                      </span>
+                      <span class="btn-label">ลบที่เลือก</span>
+                    </button>
+                    <button type="button" class="btn btn-cancelsel sel-only" id="cancelSelect">
+                      <span class="btn-label">ยกเลิก</span>
+                    </button>
+                    <button type="button" class="link" data-goto="workflow">History ▸</button>
+                  </div>
+                </div>
+                <div class="jobs-grid-wrap">
+                  <table class="jobs-grid" data-jobs-grid data-limit="0">
+                    <thead>
+                      <tr>
+                        <th class="col-n">#</th>
+                        <th class="col-ref">Reference</th>
+                        <th class="col-prompt">Prompt</th>
+                        <!-- ▾ = ตั้งค่าทั้งคอลัมน์ (ใช้ค่าเดียวทุกแถว หรือสุ่มจากที่เลือก) — app.js .dir-col-btn -->
+                        <th class="col-dir">Video Style <button type="button" class="dir-col-btn" data-dir-col="videoStyle" data-dir-label="Video Style" aria-label="ตั้งค่าทั้งคอลัมน์ Video Style" title="ตั้งค่าทั้งคอลัมน์ — ใช้ค่าเดียวทุกแถว หรือสุ่มจากที่เลือก">▾</button></th>
+                        <th class="col-dir">Character <button type="button" class="dir-col-btn" data-dir-col="character" data-dir-label="Character" aria-label="ตั้งค่าทั้งคอลัมน์ Character" title="ตั้งค่าทั้งคอลัมน์ — ใช้ค่าเดียวทุกแถว หรือสุ่มจากที่เลือก">▾</button></th>
+                        <th class="col-dir">พื้นหลัง <button type="button" class="dir-col-btn" data-dir-col="background" data-dir-label="พื้นหลัง" aria-label="ตั้งค่าทั้งคอลัมน์ พื้นหลัง" title="ตั้งค่าทั้งคอลัมน์ — ใช้ค่าเดียวทุกแถว หรือสุ่มจากที่เลือก">▾</button></th>
+                        <th class="col-dir">สไตล์การพูด <button type="button" class="dir-col-btn" data-dir-col="speakingStyle" data-dir-label="สไตล์การพูด" aria-label="ตั้งค่าทั้งคอลัมน์ สไตล์การพูด" title="ตั้งค่าทั้งคอลัมน์ — ใช้ค่าเดียวทุกแถว หรือสุ่มจากที่เลือก">▾</button></th>
+                        <th class="col-dir">ลักษณะเสียง <button type="button" class="dir-col-btn" data-dir-col="voiceType" data-dir-label="ลักษณะเสียง" aria-label="ตั้งค่าทั้งคอลัมน์ ลักษณะเสียง" title="ตั้งค่าทั้งคอลัมน์ — ใช้ค่าเดียวทุกแถว หรือสุ่มจากที่เลือก">▾</button></th>
+                        <th class="col-dir">สไตล์บทพูด <button type="button" class="dir-col-btn" data-dir-col="speechContentStyle" data-dir-label="สไตล์บทพูด" aria-label="ตั้งค่าทั้งคอลัมน์ สไตล์บทพูด" title="ตั้งค่าทั้งคอลัมน์ — ใช้ค่าเดียวทุกแถว หรือสุ่มจากที่เลือก">▾</button></th>
+                        <th class="col-result">Result</th>
+                        <th class="col-prog">Progress</th>
+                        <th class="col-status col-gen">สร้าง</th>
+                        <th class="col-status col-post">โพสต์ TikTok</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="empty-row"><td colspan="13">No jobs yet.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ---------- PRODUCT SET VIEW (bespoke) ---------- -->
+          <section class="view" data-view="product-set">
+            <!-- connect-gate — Product Showcase needs a connected TikTok account
+                 before the pull is usable (mirrored server-side in hub._tiktok_pull) -->
+            <div class="connect-gate" id="connectGateProducts" hidden>
+              <div class="cg-card">
+                <div class="cg-ico" aria-hidden="true">🔗</div>
+                <h3 class="cg-title">ยังเชื่อมบัญชีไม่ครบ</h3>
+                <p class="cg-sub">ต้องเชื่อมบัญชี TikTok ก่อน จึงจะดึงสินค้าจาก Showcase ได้</p>
+                <ul class="cg-list" id="connectGateProductsList"></ul>
+                <button type="button" class="btn primary cg-btn" id="connectGateProductsBtn">+ เพิ่มบัญชี TikTok</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h2>แหล่งสินค้า TikTok</h2>
+                <div class="head-actions">
+                  <button type="button" class="btn tiny tt-reset" id="ttReset">↺ รีเซ็ต</button>
+                  <span class="ctx-chip" id="ttAccountChip">ใช้บัญชีที่บันทึก</span>
+                </div>
+              </div>
+              <p class="muted-text">
+                เลือกบัญชี TikTok แล้วกด <b>ดึงสินค้าทั้งหมด</b> เพื่อดึงรายชื่อสินค้าจาก Showcase
+                เข้า picker ของทุกโหมด — <b>ไม่ต้องอัปคลิป</b>.
+              </p>
+
+              <!-- which saved TikTok account to use (server-side, no live tab) -->
+              <div class="field">
+                <label for="ttAccount">บัญชี TikTok</label>
+                <select id="ttAccount"><option value="">— ยังไม่มีบัญชี TikTok —</option></select>
+              </div>
+
+              <!-- MAIN action: pull EVERY showcase product into the picker. No clip
+                   needed — the pull is a cookie-authed API crawl (server-side as a saved
+                   account, or the extension), independent of any staged clip. Always shown. -->
+              <button type="button" class="btn primary" id="ttPull">⬇ ดึงสินค้าทั้งหมด</button>
+              <!-- pull-all result: total + the full product list -->
+              <div class="tt-pull" id="ttPullResult" hidden></div>
+              <!-- choose which generate providers get the products — hidden until a
+                   pull returns products (updateSyncState gates on lastProducts) -->
+              <div id="ttSyncRow" class="tt-sync-row" hidden>
+                <button type="button" class="btn tt-sync-btn" id="ttSync">🔗 Sync สินค้า…</button>
+                <span class="tt-sync-state muted-text" id="ttSyncState">ยังไม่ได้ซิงค์ไปที่โหมดไหน</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- ---------- LOOP POST TIKTOK VIEW ---------- -->
+          <section class="view" data-view="loop-post">
+            <div class="card">
+              <div class="card-head">
+                <h2>Loop Post ยท TikTok</h2>
+                <span class="ctx-chip soon">Auto-post disabled</span>
+              </div>
+              <p class="muted-text">
+                Queue finished media and drip-post it to TikTok on a timer — one upload
+                every N minutes until the batch is done. Auto-posting stays
+                <b>disabled</b> until the TikTok selectors are verified; this screen
+                prepares the loop and the upload is staged for review.
+              </p>
+
+              <div class="field">
+                <label for="loopSource">Source of media</label>
+                <select id="loopSource">
+                  <option value="done-jobs">Completed jobs (this session)</option>
+                  <option value="url-list">URL list (below)</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="loopUrls">Media URLs <span class="opt">(one per line — for “URL list”)</span></label>
+                <textarea id="loopUrls" rows="3" placeholder="https://…/clip1.mp4&#10;https://…/clip2.mp4"></textarea>
+              </div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label for="loopInterval">Interval <span class="opt">(minutes)</span></label>
+                  <input id="loopInterval" type="number" min="1" max="1440" value="30" />
+                </div>
+                <div class="field">
+                  <label for="loopCount">Max posts</label>
+                  <input id="loopCount" type="number" min="1" max="100" value="10" />
+                </div>
+                <div class="field grow">
+                  <label for="loopProductId">TikTok product ID <span class="opt">(cart)</span></label>
+                  <input id="loopProductId" type="text" placeholder="optional — pin to basket" />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="loopCaption">Caption template</label>
+                <input id="loopCaption" type="text" placeholder="Caption applied to each post" />
+              </div>
+
+              <div class="field">
+                <label for="loopHashtags">Hashtags</label>
+                <input id="loopHashtags" type="text" placeholder="fyp viral tiktokshop" />
+              </div>
+
+              <button class="btn primary" id="loopStart" disabled>Start loop</button>
+              <p class="form-note">Coming soon — the loop UI is ready; posting is gated until selectors are verified.</p>
+            </div>
+          </section>
+
+          <!-- ---------- WORKFLOW VIEW ---------- -->
+          <section class="view" data-view="workflow">
+            <!-- returns to whichever page opened History (set by setNav in app.js) -->
+            <button type="button" class="btn ghost history-back" id="historyBack">‹ ย้อนกลับ</button>
+            <div class="card">
+              <div class="card-head">
+                <h2>Pipeline</h2>
+                <span class="count" id="jobCount">0</span>
+              </div>
+              <div class="pipeline">
+                <span class="pl-step">Generate</span>
+                <span class="pl-arrow">→</span>
+                <span class="pl-step">mediaUrl</span>
+                <span class="pl-arrow">→</span>
+                <span class="pl-step">Publish ยท TikTok</span>
+              </div>
+              <div class="stat-row">
+                <div class="stat"><span class="stat-n" id="statQueued">0</span><span class="stat-l">Queued</span></div>
+                <div class="stat"><span class="stat-n" id="statRunning">0</span><span class="stat-l">Running</span></div>
+                <div class="stat"><span class="stat-n" id="statDone">0</span><span class="stat-l">Done</span></div>
+                <div class="stat"><span class="stat-n" id="statFailed">0</span><span class="stat-l">Failed</span></div>
+                <div class="stat"><span class="stat-n" id="statCancelled">0</span><span class="stat-l">Cancelled</span></div>
+              </div>
+            </div>
+
+            <div class="card jobs-card">
+              <div class="card-head">
+                <h2>History Jobs</h2>
+              </div>
+              <ul class="jobs jobs-tall" data-jobs>
+                <li class="empty">No jobs yet.</li>
+              </ul>
+            </div>
+          </section>
+
+          <!-- ---------- WEBHOOK VIEW ---------- -->
+          <section class="view" data-view="webhook">
+            <div class="card">
+              <div class="card-head">
+                <h2>Outbound webhook</h2>
+                <span class="ctx-chip soon">Not wired yet</span>
+              </div>
+              <p class="muted-text">
+                Post a JSON payload to your own endpoint whenever a job finishes —
+                handy for Discord/Slack alerts or chaining into another tool.
+              </p>
+              <div class="field">
+                <label for="webhookUrl">Endpoint URL</label>
+                <input id="webhookUrl" type="url" placeholder="https://example.com/hooks/autotik" disabled />
+              </div>
+              <div class="field">
+                <label>Fire on</label>
+                <div class="check-row">
+                  <label class="check"><input type="checkbox" disabled checked /> Job completed</label>
+                  <label class="check"><input type="checkbox" disabled /> Job failed</label>
+                </div>
+              </div>
+              <button class="btn primary" disabled>Save webhook</button>
+              <p class="form-note">Coming soon — the UI is ready, the backend hook isn't connected.</p>
+            </div>
+          </section>
+
+          <!-- ---------- PROMPT HUB VIEW ---------- -->
+          <section class="view" data-view="prompt-hub">
+            <div class="card">
+              <div class="card-head">
+                <h2>Prompt Hub</h2>
+                <span class="ctx-chip soon">Not wired yet</span>
+              </div>
+              <p class="muted-text">
+                A library of reusable prompts. Save your best-performing prompts here,
+                then drop them straight into a Flow Image / Flow Video job.
+              </p>
+              <div class="hub-empty">
+                <svg viewBox="0 0 24 24" aria-hidden="true" width="40" height="40">
+                  <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+                </svg>
+                <p>No saved prompts yet.</p>
+                <button class="btn ghost" disabled>+ New prompt</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- The Log is not a page view — the sidebar "Log" button opens it as a
+               SEPARATE window (webui/log.html via /log). -->
+
+          <!-- ---------- FILE STORAGE VIEW (ที่เก็บไฟล์ — auto-save folder) ----------
+               Pulled out of Settings into its own sidebar entry per operator request. -->
+          <section class="view" data-view="downloads">
+            <div class="warn-banner">
+              💾 ภาพ/วิดีโอที่สร้างเสร็จจะถูก <b>เซฟลงเครื่องอัตโนมัติทุกงาน</b>.
+              ตั้งโฟลเดอร์ปลายทางเองได้ที่นี่ (เว้นว่าง = ใช้โฟลเดอร์ <code>downloads</code> เริ่มต้น).
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h2>โฟลเดอร์เซฟไฟล์</h2>
+                <span class="ctx-chip" id="downloadDirChip">ค่าเริ่มต้น</span>
+              </div>
+              <p class="muted-text">
+                กด <b>เลือกโฟลเดอร์…</b> เพื่อเลือกจากเครื่องได้เลย หรือพิมพ์ <b>พาธเต็ม</b> เอง
+                (เช่น <code>D:\AutoTik\media</code>) แล้วกด Save. เว้นว่างแล้ว Save = ใช้โฟลเดอร์เริ่มต้น.
+              </p>
+              <div class="field">
+                <label for="downloadDir">โฟลเดอร์ปลายทาง</label>
+                <div class="upload-row">
+                  <input id="downloadDir" type="text" placeholder="คลิก ‘เลือกโฟลเดอร์…’ หรือพิมพ์พาธเอง" autocomplete="off" />
+                  <button type="button" class="btn tiny" id="downloadDirBrowse">📁 เลือกโฟลเดอร์…</button>
+                </div>
+              </div>
+              <div class="kie-key-actions">
+                <button class="btn primary" id="downloadDirSave">Save</button>
+                <button class="btn ghost" id="downloadDirReset">ใช้ค่าเริ่มต้น</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- ---------- SETTINGS VIEW (tabbed) ---------- -->
+<section class="view" data-view="settings">
+            <div class="subtabs" role="tablist" aria-label="Settings sections">
+              <button type="button" class="subtab active" data-subtab="llm" role="tab" aria-selected="true">API Keys</button>
+              <button type="button" class="subtab" data-subtab="accounts" role="tab" aria-selected="false">เพิ่มบัญชี</button>
+              <button type="button" class="subtab" data-subtab="auth" role="tab" aria-selected="false">เชื่อมต่อ Extension</button>
+            </div>
+
+            <!-- Provider API keys — synced to the user's backend account -->
+            <div class="subpanel active" data-subpanel="llm" role="tabpanel">
+              <div class="warn-banner">
+                🔑 API key เหล่านี้ <b>ผูกกับบัญชีของคุณ</b> — กรอกที่เครื่องไหนก็ใช้ได้ทุกเครื่อง
+                (เก็บในระบบหลังบ้าน ไม่ใช่ในเครื่องนี้). กรอก key แล้วกด <b>ทดสอบ</b> เพื่อเช็ก จากนั้นกด <b>บันทึก</b>.
+                ขอ key: <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI</a> ยท
+                <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">OpenRouter</a>.
+              </div>
+              <div class="card">
+                <div class="card-head">
+                  <h2>API Keys</h2>
+                  <span class="ctx-chip" id="apiKeysSyncChip" hidden>ผูกกับบัญชี</span>
+                </div>
+                <p class="muted-text">
+                  <b>AI</b> (OpenAI / OpenRouter) ใช้ช่วยคิดสคริปต์ขาย.
+                  ถ้ามีทั้ง OpenAI และ OpenRouter จะใช้ OpenAI เป็นหลัก ยท โมเดล <b>gpt-4o-mini</b> อัตโนมัติ.
+                </p>
+
+                <div class="apikey-row">
+                  <div class="apikey-head">
+                    <label for="keyOpenai">OpenAI <span class="apikey-state" id="keyOpenaiState"></span></label>
+                    <div class="apikey-actions">
+                      <button type="button" class="btn tiny" data-key-test="openai">ทดสอบ</button>
+                      <button type="button" class="btn tiny danger" data-key-delete="openai" hidden>ลบ</button>
+                    </div>
+                  </div>
+                  <div class="apikey-input">
+                    <input id="keyOpenai" type="password" placeholder="sk-…" autocomplete="off" />
+                    <button type="button" class="apikey-eye" data-key-eye="openai" title="แสดง/ซ่อน" aria-label="แสดง/ซ่อน">👁</button>
+                  </div>
+                </div>
+
+                <div class="apikey-row">
+                  <div class="apikey-head">
+                    <label for="keyOpenrouter">OpenRouter <span class="apikey-state" id="keyOpenrouterState"></span></label>
+                    <div class="apikey-actions">
+                      <button type="button" class="btn tiny" data-key-test="openrouter">ทดสอบ</button>
+                      <button type="button" class="btn tiny danger" data-key-delete="openrouter" hidden>ลบ</button>
+                    </div>
+                  </div>
+                  <div class="apikey-input">
+                    <input id="keyOpenrouter" type="password" placeholder="sk-or-…" autocomplete="off" />
+                    <button type="button" class="apikey-eye" data-key-eye="openrouter" title="แสดง/ซ่อน" aria-label="แสดง/ซ่อน">👁</button>
+                  </div>
+                </div>
+
+                <!-- KIE API key row — hidden per operator request; remove `hidden` to restore -->
+                <div class="apikey-row" hidden>
+                  <div class="apikey-head">
+                    <label for="keyKie">KIE <span class="apikey-state" id="keyKieState"></span></label>
+                    <div class="apikey-actions">
+                      <button type="button" class="btn tiny" data-key-test="kie">ทดสอบ</button>
+                      <button type="button" class="btn tiny danger" data-key-delete="kie" hidden>ลบ</button>
+                    </div>
+                  </div>
+                  <div class="apikey-input">
+                    <input id="keyKie" type="password" placeholder="วาง KIE API key…" autocomplete="off" />
+                    <button type="button" class="apikey-eye" data-key-eye="kie" title="แสดง/ซ่อน" aria-label="แสดง/ซ่อน">👁</button>
+                  </div>
+                </div>
+
+                <div class="kie-key-actions">
+                  <button class="btn primary" id="apiKeysSave">บันทึกลงบัญชี</button>
+                </div>
+                <p class="muted-text">💡 กรอกเฉพาะช่องที่ต้องการเปลี่ยน แล้วกดบันทึก (เว้นว่าง = ไม่เปลี่ยน). กดปุ่ม <b>ลบ</b> ข้าง key ที่ตั้งไว้แล้ว เพื่อเอาออกจากบัญชี.</p>
+              </div>
+            </div>
+<!-- unified "เพิ่มบัญชี" — one pane, two provider GROUPS (Google Flow /
+                 SuperGrok), each a forced 2-step wizard: connect the generation login
+                 FIRST, then TikTok. Step 2 stays locked until step 1 has an enabled
+                 account (updateAccWizard in app.js); the run/pull pages gate on the
+                 full group via the connect-gate overlays (updateConnectGates).
+                 NOTE: the TikTok add/table block is duplicated per group, so account
+                 lookups use data-* attributes + querySelectorAll, never ids. -->
+            <div class="subpanel" data-subpanel="accounts" role="tabpanel" hidden>
+              <div class="warn-banner">
+                ⚠️ เชื่อมบัญชี <b>labs.google</b> เพื่อสร้างรูป/คลิปใน Google Flow และเชื่อมบัญชี
+                <b>TikTok</b> เพื่อโพสต์คลิป / ดึงสินค้าใน Product Showcase.
+              </div>
+
+              <!-- Both groups shown: Google Flow + SuperGrok (add `hidden` to a tab to retire it). -->
+              <div class="acc-groups" role="tablist" aria-label="เลือกกลุ่มบัญชี">
+                <button type="button" class="acc-group-tab active" data-acc-group="flow" role="tab" aria-selected="true">
+                  <img src="/static/labsflow.png" alt="" class="acc-group-ico" />
+                  <span class="acc-group-name">Google Flow</span>
+                  <span class="acc-group-state" data-acc-group-state="flow">0/2</span>
+                </button>
+                <button type="button" class="acc-group-tab" data-acc-group="grok" role="tab" aria-selected="false">
+                  <img src="/static/grok-ai-icon.webp" alt="" class="acc-group-ico" />
+                  <span class="acc-group-name">SuperGrok</span>
+                  <span class="acc-group-state" data-acc-group-state="grok">0/2</span>
+                </button>
+              </div>
+
+              <!-- ===== group: Google Flow (โ‘  labs.google → โ‘ก TikTok) ===== -->
+              <div class="acc-group-pane active" data-acc-group-pane="flow">
+                <div class="acc-stepbar" aria-label="ขั้นตอนเชื่อมบัญชี Google Flow">
+                  <button type="button" class="acc-step active" data-acc-step="flow:1">
+                    <span class="acc-step-n">1</span>
+                    <span class="acc-step-label">เชื่อมบัญชี labs.google</span>
+                  </button>
+                  <span class="acc-step-arrow" aria-hidden="true">→</span>
+                  <button type="button" class="acc-step locked" data-acc-step="flow:2" disabled>
+                    <span class="acc-step-n">2</span>
+                    <span class="acc-step-label">เชื่อมบัญชี TikTok</span>
+                  </button>
+                </div>
+
+                <!-- step 1: labs.google -->
+                <div class="acc-step-pane active" data-acc-step-pane="flow:1">
+                  <div class="warn-banner">
+                    ⚠️ Add a <b>labs.google</b> account to generate images & video. Adding multiple
+                    accounts boosts speed — each tier (Free / Pro / Ultra) has different limits.
+                  </div>
+                  <div class="add-grid">
+                    <div class="card add-card">
+                      <h3>🌐 เพิ่มบัญชี</h3>
+                      <p class="muted-text">เปิดเบราว์เซอร์เพื่อลงชื่อเข้าใช้บัญชี Google — แนะนำให้ใช้วิธีนี้ เพราะระบบจะต่ออายุ token ให้อัตโนมัติทุกวัน พอล็อกอินสำเร็จ ระบบจะบันทึกบัญชีให้เองแล้วปิดหน้าต่าง.</p>
+                      <button class="btn ghost wide" data-account-browser="google_labs">+ เพิ่มบัญชี</button>
+                    </div>
+                  </div>
+                  <div class="card accounts-card">
+                    <div class="card-head">
+                      <h2>Active Accounts <span class="count" data-account-count="google_labs">0</span></h2>
+                      <button class="btn tiny" data-account-refresh-all="google_labs">↻ Refresh All</button>
+                    </div>
+                    <div class="acc-table-wrap">
+                      <table class="acc-table">
+                        <thead>
+                          <tr>
+                            <th>#</th><th>OFF/ON</th><th>Image</th><th>Video</th><th>Account</th>
+                            <th>Type</th><th>Credit</th><th>Proxy</th><th>Cookie Exp</th>
+                            <th>Token Exp</th><th>Status</th><th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody data-accounts="google_labs">
+                          <tr class="empty-row"><td colspan="12">No accounts yet — add one above.</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- step 2: TikTok (publishing login) -->
+                <div class="acc-step-pane" data-acc-step-pane="flow:2">
+                  <div class="warn-banner">
+                    ⚠️ เพิ่มบัญชี <b>TikTok</b> เพื่อใช้อัปโหลด/โพสต์คลิปและดึงสินค้า — ล็อกอินผ่านเบราว์เซอร์เหมือน Flow.
+                  </div>
+                  <div class="add-grid">
+                    <div class="card add-card">
+                      <h3>🌐 เพิ่มบัญชี</h3>
+                      <p class="muted-text">เปิด tiktok.com แล้วกด <b>Log in</b> — เลือกวิธีล็อกอินเอง (QR / เบอร์ / Google / LINE …). พอล็อกอินสำเร็จ ระบบจะบันทึกบัญชีให้อัตโนมัติแล้วปิดหน้าต่าง.</p>
+                      <button class="btn ghost wide" data-account-browser="tiktok">+ เพิ่มบัญชี</button>
+                    </div>
+                  </div>
+                  <div class="card accounts-card">
+                    <div class="card-head">
+                      <h2>Active Accounts <span class="count" data-account-count="tiktok">0</span></h2>
+                      <button class="btn tiny" data-account-refresh-all="tiktok">↻ Refresh All</button>
+                    </div>
+                    <div class="acc-table-wrap">
+                      <table class="acc-table">
+                        <thead>
+                          <tr>
+                            <th>#</th><th>OFF/ON</th><th>Account</th><th>Proxy</th><th>Cookie Exp</th>
+                            <th>Token Exp</th><th>Status</th><th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody data-accounts="tiktok">
+                          <tr class="empty-row"><td colspan="8">No accounts yet — add one above.</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ===== group: SuperGrok (โ‘  grok → โ‘ก TikTok) ===== -->
+              <div class="acc-group-pane" data-acc-group-pane="grok">
+                <div class="acc-stepbar" aria-label="ขั้นตอนเชื่อมบัญชี SuperGrok">
+                  <button type="button" class="acc-step active" data-acc-step="grok:1">
+                    <span class="acc-step-n">1</span>
+                    <span class="acc-step-label">เชื่อมบัญชี SuperGrok</span>
+                  </button>
+                  <span class="acc-step-arrow" aria-hidden="true">→</span>
+                  <button type="button" class="acc-step locked" data-acc-step="grok:2" disabled>
+                    <span class="acc-step-n">2</span>
+                    <span class="acc-step-label">เชื่อมบัญชี TikTok</span>
+                  </button>
+                </div>
+
+                <!-- step 1: grok -->
+                <div class="acc-step-pane active" data-acc-step-pane="grok:1">
+                  <div class="warn-banner">
+                    ⚠️ Add a <b>grok</b> account (grok.com / x.com) to generate with Grok Media.
+                  </div>
+                  <div class="add-grid">
+                    <div class="card add-card">
+                      <h3>🌐 เพิ่มบัญชี</h3>
+                      <p class="muted-text">เปิดเบราว์เซอร์เพื่อลงชื่อเข้าใช้ grok.com พอล็อกอินสำเร็จ ระบบจะบันทึกบัญชีให้เองแล้วปิดหน้าต่าง.</p>
+                      <button class="btn ghost wide" data-account-browser="grok">+ เพิ่มบัญชี</button>
+                    </div>
+                  </div>
+                  <div class="card accounts-card">
+                    <div class="card-head">
+                      <h2>Active Accounts <span class="count" data-account-count="grok">0</span></h2>
+                      <button class="btn tiny" data-account-refresh-all="grok">↻ Refresh All</button>
+                    </div>
+                    <div class="acc-table-wrap">
+                      <table class="acc-table">
+                        <thead>
+                          <tr>
+                            <th>#</th><th>OFF/ON</th><th>Image</th><th>Video</th><th>Account</th>
+                            <th>Type</th><th>Proxy</th><th>Cookie Exp</th>
+                            <th>Token Exp</th><th>Status</th><th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody data-accounts="grok">
+                          <tr class="empty-row"><td colspan="11">No accounts yet — add one above.</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- step 2: TikTok (same saved accounts as the Flow group's step 2) -->
+                <div class="acc-step-pane" data-acc-step-pane="grok:2">
+                  <div class="warn-banner">
+                    ⚠️ เพิ่มบัญชี <b>TikTok</b> เพื่อใช้อัปโหลด/โพสต์คลิปและดึงสินค้า — ล็อกอินผ่านเบราว์เซอร์เหมือน Grok.
+                  </div>
+                  <div class="add-grid">
+                    <div class="card add-card">
+                      <h3>🌐 เพิ่มบัญชี</h3>
+                      <p class="muted-text">เปิด tiktok.com แล้วกด <b>Log in</b> — เลือกวิธีล็อกอินเอง (QR / เบอร์ / Google / LINE …). พอล็อกอินสำเร็จ ระบบจะบันทึกบัญชีให้อัตโนมัติแล้วปิดหน้าต่าง.</p>
+                      <button class="btn ghost wide" data-account-browser="tiktok">+ เพิ่มบัญชี</button>
+                    </div>
+                  </div>
+                  <div class="card accounts-card">
+                    <div class="card-head">
+                      <h2>Active Accounts <span class="count" data-account-count="tiktok">0</span></h2>
+                      <button class="btn tiny" data-account-refresh-all="tiktok">↻ Refresh All</button>
+                    </div>
+                    <div class="acc-table-wrap">
+                      <table class="acc-table">
+                        <thead>
+                          <tr>
+                            <th>#</th><th>OFF/ON</th><th>Account</th><th>Proxy</th><th>Cookie Exp</th>
+                            <th>Token Exp</th><th>Status</th><th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody data-accounts="tiktok">
+                          <tr class="empty-row"><td colspan="8">No accounts yet — add one above.</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- kie API key (REST provider — no cookie account) -->
+            <!-- (KIE key moved into the unified "API Keys" panel above) -->
+            <!-- (ที่เก็บไฟล์ moved out to its own standalone view — see data-view="downloads") -->
+
+            <!-- authentication / extension connection -->
+            <div class="subpanel" data-subpanel="auth" role="tabpanel" hidden>
+              <div class="card">
+                <div class="card-head">
+                  <h2>Extension connection</h2>
+                  <span class="pill" id="extPill2" data-on="false">
+                    <span class="pill-dot"></span>
+                    <span id="extPillText2">Extension offline</span>
+                  </span>
+                </div>
+                <!-- Program-side "เชื่อมต่อ" — mirrors the extension popup's Reconnect button so
+                     you can connect from EITHER side. The app is the WebSocket server; the
+                     extension's service worker dials in. We can't push a socket into a closed
+                     browser, so "connect" = open the user's NORMAL Chrome (the default profile
+                     where the extension was Load-unpacked) at chrome://extensions/. Its SW wakes
+                     (onStartup + the 30s tb-keepalive alarm) and reconnects on its own; the pill
+                     then flips to green through ui.state → setExtConnected. -->
+                <div class="connect-action">
+                  <button class="btn primary" id="connectExtBtn">⚡ เชื่อมต่อ Extension</button>
+                  <span class="muted-text" id="connectExtHint">กดเพื่อเปิด Chrome โปรไฟล์ที่ติดตั้งส่วนขยายไว้ แล้วเชื่อมต่อให้อัตโนมัติ</span>
+                </div>
+                <p class="muted-text" id="connectedNote" hidden>✓ เชื่อมต่อส่วนขยายแล้ว — พร้อมสั่งงานได้เลย</p>
+              </div>
+
+              <!-- per-machine first-run info (read-only) — populated by loadInfo() from
+                   /api/info's `device` block. Stored in device.json on this machine,
+                   NOT tied to the signed-in account (survives logout). -->
+              <div class="card">
+                <div class="card-head">
+                  <h2>ข้อมูลเครื่อง</h2>
+                  <span class="pill" id="deviceFirstPill" data-on="true" hidden>
+                    <span class="pill-dot"></span>
+                    <span>เปิดครั้งแรก</span>
+                  </span>
+                </div>
+                <p class="muted-text">บันทึกการเปิดใช้งานโปรแกรมบนเครื่องนี้ — เก็บในเครื่อง ไม่ผูกกับบัญชีที่ล็อกอิน.</p>
+                <dl class="info-list">
+                  <div><dt>เปิดโปรแกรมครั้งแรกเมื่อ</dt><dd id="deviceFirstRun">…</dd></div>
+                  <div><dt>เครื่องนี้เปิดเป็นครั้งแรกหรือไม่</dt><dd id="deviceIsFirst">…</dd></div>
+                  <div><dt>เปิดมาแล้วทั้งหมด</dt><dd id="deviceRunCount">…</dd></div>
+                  <div><dt>รหัสเครื่อง (Device ID)</dt><dd id="deviceId">…</dd></div>
+                </dl>
+              </div>
+            </div>
+
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- inter-row countdown: shown between Recent-jobs rows while the queue waits the
+         random delay. HUD-styled (mirrors the in-browser overlay) but non-blocking —
+         the dim backdrop lets clicks through so Stop stays reachable behind it. -->
+    <div class="rd-overlay" id="rowDelayOverlay" hidden role="status" aria-live="polite">
+      <div class="rd-card">
+        <div class="rd-logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26"><path d="M13.5 2 4 13.2h6.1L9 22l9.8-11.6h-6.4L13.5 2Z" fill="#1b1206"/></svg>
+        </div>
+        <div class="rd-title">GT Pro Beta 0</div>
+        <div class="rd-sub">Automation Active</div>
+        <div class="rd-statusrow"><span class="rd-dot"></span><span>กำลังรอคิวถัดไป…</span></div>
+        <div class="rd-count" id="rowDelayCount">0:00</div>
+        <div class="rd-msg">เหลือเวลาก่อนเริ่มทำแถวถัดไป</div>
+        <div class="rd-bar"><span class="rd-bar-fill" id="rowDelayBar"></span></div>
+        <button type="button" class="rd-skip" id="rowDelaySkip">ข้ามการรอ ▸ เริ่มเลย</button>
+      </div>
+    </div>
+
+    <!-- in-app media viewer: click a result thumbnail to view the image/video here -->
+    <div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="Media viewer">
+      <button class="lightbox-close" id="lightboxClose" aria-label="ปิด" title="ปิด (Esc)">✕</button>
+      <div class="lightbox-body" id="lightboxBody"></div>
+    </div>
+
+    <!-- The Log opens as a SEPARATE window (the sidebar "Log" button → /log, a real
+         OS window via pywebview, or a window.open popup in a browser) so it can be
+         dragged outside the app. See openLogWindow() in app.js + webui/log.html. -->
+
+    <!-- Per-mode System Prompt factory defaults + editor schema (PROMPT_DEFAULTS /
+         PROMPT_SCHEMA), generated from sora-creator-suite. Must load before app.js. -->
+    <script src="/static/prompt-defaults.js"></script>
+    <!-- Creative-direction option lists (รายละเอียดคลิป) — mirrors style_options.py.
+         Must load before app.js (FIELD_DEFS builds the dropdowns from it). -->
+    <script src="/static/style-options.js"></script>
+    <!-- Thai explanations for FAILED-row errors (TB_ERRORS) — the History view's
+         "สาเหตุที่ล้มเหลว" dropdown matches the raw error text against this catalog.
+         Must load before app.js. -->
+    <script src="/static/error-explain.js"></script>
+    <script src="/static/app.js"></script>
+    <script src="/static/custom-select.js"></script>
+    <!-- Themed date/time picker — replaces the un-styleable native datetime-local popup
+         for "เวลาที่จะโพสต์" with a dark amber calendar. Keeps the real input as the value
+         source so app.js logic is untouched. Self-boots; enhances dynamically-rendered fields. -->
+    <script src="/static/datetime-picker.js"></script>
+  </body>
+</html>

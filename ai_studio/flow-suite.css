@@ -1,0 +1,355 @@
+/* flow-suite — visual system ported from the BlueSPite reference project
+   (C:\Users\Blue\Documents\Test\Blue SP_ai\web\styles.css), scoped to the 3
+   ported pages (.flow-page-prompt / .flow-page-queue / .flow-page-history)
+   only. ai_studio's own sidebar/rail/nav chrome is untouched — this file
+   never defines a bare selector, every rule is scoped under one of the 3
+   page container classes so it cannot leak into the rest of the AutoGT
+   theme. Loaded after autogt-ui.css. */
+
+/* Fixed light palette, aligned to autogt-ui.css's own tokens (--text/
+   --surface/--line/--primary etc.) rather than following the OS/browser's
+   prefers-color-scheme — the rest of TikTok Manager Pro is a fixed light
+   theme regardless of OS setting, so these pages should be too, not flip
+   independently and end up inconsistent with everything else. */
+.flow-page-prompt,
+.flow-page-queue,
+.flow-page-history {
+  --fs-bg: #f4f6f9;
+  --fs-panel: #ffffff;
+  --fs-panel-2: #f7f9fc;
+  --fs-ink: #0f172a;
+  --fs-ink-dim: #64748b;
+  --fs-line: #e2e8f0;
+  --fs-brand: #2563eb;
+  --fs-brand-ink: #ffffff;
+  --fs-ok: #10b981;
+  --fs-warn: #f59e0b;
+  --fs-err: #ef4444;
+  --fs-radius: 10px;
+  color-scheme: light;
+}
+
+.flow-page-prompt, .flow-page-queue, .flow-page-history {
+  color: var(--fs-ink);
+  font: 14px/1.55 "Segoe UI", "IBM Plex Sans Thai", system-ui, sans-serif;
+}
+
+/* ───────────────────────────────────────────────────────────── cards */
+.flow-page-prompt .fs-card,
+.flow-page-queue .fs-card,
+.flow-page-history .fs-card {
+  background: var(--fs-panel);
+  border: 1px solid var(--fs-line);
+  border-radius: var(--fs-radius);
+  padding: 14px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+.flow-page-prompt .fs-card.fs-column,
+.flow-page-queue .fs-card.fs-column,
+.flow-page-history .fs-card.fs-column {
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: nowrap;
+}
+.flow-page-prompt .fs-card.fs-column > strong,
+.flow-page-queue .fs-card.fs-column > strong,
+.flow-page-history .fs-card.fs-column > strong { font-size: 13px; }
+.flow-page-prompt .fs-card.fs-sticky { position: sticky; top: 20px; }
+
+.flow-page-prompt .fs-field,
+.flow-page-queue .fs-field,
+.flow-page-history .fs-field {
+  display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.flow-page-prompt .fs-field.fs-grow { flex: 1 1 220px; }
+.flow-page-prompt .fs-field.fs-narrow { flex: 0 0 108px; }
+.flow-page-prompt .fs-field label,
+.flow-page-queue .fs-field label,
+.flow-page-history .fs-field label {
+  font-size: 11.5px; color: var(--fs-ink-dim); font-weight: 600;
+}
+
+.flow-page-prompt input, .flow-page-prompt select, .flow-page-prompt textarea,
+.flow-page-queue input, .flow-page-queue select, .flow-page-queue textarea,
+.flow-page-history input, .flow-page-history select, .flow-page-history textarea {
+  font: inherit;
+  padding: 7px 9px;
+  border: 1px solid var(--fs-line);
+  border-radius: 7px;
+  background: var(--fs-bg);
+  color: var(--fs-ink);
+  min-width: 0;
+}
+.flow-page-prompt textarea { resize: vertical; font-size: 13px; }
+.flow-page-prompt input:focus, .flow-page-prompt select:focus, .flow-page-prompt textarea:focus,
+.flow-page-queue input:focus, .flow-page-queue select:focus,
+.flow-page-history input:focus, .flow-page-history select:focus {
+  outline: 2px solid color-mix(in srgb, var(--fs-brand) 45%, transparent);
+  outline-offset: -1px;
+}
+
+.flow-page-prompt .fs-btn, .flow-page-queue .fs-btn, .flow-page-history .fs-btn {
+  font: inherit; font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--fs-line);
+  background: var(--fs-panel-2);
+  color: var(--fs-ink);
+  cursor: pointer;
+}
+.flow-page-prompt .fs-btn:hover:not(:disabled),
+.flow-page-queue .fs-btn:hover:not(:disabled),
+.flow-page-history .fs-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--fs-ink) 8%, var(--fs-panel-2));
+}
+.flow-page-prompt .fs-btn:disabled, .flow-page-queue .fs-btn:disabled, .flow-page-history .fs-btn:disabled {
+  opacity: .45; cursor: not-allowed;
+}
+.flow-page-prompt .fs-btn.fs-primary, .flow-page-queue .fs-btn.fs-primary, .flow-page-history .fs-btn.fs-primary {
+  background: var(--fs-brand); border-color: var(--fs-brand); color: var(--fs-brand-ink);
+}
+.flow-page-prompt .fs-btn.fs-primary:hover:not(:disabled),
+.flow-page-queue .fs-btn.fs-primary:hover:not(:disabled),
+.flow-page-history .fs-btn.fs-primary:hover:not(:disabled) { filter: brightness(1.08); }
+.flow-page-prompt .fs-btn.fs-ghost, .flow-page-queue .fs-btn.fs-ghost, .flow-page-history .fs-btn.fs-ghost { background: none; }
+.flow-page-prompt .fs-btn.fs-danger, .flow-page-queue .fs-btn.fs-danger, .flow-page-history .fs-btn.fs-danger {
+  color: var(--fs-err); border-color: color-mix(in srgb, var(--fs-err) 35%, var(--fs-line));
+}
+
+.flow-page-prompt .fs-check, .flow-page-queue .fs-check, .flow-page-history .fs-check {
+  display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--fs-ink-dim);
+}
+.flow-page-prompt .fs-row, .flow-page-queue .fs-row, .flow-page-history .fs-row {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.flow-page-prompt .fs-row.fs-end, .flow-page-queue .fs-row.fs-end, .flow-page-history .fs-row.fs-end {
+  justify-content: flex-end;
+}
+.flow-page-prompt .fs-muted, .flow-page-queue .fs-muted, .flow-page-history .fs-muted {
+  color: var(--fs-ink-dim); font-size: 12px;
+}
+
+.flow-page-prompt .fs-toolbar, .flow-page-queue .fs-toolbar, .flow-page-history .fs-toolbar {
+  display: flex; align-items: center; gap: 9px; margin: 0 0 12px; font-size: 13px; flex-wrap: wrap;
+}
+.flow-page-prompt .fs-toolbar > span:first-child,
+.flow-page-queue .fs-toolbar > span:first-child,
+.flow-page-history .fs-toolbar > span:first-child { margin-right: auto; color: var(--fs-ink-dim); }
+
+/* ───────────────────────────────────────────────────────────── results / job rows */
+.flow-page-queue .fs-results, .flow-page-history .fs-results {
+  display: flex; flex-direction: column; gap: 9px;
+}
+
+.flow-page-queue .fs-job, .flow-page-history .fs-job {
+  display: grid;
+  grid-template-columns: 54px 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  background: var(--fs-panel);
+  border: 1px solid var(--fs-line);
+  border-radius: var(--fs-radius);
+  padding: 10px 13px;
+}
+.flow-page-queue .fs-job img, .flow-page-history .fs-job img {
+  width: 54px; height: 54px; object-fit: cover; border-radius: 6px; background: var(--fs-panel-2);
+}
+.flow-page-queue .fs-job h3, .flow-page-history .fs-job h3 {
+  margin: 0 0 4px; font-size: 13.5px; font-weight: 600; line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.flow-page-queue .fs-meta, .flow-page-history .fs-meta {
+  display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--fs-ink-dim);
+}
+.flow-page-queue .fs-meta b, .flow-page-history .fs-meta b { color: var(--fs-ink); font-weight: 600; }
+
+.flow-page-queue .fs-status, .flow-page-history .fs-status {
+  font-size: 11px; font-weight: 700; letter-spacing: .3px;
+  padding: 2px 8px; border-radius: 20px;
+  background: var(--fs-panel-2); color: var(--fs-ink-dim);
+  white-space: nowrap;
+}
+.flow-page-queue .fs-status.fs-running, .flow-page-history .fs-status.fs-running {
+  background: color-mix(in srgb, var(--fs-brand) 18%, transparent); color: var(--fs-brand);
+}
+.flow-page-queue .fs-status.fs-done, .flow-page-history .fs-status.fs-done {
+  background: color-mix(in srgb, var(--fs-ok) 18%, transparent); color: var(--fs-ok);
+}
+.flow-page-queue .fs-status.fs-failed, .flow-page-history .fs-status.fs-failed {
+  background: color-mix(in srgb, var(--fs-err) 16%, transparent); color: var(--fs-err);
+}
+.flow-page-queue .fs-status.fs-cancelled, .flow-page-history .fs-status.fs-cancelled {
+  background: color-mix(in srgb, var(--fs-warn) 18%, transparent); color: var(--fs-warn);
+}
+.flow-page-queue .fs-status-col, .flow-page-history .fs-status-col {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+}
+.flow-page-queue .fs-job-timer, .flow-page-history .fs-job-timer {
+  font-family: "Cascadia Mono", ui-monospace, monospace; font-size: 11px; color: var(--fs-ink-dim);
+}
+.flow-page-queue .fs-job-err, .flow-page-history .fs-job-err { color: var(--fs-err); font-size: 11.5px; margin-top: 3px; }
+.flow-page-queue .fs-order-tag, .flow-page-history .fs-order-tag {
+  font-family: "Cascadia Mono", ui-monospace, monospace; margin-right: 6px;
+}
+.flow-page-queue .fs-text-mode-tag.fs-withText, .flow-page-history .fs-text-mode-tag.fs-withText {
+  background: color-mix(in srgb, var(--fs-ok) 18%, transparent); color: var(--fs-ok);
+}
+.flow-page-queue .fs-text-mode-tag.fs-noText, .flow-page-history .fs-text-mode-tag.fs-noText {
+  background: color-mix(in srgb, var(--fs-ink-dim) 20%, transparent); color: var(--fs-ink-dim);
+}
+.flow-page-queue .fs-local-path, .flow-page-history .fs-local-path {
+  font-size: 11px; word-break: break-all; margin-top: 3px;
+}
+.flow-page-queue .fs-empty, .flow-page-history .fs-empty {
+  padding: 34px; text-align: center; color: var(--fs-ink-dim); font-size: 13px;
+  border: 1px dashed var(--fs-line); border-radius: var(--fs-radius);
+}
+
+/* ───────────────────────────────────────────────────────────── prompt page layout */
+.flow-page-prompt .fs-split {
+  display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start;
+}
+@media (max-width: 1080px) { .flow-page-prompt .fs-split { grid-template-columns: 1fr; } }
+.flow-page-prompt .fs-col { min-width: 0; }
+
+.flow-page-prompt .fs-direction-grid, .flow-page-prompt .fs-spec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 11px;
+  align-items: start;
+}
+.flow-page-prompt .fs-direction-grid .fs-field select { width: 100%; }
+
+.flow-page-prompt .fs-prompt-label {
+  font-size: 11px; font-weight: 700; color: var(--fs-ink-dim); margin-top: 6px;
+}
+.flow-page-prompt .fs-preview {
+  margin: 0;
+  background: var(--fs-panel-2);
+  border: 1px solid var(--fs-line);
+  border-radius: 7px;
+  padding: 9px 11px;
+  font: 12px/1.6 "Cascadia Mono", ui-monospace, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 230px;
+  overflow-y: auto;
+}
+.flow-page-prompt .fs-ref-strip { display: flex; gap: 6px; margin-top: 4px; }
+.flow-page-prompt .fs-ref-strip img {
+  width: 52px; height: 52px; object-fit: cover; border-radius: 5px; border: 1px solid var(--fs-line);
+}
+
+.flow-page-prompt .fs-sample-box { display: flex; flex-direction: column; gap: 12px; }
+.flow-page-prompt .fs-sample-card {
+  border: 1px solid var(--fs-line); border-radius: 8px; padding: 10px;
+  display: flex; flex-direction: column; gap: 5px; background: var(--fs-panel-2);
+}
+.flow-page-prompt .fs-sample-card-head { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; }
+.flow-page-prompt .fs-sample-card-head img {
+  width: 44px; height: 44px; object-fit: cover; border-radius: 6px; background: var(--fs-panel); flex: none;
+}
+.flow-page-prompt .fs-sample-card .fs-preview { max-height: 320px; }
+.flow-page-prompt .fs-test-image-btn { padding: 3px 9px; font-size: 11.5px; flex: none; }
+.flow-page-prompt .fs-test-image-status { margin: 2px 0 0; font-size: 12px; }
+.flow-page-prompt .fs-test-image-result {
+  margin: 2px 0 0; display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
+}
+.flow-page-prompt .fs-test-image-result img {
+  max-width: 100%; max-height: 360px; border-radius: 8px; border: 1px solid var(--fs-line);
+  object-fit: contain; background: var(--fs-panel);
+}
+
+/* ───────────────────────────────────────────────────────────── iOS-style switch */
+.flow-page-prompt .fs-switch-row, .flow-page-queue .fs-switch-row {
+  display: flex; align-items: center; gap: 8px; margin-left: auto; font-size: 13px; cursor: pointer; user-select: none;
+}
+.flow-page-prompt .fs-switch, .flow-page-queue .fs-switch {
+  position: relative; display: inline-block; width: 38px; height: 22px; flex: none;
+}
+.flow-page-prompt .fs-switch input, .flow-page-queue .fs-switch input {
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer;
+}
+.flow-page-prompt .fs-switch-slider, .flow-page-queue .fs-switch-slider {
+  position: absolute; inset: 0; background: var(--fs-line); border-radius: 999px; transition: background 0.15s ease;
+}
+.flow-page-prompt .fs-switch-slider::before, .flow-page-queue .fs-switch-slider::before {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--fs-panel); box-shadow: 0 1px 2px rgb(0 0 0 / .35); transition: transform 0.15s ease;
+}
+.flow-page-prompt .fs-switch input:checked + .fs-switch-slider,
+.flow-page-queue .fs-switch input:checked + .fs-switch-slider { background: var(--fs-brand); }
+.flow-page-prompt .fs-switch input:checked + .fs-switch-slider::before,
+.flow-page-queue .fs-switch input:checked + .fs-switch-slider::before { transform: translateX(16px); }
+
+/* ───────────────────────────────────────────────────────────── History filter tabs */
+.flow-page-history .fs-mode-toggle {
+  display: flex; border: 1px solid var(--fs-line); border-radius: 6px; overflow: hidden; flex: none;
+}
+.flow-page-history .fs-mode-toggle button {
+  padding: 4px 11px; font-size: 11.5px; font-weight: 600; border: 0; border-radius: 0;
+  background: var(--fs-panel); color: var(--fs-ink-dim); cursor: pointer;
+}
+.flow-page-history .fs-mode-toggle button + button { border-left: 1px solid var(--fs-line); }
+.flow-page-history .fs-mode-toggle button.fs-on { background: var(--fs-brand); color: var(--fs-brand-ink); }
+
+/* ───────────────────────────────────────────────────────────── video preview popup */
+.flow-page-queue .fs-video-backdrop, .flow-page-history .fs-video-backdrop {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgb(0 0 0 / .45);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.flow-page-queue .fs-video-backdrop[hidden], .flow-page-history .fs-video-backdrop[hidden] { display: none; }
+.flow-page-queue .fs-video-modal, .flow-page-history .fs-video-modal {
+  width: min(420px, 100%); max-height: min(760px, calc(100vh - 48px));
+  display: flex; flex-direction: column;
+  border: 1px solid var(--fs-line); border-radius: var(--fs-radius);
+  background: var(--fs-panel); box-shadow: 0 20px 60px rgb(0 0 0 / .35);
+  overflow: hidden; font-size: 12px;
+}
+.flow-page-queue .fs-video-modal-head, .flow-page-history .fs-video-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid var(--fs-line); font-size: 13.5px;
+}
+.flow-page-queue .fs-video-stage, .flow-page-history .fs-video-stage {
+  background: #000; display: flex; align-items: center; justify-content: center;
+}
+.flow-page-queue .fs-video-stage video, .flow-page-history .fs-video-stage video {
+  width: 100%; max-height: min(700px, calc(100vh - 110px)); display: block;
+}
+
+/* Queue pagination — 100 jobs per page, up to the 3000-job maximum (30 pages).
+   Buttons reuse .fs-btn; only the compact sizing and the current-page state are
+   defined here. */
+.flow-page-queue .fs-pager {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+.flow-page-queue .fs-pager[hidden] { display: none; }
+.flow-page-queue .fs-pager .fs-btn {
+  min-width: 38px;
+  padding: 6px 10px;
+  font-variant-numeric: tabular-nums;
+}
+.flow-page-queue .fs-pager .fs-page-on {
+  border-color: var(--fs-accent, currentColor);
+  background: color-mix(in srgb, var(--fs-ink) 14%, var(--fs-panel-2));
+  font-weight: 700;
+}
+.flow-page-queue .fs-pager .fs-page-gap {
+  padding: 0 2px;
+  color: var(--fs-muted, inherit);
+  opacity: .7;
+}
+.flow-page-queue .fs-pager .fs-page-note {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--fs-muted, inherit);
+}

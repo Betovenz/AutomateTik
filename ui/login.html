@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login · TikTok Manager Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/login.css" />
+  </head>
+  <body>
+    <main class="login-stage">
+      <section class="login-panel" aria-labelledby="loginTitle">
+        <div class="login-brand" aria-hidden="true">
+          <span class="login-brand-mark">AT</span>
+          <span>TikTok Manager Pro</span>
+        </div>
+
+        <div class="login-hero">
+          <span class="login-icon material-symbols-outlined">lock_person</span>
+          <p class="login-kicker">Serial License</p>
+          <h1 id="loginTitle">เข้าสู่โปรแกรม</h1>
+          <p>กรอก Serial ที่ได้รับเพื่อเปิดหน้า Programs หลัก</p>
+        </div>
+
+        <form id="loginForm" class="login-form" novalidate>
+          <label for="licenseSerialInput">Serial</label>
+          <div class="login-input-wrap">
+            <span class="material-symbols-outlined" aria-hidden="true">key</span>
+            <input id="licenseSerialInput" name="serial" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="AUTOPOST-2026" required autofocus />
+          </div>
+          <p id="loginError" class="login-error" role="alert" aria-live="polite"></p>
+          <button id="loginBtn" type="submit">
+            <span class="login-btn-label">เข้าสู่โปรแกรม</span>
+            <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          </button>
+        </form>
+
+        <p class="login-footnote"><span class="material-symbols-outlined">verified_user</span> ต้องตรวจสอบ Serial สำเร็จก่อนจึงจะเข้าใช้งานได้</p>
+      </section>
+    </main>
+    <script src="/login.js"></script>
+  </body>
+</html>

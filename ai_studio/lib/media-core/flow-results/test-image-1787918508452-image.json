@@ -1,0 +1,44 @@
+{
+  "ok": true,
+  "jobId": "test-image-1787918508452",
+  "mediaType": "image",
+  "updatedAt": "2026-08-28T12:03:00.929Z",
+  "payload": {
+    "action": "generate",
+    "mediaType": "image",
+    "mediaUrl": "https://flow-content.google/image/f44e151d-d54d-4032-b093-7113b14242e8?Expires=1787940123&KeyName=labs-flow-prod-cdn-key&Signature=WSyJgiMLAEHRJo6iChDB-1kk9IM",
+    "localUrl": "/lib/media-core/flow-results/1787918579784-test-image-1787918508452-image.png",
+    "resultUrl": "https://flow-content.google/image/f44e151d-d54d-4032-b093-7113b14242e8?Expires=1787940123&KeyName=labs-flow-prod-cdn-key&Signature=WSyJgiMLAEHRJo6iChDB-1kk9IM",
+    "imageUrl": "/lib/media-core/flow-results/1787918579784-test-image-1787918508452-image.png",
+    "videoUrl": "",
+    "saved": {
+      "ok": true,
+      "file": "C:\\Users\\Blue\\Documents\\Automate Tik\\ai_studio\\lib\\media-core\\flow-results\\1787918579784-test-image-1787918508452-image.png",
+      "url": "/lib/media-core/flow-results/1787918579784-test-image-1787918508452-image.png"
+    },
+    "raw": {
+      "ok": true,
+      "mediaUrl": "https://flow-content.google/image/f44e151d-d54d-4032-b093-7113b14242e8?Expires=1787940123&KeyName=labs-flow-prod-cdn-key&Signature=WSyJgiMLAEHRJo6iChDB-1kk9IM",
+      "mediaType": "image",
+      "mediaId": "f44e151d-d54d-4032-b093-7113b14242e8",
+      "workflowId": "f56b24d4-05e7-4601-86e3-33b635763f4e",
+      "sceneId": "",
+      "width": 768,
+      "height": 1376,
+      "projectId": "260ad627-8884-4aa0-83a9-d564135026c7",
+      "referenceImageIds": [
+        "3319ee7e-93ce-44cb-9149-d5afea4f4668"
+      ],
+      "refRoot": "C:\\Users\\Blue\\Documents\\Automate Tik\\ai_studio\\lib\\media-core\\flow_engine"
+    },
+    "mediaId": "f44e151d-d54d-4032-b093-7113b14242e8",
+    "workflowId": "f56b24d4-05e7-4601-86e3-33b635763f4e",
+    "sceneId": "",
+    "projectId": "260ad627-8884-4aa0-83a9-d564135026c7",
+    "startImageMediaId": "",
+    "referenceImageIds": [
+      "3319ee7e-93ce-44cb-9149-d5afea4f4668"
+    ],
+    "canExtend": false
+  }
+}

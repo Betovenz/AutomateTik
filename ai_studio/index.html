@@ -1,0 +1,1466 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AutoTik AI Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Prompt:wght@400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="autogt-ui.css?v=20260828-showcase-account-card-fix" />
+    <link rel="stylesheet" href="flow-suite.css?v=1" />
+    <link rel="stylesheet" href="autotik-embed.css?v=1" />
+  </head>
+  <body data-route="home">
+    <header class="topbar">
+      <a class="brand" href="#home" data-route="home">AutoGT <span class="brand-accent">Pro</span></a>
+      <nav class="nav" aria-label="Main menu">
+        <a href="#tiktok-shop" data-route="tiktok-shop">TikTok Shop</a>
+        <a href="#shopee-shop" data-route="shopee-shop">Shopee Shop</a>
+        <a href="#adb-connect" data-route="adb-connect">ADB Connect</a>
+      </nav>
+      <div class="toolbar">
+        <span class="extension-pill" data-extension-status>
+          <span class="status-dot"></span>
+          <span data-extension-label>Extension offline</span>
+        </span>
+        <div class="serial-activation" data-serial-activation>
+          <label class="serial-input" aria-label="Serial">
+            <span class="material-symbols-outlined">key</span>
+            <input type="text" inputmode="text" autocomplete="off" placeholder="Serial" data-serial-input />
+          </label>
+          <span class="serial-status is-inactive" data-serial-status>
+            <span class="serial-status-dot" aria-hidden="true"></span>
+            <span data-serial-status-label>Inactive</span>
+          </span>
+          <button class="primary-btn compact serial-active-btn" type="button" data-serial-active>
+            <span class="material-symbols-outlined">bolt</span>
+            Active
+          </button>
+        </div>
+        <button class="icon-btn" type="button" aria-label="Notifications" title="Notifications">
+          <span class="material-symbols-outlined">notifications</span>
+        </button>
+        <button class="icon-btn" type="button" aria-label="Settings" title="Settings">
+          <span class="material-symbols-outlined">settings</span>
+        </button>
+        <button class="avatar" type="button" aria-label="Profile">A</button>
+      </div>
+    </header>
+
+    <main class="page">
+      <section class="hero" data-view="home">
+        <p class="eyebrow">AutoGT Pro Dashboard</p>
+        <h1>Select Sales Channel</h1>
+        <p class="lead">Choose a channel to configure your automation workspace. Each environment is optimized for its specific platform.</p>
+
+        <div class="mode-grid" aria-label="AutoGT Pro modes">
+          <article class="mode-card" data-open="tiktok-shop">
+            <div class="app-logo logo-tiktok" aria-hidden="true">
+              <span class="material-symbols-outlined">video_library</span>
+            </div>
+            <h2>ขายสินค้า TikTok</h2>
+            <p>Manage products, generate AI videos, and auto-post directly to your TikTok Shop channel.</p>
+            <div class="mode-tags"><span>AI Video</span><span>Auto-Post</span></div>
+            <button class="primary-btn" type="button">เข้าใช้งาน</button>
+          </article>
+
+          <article class="mode-card" data-open="shopee-shop">
+            <div class="app-logo logo-shopee" aria-hidden="true">
+              <span class="material-symbols-outlined">storefront</span>
+            </div>
+            <h2>ขายสินค้า Shopee</h2>
+            <p>Shopee product extraction, bulk management, and intelligent automation tools for high-volume sellers.</p>
+            <div class="mode-tags"><span>Extraction</span><span>Bulk Manage</span></div>
+            <button class="outline-btn" type="button">เข้าใช้งาน</button>
+          </article>
+
+          <article class="mode-card" data-open="adb-connect">
+            <div class="app-logo logo-adb" aria-hidden="true">
+              <span class="material-symbols-outlined">developer_mode</span>
+            </div>
+            <h2>เชื่อม ADB</h2>
+            <p>Mobile device bridge and ADB automation management. Control physical devices securely.</p>
+            <div class="mode-tags"><span>Device Farm</span><span>Scripts</span></div>
+            <button class="outline-btn" type="button">เข้าใช้งาน</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="workspace" data-view="mode" hidden>
+        <div class="tiktok-page" data-mode-page="tiktok-shop" hidden>
+          <div class="tiktok-frame">
+            <aside class="tiktok-sidebar" aria-label="TikTok workspace navigation">
+              <div class="side-brand">
+                <a href="#home" data-route="home">AutoGT <span class="brand-accent">Pro</span></a>
+                <span>Automation Studio</span>
+              </div>
+
+              <nav class="side-nav">
+                <a class="active" href="#tiktok-shop" data-route="tiktok-shop">
+                  <span class="material-symbols-outlined">inventory_2</span>
+                  &#x0E14;&#x0E36;&#x0E07;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32;Showcase
+                </a>
+                <a href="#tiktok-flow-prompt" data-route="tiktok-flow-prompt">
+                  <span class="material-symbols-outlined">tune</span>
+                  &#x0E15;&#x0E31;&#x0E49;&#x0E07;&#x0E04;&#x0E48;&#x0E32; Prompt
+                </a>
+                <a href="#tiktok-flow-queue" data-route="tiktok-flow-queue">
+                  <span class="material-symbols-outlined">movie_creation</span>
+                  &#x0E04;&#x0E34;&#x0E27;
+                </a>
+                <a href="#tiktok-flow-history" data-route="tiktok-flow-history">
+                  <span class="material-symbols-outlined">history</span>
+                  &#x0E1B;&#x0E23;&#x0E30;&#x0E27;&#x0E31;&#x0E15;&#x0E34;
+                </a>
+                <a href="#tiktok-remix-review" data-route="tiktok-remix-review">
+                  <span class="material-symbols-outlined">video_settings</span>
+                  Remix&#x0E27;&#x0E34;&#x0E14;&#x0E35;&#x0E42;&#x0E2D;&#x0E23;&#x0E35;&#x0E27;&#x0E34;&#x0E27;
+                </a>
+                <a href="#tiktok-post-mobile" data-route="tiktok-post-mobile">
+                  <span class="material-symbols-outlined">smartphone</span>
+                  Post Tiktok(&#x0E21;&#x0E37;&#x0E2D;&#x0E16;&#x0E37;&#x0E2D;)
+                </a>
+              </nav>
+
+              <nav class="side-nav side-bottom">
+                <button class="side-action" type="button" data-open-logs>
+                  <span class="material-symbols-outlined">receipt_long</span>
+                  Logs
+                </button>
+                <a href="#downloads">
+                  <span class="material-symbols-outlined">download</span>
+                  Downloads
+                </a>
+                <a href="#channel" data-route="channel" data-platform-only="tiktok" hidden>
+                  <span class="material-symbols-outlined">account_circle</span>
+                  Channel
+                </a>
+                <a href="#settings">
+                  <span class="material-symbols-outlined">settings</span>
+                  Settings
+                </a>
+              </nav>
+            </aside>
+
+            <div class="tiktok-main">
+              <header class="tiktok-topbar">
+                <div class="topbar-left">
+                  <nav class="mode-tabs" aria-label="Mode tabs">
+                    <a class="active" href="#tiktok-shop" data-route="tiktok-shop">&#x0E02;&#x0E32;&#x0E22;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32; TikTok</a>
+                    <a href="#shopee-shop" data-route="shopee-shop">&#x0E02;&#x0E32;&#x0E22;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32; Shopee</a>
+                    <a href="#adb-connect" data-route="adb-connect">&#x0E40;&#x0E0A;&#x0E37;&#x0E48;&#x0E2D;&#x0E21; ADB</a>
+                  </nav>
+                </div>
+                <div class="topbar-right">
+                  <span class="extension-pill" data-extension-status>
+                    <span class="status-dot"></span>
+                    <span data-extension-label>Extension offline</span>
+                  </span>
+                  <div class="serial-activation" data-serial-activation>
+                    <label class="serial-input" aria-label="Serial">
+                      <span class="material-symbols-outlined">key</span>
+                      <input type="text" inputmode="text" autocomplete="off" placeholder="Serial" data-serial-input />
+                    </label>
+                    <span class="serial-status is-inactive" data-serial-status>
+                      <span class="serial-status-dot" aria-hidden="true"></span>
+                      <span data-serial-status-label>Inactive</span>
+                    </span>
+                    <button class="primary-btn compact serial-active-btn" type="button" data-serial-active>
+                      <span class="material-symbols-outlined">bolt</span>
+                      Active
+                    </button>
+                  </div>
+                  <button class="icon-btn" type="button" aria-label="Notifications">
+                    <span class="material-symbols-outlined">notifications</span>
+                  </button>
+                  <button class="avatar" type="button" aria-label="Profile">A</button>
+                </div>
+              </header>
+
+              <div class="tiktok-warning" data-tiktok-warning>
+                <span class="material-symbols-outlined">warning</span>
+                <strong data-tiktok-warning-title>&#x0E22;&#x0E31;&#x0E07;&#x0E44;&#x0E21;&#x0E48;&#x0E1E;&#x0E1A;&#x0E1A;&#x0E31;&#x0E0D;&#x0E0A;&#x0E35; TikTok</strong>
+                <span data-tiktok-warning-text>&#x0E15;&#x0E49;&#x0E2D;&#x0E07;&#x0E43;&#x0E2B;&#x0E49; extension &#x0E08;&#x0E31;&#x0E1A; cookie &#x0E02;&#x0E2D;&#x0E07; TikTok &#x0E01;&#x0E48;&#x0E2D;&#x0E19; &#x0E08;&#x0E36;&#x0E07;&#x0E08;&#x0E30;&#x0E14;&#x0E36;&#x0E07;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32;&#x0E08;&#x0E32;&#x0E01; Showcase &#x0E44;&#x0E14;&#x0E49;</span>
+                <button type="button" data-open-tiktok>+ &#x0E40;&#x0E1B;&#x0E34;&#x0E14; TikTok &#x0E40;&#x0E1E;&#x0E37;&#x0E48;&#x0E2D;&#x0E08;&#x0E31;&#x0E1A; cookie</button>
+              </div>
+
+              <main class="tiktok-content showcase-workbench">
+                <div class="mode-topline showcase-heroline">
+                  <div>
+                    <p class="eyebrow">TiktokCart Showcase Flow</p>
+                    <h1>&#x0E14;&#x0E36;&#x0E07;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32; Showcase</h1>
+                    <p>ดึงสินค้าจาก TikTok Shop Showcase ด้วย cookie/token ที่บันทึกไว้ในหน้า Channel และจัดการรายการแบบ TiktokCart</p>
+                  </div>
+                  <div class="showcase-count" id="selectedCount">0 selected</div>
+                </div>
+
+                <section class="showcase-panel showcase-loader-panel">
+                  <div class="source-card-head">
+                    <label for="tiktokLinkUrls">Product URLs</label>
+                    <span>&#x0E27;&#x0E32;&#x0E07;&#x0E25;&#x0E34;&#x0E07;&#x0E01;&#x0E4C;&#x0E44;&#x0E14;&#x0E49;&#x0E2B;&#x0E25;&#x0E32;&#x0E22;&#x0E25;&#x0E34;&#x0E07;&#x0E01;&#x0E4C; &#x0E02;&#x0E36;&#x0E49;&#x0E19;&#x0E1A;&#x0E23;&#x0E23;&#x0E17;&#x0E31;&#x0E14;&#x0E43;&#x0E2B;&#x0E21;&#x0E48; &#x0E2B;&#x0E23;&#x0E37;&#x0E2D;&#x0E04;&#x0E31;&#x0E48;&#x0E19;&#x0E14;&#x0E49;&#x0E27;&#x0E22; comma &#x0E41;&#x0E1A;&#x0E1A; TiktokCart</span>
+                  </div>
+                  <div class="source-input multiline link-check-input">
+                    <span class="material-symbols-outlined">link</span>
+                    <textarea id="tiktokLinkUrls" rows="5" placeholder="https://vt.tiktok.com/...
+https://www.tiktok.com/view/product/17295831124570626
+17295831124570626"></textarea>
+                  </div>
+                  <div class="post-account-card showcase-account-card">
+                    <button id="showcaseAccountPickBtn" class="post-account-pill" type="button">
+                      <span class="material-symbols-outlined">account_circle</span>
+                      เลือกบัญชีที่จะดึงสินค้า
+                    </button>
+                    <div id="showcaseSelectedAccountCard" class="post-selected-account-card" hidden></div>
+                  </div>
+                  <div class="showcase-actions main-actions">
+                    <button class="primary-btn" type="button" id="checkLinksBtn">
+                      <span class="material-symbols-outlined">travel_explore</span>
+                      &#x0E14;&#x0E36;&#x0E07;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32;&#x0E08;&#x0E32;&#x0E01;&#x0E25;&#x0E34;&#x0E07;&#x0E04;&#x0E4C;
+                    </button>
+                    <button class="primary-btn" type="button" id="loadShowcaseBtn">
+                      <span class="material-symbols-outlined">cloud_download</span>
+                      &#x0E14;&#x0E36;&#x0E07;&#x0E02;&#x0E49;&#x0E2D;&#x0E21;&#x0E39;&#x0E25; Showcase
+                    </button>
+                    <button class="outline-btn" type="button" id="clearShowcaseBtn">
+                      <span class="material-symbols-outlined">backspace</span>
+                      &#x0E25;&#x0E49;&#x0E32;&#x0E07;
+                    </button>
+                  </div>
+                  <div id="showcaseStatus" class="showcase-status"></div>
+                </section>
+
+                <section class="showcase-panel results-section" id="showcaseResultsSection" hidden>
+                  <div class="showcase-results-controls">
+                    <section class="showcase-summary-row" aria-label="TikTok product summary and search">
+                      <article class="stat-card">
+                        <span class="stat-icon gold"><span class="material-symbols-outlined">shopping_bag</span></span>
+                        <div><span>Total Products</span><strong id="showcaseTotal">0</strong></div>
+                      </article>
+
+                      <div class="source-input search-product-input">
+                        <span class="material-symbols-outlined">search</span>
+                        <input id="productSearch" type="search" placeholder="&#x0E04;&#x0E49;&#x0E19;&#x0E2B;&#x0E32;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32;..." disabled />
+                      </div>
+                    </section>
+
+                    <div class="bulk-actions">
+                      <button id="toggleSelectBtn" class="outline-btn" type="button" disabled>
+                        <span class="material-symbols-outlined">select_all</span>
+                        &#x0E40;&#x0E25;&#x0E37;&#x0E2D;&#x0E01;&#x0E17;&#x0E31;&#x0E49;&#x0E07;&#x0E2B;&#x0E21;&#x0E14;
+                      </button>
+                      <button id="copySelectedBtn" class="outline-btn" type="button" disabled>
+                        <span class="material-symbols-outlined">content_copy</span>
+                        &#x0E04;&#x0E31;&#x0E14;&#x0E25;&#x0E2D;&#x0E01;&#x0E25;&#x0E34;&#x0E07;&#x0E01;&#x0E4C;&#x0E17;&#x0E35;&#x0E48;&#x0E40;&#x0E25;&#x0E37;&#x0E2D;&#x0E01;
+                      </button>
+                      <button id="addShowcaseSelectedBtn" class="primary-btn" type="button" disabled>
+                        <span class="material-symbols-outlined">add_shopping_cart</span>
+                        &#x0E40;&#x0E1E;&#x0E34;&#x0E48;&#x0E21;&#x0E44;&#x0E1B;&#x0E22;&#x0E31;&#x0E07;&#x0E42;&#x0E0A;&#x0E27;&#x0E4C;&#x0E40;&#x0E04;&#x0E2A;
+                      </button>
+                      <button id="queueSelectedBtn" class="primary-btn" type="button" disabled>
+                        <span class="material-symbols-outlined">playlist_add</span>
+                        ส่งสินค้าไป Queue
+                      </button>
+                      <button id="deleteSelectedBtn" class="outline-btn danger" type="button" disabled>
+                        <span class="material-symbols-outlined">delete</span>
+                        &#x0E25;&#x0E1A;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32;&#x0E17;&#x0E35;&#x0E48;&#x0E40;&#x0E25;&#x0E37;&#x0E2D;&#x0E01;
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="results-head">
+                    <h2>&#x0E1C;&#x0E25;&#x0E25;&#x0E31;&#x0E1E;&#x0E18;&#x0E4C;</h2>
+                    <div class="show-count">Show: <strong id="showcaseVisibleCount">0 items</strong></div>
+                  </div>
+                  <div id="showcaseResults" class="showcase-results"></div>
+                </section>
+              </main>
+            </div>
+          </div>
+        </div>
+
+        <div class="tiktok-page shopee-page" data-mode-page="shopee-shop" hidden>
+          <div class="tiktok-frame">
+            <aside class="tiktok-sidebar" aria-label="Shopee workspace navigation">
+              <div class="side-brand">
+                <a href="#home" data-route="home">AutoGT <span class="brand-accent">Pro</span></a>
+                <span>Automation Studio</span>
+              </div>
+
+              <nav class="side-nav">
+                <a class="active" href="#shopee-shop" data-route="shopee-shop">
+                  <span class="material-symbols-outlined">inventory_2</span>
+                  &#x0E14;&#x0E36;&#x0E07;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32;Shopee
+                </a>
+                <a href="#shopee-product-search" data-route="shopee-product-search">
+                  <span class="material-symbols-outlined">manage_search</span>
+                  หาสินค้า
+                </a>
+                <a href="#shopee-flow-prompt" data-route="shopee-flow-prompt">
+                  <span class="material-symbols-outlined">tune</span>
+                  &#x0E15;&#x0E31;&#x0E49;&#x0E07;&#x0E04;&#x0E48;&#x0E32; Prompt
+                </a>
+                <a href="#shopee-flow-queue" data-route="shopee-flow-queue">
+                  <span class="material-symbols-outlined">movie_creation</span>
+                  &#x0E04;&#x0E34;&#x0E27;
+                </a>
+                <a href="#shopee-flow-history" data-route="shopee-flow-history">
+                  <span class="material-symbols-outlined">history</span>
+                  &#x0E1B;&#x0E23;&#x0E30;&#x0E27;&#x0E31;&#x0E15;&#x0E34;
+                </a>
+                <a href="#shopee-remix-review" data-route="shopee-remix-review">
+                  <span class="material-symbols-outlined">video_settings</span>
+                  Remix&#x0E27;&#x0E34;&#x0E14;&#x0E35;&#x0E42;&#x0E2D;&#x0E23;&#x0E35;&#x0E27;&#x0E34;&#x0E27;
+                </a>
+                <a href="#shopee-post-mobile" data-route="shopee-post-mobile">
+                  <span class="material-symbols-outlined">smartphone</span>
+                  Post Shopee(&#x0E21;&#x0E37;&#x0E2D;&#x0E16;&#x0E37;&#x0E2D;)
+                </a>
+              </nav>
+
+              <nav class="side-nav side-bottom">
+                <button class="side-action" type="button" data-open-logs>
+                  <span class="material-symbols-outlined">receipt_long</span>
+                  Logs
+                </button>
+                <a href="#downloads">
+                  <span class="material-symbols-outlined">download</span>
+                  Downloads
+                </a>
+                <a href="#channel" data-route="channel" data-platform-only="tiktok" hidden>
+                  <span class="material-symbols-outlined">account_circle</span>
+                  Channel
+                </a>
+                <a href="#settings">
+                  <span class="material-symbols-outlined">settings</span>
+                  Settings
+                </a>
+              </nav>
+            </aside>
+
+            <div class="tiktok-main">
+              <header class="tiktok-topbar">
+                <div class="topbar-left">
+                  <nav class="mode-tabs" aria-label="Mode tabs">
+                    <a href="#tiktok-shop" data-route="tiktok-shop">&#x0E02;&#x0E32;&#x0E22;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32; TikTok</a>
+                    <a class="active" href="#shopee-shop" data-route="shopee-shop">&#x0E02;&#x0E32;&#x0E22;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32; Shopee</a>
+                    <a href="#adb-connect" data-route="adb-connect">&#x0E40;&#x0E0A;&#x0E37;&#x0E48;&#x0E2D;&#x0E21; ADB</a>
+                  </nav>
+                </div>
+                <div class="topbar-right">
+                  <span class="extension-pill" data-extension-status>
+                    <span class="status-dot"></span>
+                    <span data-extension-label>Extension offline</span>
+                  </span>
+                  <div class="serial-activation" data-serial-activation>
+                    <label class="serial-input" aria-label="Serial">
+                      <span class="material-symbols-outlined">key</span>
+                      <input type="text" inputmode="text" autocomplete="off" placeholder="Serial" data-serial-input />
+                    </label>
+                    <span class="serial-status is-inactive" data-serial-status>
+                      <span class="serial-status-dot" aria-hidden="true"></span>
+                      <span data-serial-status-label>Inactive</span>
+                    </span>
+                    <button class="primary-btn compact serial-active-btn" type="button" data-serial-active>
+                      <span class="material-symbols-outlined">bolt</span>
+                      Active
+                    </button>
+                  </div>
+                  <button class="icon-btn" type="button" aria-label="Notifications">
+                    <span class="material-symbols-outlined">notifications</span>
+                  </button>
+                  <button class="avatar" type="button" aria-label="Profile">A</button>
+                </div>
+              </header>
+
+              <main class="tiktok-content showcase-workbench">
+                <div class="mode-topline showcase-heroline">
+                  <div>
+                    <p class="eyebrow">Shopee Product Flow</p>
+                    <h1>&#x0E14;&#x0E36;&#x0E07;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32; Shopee</h1>
+                    <p>&#x0E14;&#x0E36;&#x0E07;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32;&#x0E08;&#x0E32;&#x0E01;&#x0E25;&#x0E34;&#x0E07;&#x0E01;&#x0E4C; Shopee &#x0E1C;&#x0E48;&#x0E32;&#x0E19; extension &#x0E41;&#x0E25;&#x0E30;&#x0E14;&#x0E36;&#x0E07;&#x0E04;&#x0E48;&#x0E32;&#x0E04;&#x0E2D;&#x0E21;&#x0E08;&#x0E32;&#x0E01; Shopee Affiliate</p>
+                  </div>
+                  <div class="showcase-count" id="shopeeSelectedCount">0 selected</div>
+                </div>
+
+                <section class="showcase-panel showcase-loader-panel">
+                  <div class="source-card-head">
+                    <label for="shopeeLinkUrls">Product URLs</label>
+                    <span>&#x0E27;&#x0E32;&#x0E07;&#x0E25;&#x0E34;&#x0E07;&#x0E01;&#x0E4C;&#x0E44;&#x0E14;&#x0E49;&#x0E2B;&#x0E25;&#x0E32;&#x0E22;&#x0E25;&#x0E34;&#x0E07;&#x0E01;&#x0E4C; &#x0E02;&#x0E36;&#x0E49;&#x0E19;&#x0E1A;&#x0E23;&#x0E23;&#x0E17;&#x0E31;&#x0E14;&#x0E43;&#x0E2B;&#x0E21;&#x0E48; &#x0E2B;&#x0E23;&#x0E37;&#x0E2D;&#x0E04;&#x0E31;&#x0E48;&#x0E19;&#x0E14;&#x0E49;&#x0E27;&#x0E22; comma &#x0E41;&#x0E1A;&#x0E1A; Shopee</span>
+                  </div>
+                  <div class="source-input multiline link-check-input">
+                    <span class="material-symbols-outlined">link</span>
+                    <textarea id="shopeeLinkUrls" rows="5" placeholder="https://shopee.co.th/product/123/456
+https://shopee.co.th/name-i.123.456
+456"></textarea>
+                  </div>
+                  <div class="showcase-actions main-actions">
+                    <button class="primary-btn" type="button" id="checkShopeeLinksBtn">
+                      <span class="material-symbols-outlined">travel_explore</span>
+                      &#x0E14;&#x0E36;&#x0E07;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32;&#x0E08;&#x0E32;&#x0E01;&#x0E25;&#x0E34;&#x0E07;&#x0E01;&#x0E4C;
+                    </button>
+                    <button class="outline-btn" type="button" id="clearShopeeBtn">
+                      <span class="material-symbols-outlined">backspace</span>
+                      &#x0E25;&#x0E49;&#x0E32;&#x0E07;
+                    </button>
+                  </div>
+                  <div id="shopeeStatus" class="showcase-status"></div>
+                </section>
+
+                <section class="showcase-panel results-section" id="shopeeResultsSection" hidden>
+                  <div class="showcase-results-controls">
+                    <section class="showcase-summary-row" aria-label="Shopee product summary and search">
+                      <article class="stat-card">
+                        <span class="stat-icon gold"><span class="material-symbols-outlined">shopping_bag</span></span>
+                        <div><span>Total Products</span><strong id="shopeeTotal">0</strong></div>
+                      </article>
+
+                      <div class="source-input search-product-input">
+                        <span class="material-symbols-outlined">search</span>
+                        <input id="shopeeProductSearch" type="search" placeholder="&#x0E04;&#x0E49;&#x0E19;&#x0E2B;&#x0E32;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32;..." disabled />
+                      </div>
+                    </section>
+
+                    <div class="bulk-actions">
+                      <button id="shopeeToggleSelectBtn" class="outline-btn" type="button" disabled>
+                        <span class="material-symbols-outlined">select_all</span>
+                        &#x0E40;&#x0E25;&#x0E37;&#x0E2D;&#x0E01;&#x0E17;&#x0E31;&#x0E49;&#x0E07;&#x0E2B;&#x0E21;&#x0E14;
+                      </button>
+                      <button id="shopeeCopySelectedBtn" class="outline-btn" type="button" disabled>
+                        <span class="material-symbols-outlined">content_copy</span>
+                        &#x0E04;&#x0E31;&#x0E14;&#x0E25;&#x0E2D;&#x0E01;&#x0E25;&#x0E34;&#x0E07;&#x0E01;&#x0E4C;&#x0E17;&#x0E35;&#x0E48;&#x0E40;&#x0E25;&#x0E37;&#x0E2D;&#x0E01;
+                      </button>
+                      <button id="shopeeQueueSelectedBtn" class="primary-btn" type="button" disabled>
+                        <span class="material-symbols-outlined">playlist_add</span>
+                        ส่งสินค้าไป Queue
+                      </button>
+                      <button id="shopeeDeleteSelectedBtn" class="outline-btn danger" type="button" disabled>
+                        <span class="material-symbols-outlined">delete</span>
+                        &#x0E25;&#x0E1A;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32;&#x0E17;&#x0E35;&#x0E48;&#x0E40;&#x0E25;&#x0E37;&#x0E2D;&#x0E01;
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="results-head">
+                    <h2>&#x0E1C;&#x0E25;&#x0E25;&#x0E31;&#x0E1E;&#x0E18;&#x0E4C;</h2>
+                    <div class="show-count">Show: <strong id="shopeeVisibleCount">0 items</strong></div>
+                  </div>
+                  <div id="shopeeResults" class="showcase-results"></div>
+
+                  <details class="raw showcase-raw" data-debug-json>
+                    <summary role="button" tabindex="0">&#x0E14;&#x0E39;&#x0E1C;&#x0E25;&#x0E25;&#x0E31;&#x0E1E;&#x0E18;&#x0E4C; JSON (Debug)</summary>
+                    <pre id="shopeeRawJson"></pre>
+                  </details>
+                </section>
+              </main>
+            </div>
+          </div>
+        </div>
+
+        <div class="generic-workspace" data-mode-page="generic" hidden>
+          <div class="tiktok-frame">
+            <aside class="tiktok-sidebar" aria-label="Default workspace navigation">
+              <div class="side-brand">
+                <a href="#home" data-route="home">AutoGT <span class="brand-accent">Pro</span></a>
+                <span>Automation Studio</span>
+              </div>
+
+              <nav class="side-nav">
+                <a href="#tiktok-shop" data-route="tiktok-shop">
+                  <span class="material-symbols-outlined">inventory_2</span>
+                  &#x0E14;&#x0E36;&#x0E07;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32;Showcase
+                </a>
+                <a href="#tiktok-flow-prompt" data-route="tiktok-flow-prompt">
+                  <span class="material-symbols-outlined">tune</span>
+                  &#x0E15;&#x0E31;&#x0E49;&#x0E07;&#x0E04;&#x0E48;&#x0E32; Prompt
+                </a>
+                <a href="#tiktok-flow-queue" data-route="tiktok-flow-queue">
+                  <span class="material-symbols-outlined">movie_creation</span>
+                  &#x0E04;&#x0E34;&#x0E27;
+                </a>
+                <a href="#tiktok-flow-history" data-route="tiktok-flow-history">
+                  <span class="material-symbols-outlined">history</span>
+                  &#x0E1B;&#x0E23;&#x0E30;&#x0E27;&#x0E31;&#x0E15;&#x0E34;
+                </a>
+                <a href="#tiktok-remix-review" data-route="tiktok-remix-review">
+                  <span class="material-symbols-outlined">video_settings</span>
+                  Remix&#x0E27;&#x0E34;&#x0E14;&#x0E35;&#x0E42;&#x0E2D;&#x0E23;&#x0E35;&#x0E27;&#x0E34;&#x0E27;
+                </a>
+                <a href="#tiktok-post-mobile" data-route="tiktok-post-mobile">
+                  <span class="material-symbols-outlined">smartphone</span>
+                  Post Tiktok(&#x0E21;&#x0E37;&#x0E2D;&#x0E16;&#x0E37;&#x0E2D;)
+                </a>
+              </nav>
+
+              <nav class="side-nav side-bottom">
+                <button class="side-action" type="button" data-open-logs>
+                  <span class="material-symbols-outlined">receipt_long</span>
+                  Logs
+                </button>
+                <a href="#downloads">
+                  <span class="material-symbols-outlined">download</span>
+                  Downloads
+                </a>
+                <a href="#channel" data-route="channel" data-platform-only="tiktok" hidden>
+                  <span class="material-symbols-outlined">account_circle</span>
+                  Channel
+                </a>
+                <a href="#settings">
+                  <span class="material-symbols-outlined">settings</span>
+                  Settings
+                </a>
+              </nav>
+            </aside>
+
+            <div class="tiktok-main">
+              <header class="tiktok-topbar">
+                <div class="topbar-left">
+                  <nav class="mode-tabs" aria-label="Mode tabs">
+                    <a href="#tiktok-shop" data-route="tiktok-shop">&#x0E02;&#x0E32;&#x0E22;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32; TikTok</a>
+                    <a href="#shopee-shop" data-route="shopee-shop">&#x0E02;&#x0E32;&#x0E22;&#x0E2A;&#x0E34;&#x0E19;&#x0E04;&#x0E49;&#x0E32; Shopee</a>
+                    <a href="#adb-connect" data-route="adb-connect">&#x0E40;&#x0E0A;&#x0E37;&#x0E48;&#x0E2D;&#x0E21; ADB</a>
+                  </nav>
+                </div>
+                <div class="topbar-right">
+                  <span class="extension-pill" data-extension-status>
+                    <span class="status-dot"></span>
+                    <span data-extension-label>Extension offline</span>
+                  </span>
+                  <div class="serial-activation" data-serial-activation>
+                    <label class="serial-input" aria-label="Serial">
+                      <span class="material-symbols-outlined">key</span>
+                      <input type="text" inputmode="text" autocomplete="off" placeholder="Serial" data-serial-input />
+                    </label>
+                    <span class="serial-status is-inactive" data-serial-status>
+                      <span class="serial-status-dot" aria-hidden="true"></span>
+                      <span data-serial-status-label>Inactive</span>
+                    </span>
+                    <button class="primary-btn compact serial-active-btn" type="button" data-serial-active>
+                      <span class="material-symbols-outlined">bolt</span>
+                      Active
+                    </button>
+                  </div>
+                  <button class="icon-btn" type="button" aria-label="Notifications">
+                    <span class="material-symbols-outlined">notifications</span>
+                  </button>
+                  <button class="avatar" type="button" aria-label="Profile">A</button>
+                </div>
+              </header>
+              <main class="blank-main" aria-label="Blank workspace">
+                <!-- "channel" page removed: it duplicated the parent app's native Channel tab
+                     (ui/index.html #channelView). See goToParentChannelPage() in app.js. -->
+                <section class="shopee-discovery route-panel" id="shopeeProductSearchPanel" aria-label="Shopee affiliate product discovery" hidden>
+                  <header class="discovery-head">
+                    <div>
+                      <p class="eyebrow">Shopee Affiliate Discovery</p>
+                      <h1><span class="material-symbols-outlined">manage_search</span> หาสินค้า</h1>
+                      <p>ค้นหาสินค้า Affiliate พร้อมวิเคราะห์ยอดขาย ราคา ค่าคอม และความพร้อมนำไปทำคอนเทนต์</p>
+                    </div>
+                    <button id="shopeeDiscoveryExportBtn" class="outline-btn" type="button" disabled>
+                      <span class="material-symbols-outlined">download</span>
+                      ดาวน์โหลด CSV
+                    </button>
+                  </header>
+
+                  <section class="discovery-query-panel">
+                    <div class="discovery-search-row">
+                      <label class="discovery-search-input" for="shopeeDiscoveryKeyword">
+                        <span class="material-symbols-outlined">search</span>
+                        <input id="shopeeDiscoveryKeyword" type="search" placeholder="ค้นหาชื่อสินค้า แบรนด์ ร้านค้า หรือคีย์เวิร์ด..." autocomplete="off" />
+                      </label>
+                      <button id="shopeeDiscoverySearchBtn" class="primary-btn discovery-search-btn" type="button">
+                        <span class="material-symbols-outlined">travel_explore</span>
+                        ค้นหาสินค้า
+                      </button>
+                    </div>
+
+                    <div class="discovery-filter-grid">
+                      <label>
+                        <span>แหล่งสินค้า</span>
+                        <select id="shopeeDiscoveryOfferType">
+                          <option value="0">ข้อเสนอพิเศษทั้งหมด</option>
+                          <option value="7">ค่าคอมพิเศษ</option>
+                          <option value="9">รับสินค้ารีวิวฟรี</option>
+                          <option value="2">สินค้าขายดี</option>
+                          <optgroup label="หมวดหมู่">
+                            <option value="100630">ความงามและของใช้ส่วนตัว</option>
+                            <option value="100001">ผลิตภัณฑ์เพื่อสุขภาพ</option>
+                            <option value="100011">แฟชั่นผู้ชาย</option>
+                            <option value="100017">แฟชั่นผู้หญิง</option>
+                            <option value="100016">กระเป๋า</option>
+                            <option value="100012">รองเท้าผู้ชาย</option>
+                            <option value="100532">รองเท้าผู้หญิง</option>
+                            <option value="100009">เครื่องประดับ</option>
+                            <option value="100534">นาฬิกาและแว่นตา</option>
+                            <option value="100636">เครื่องใช้ในบ้าน</option>
+                            <option value="100013">อุปกรณ์อิเล็กทรอนิกส์</option>
+                            <option value="100010">เครื่องใช้ไฟฟ้าภายในบ้าน</option>
+                            <option value="100535">คอมพิวเตอร์และแล็ปท็อป</option>
+                            <option value="100635">กล้องและอุปกรณ์ถ่ายภาพ</option>
+                            <option value="100629">อาหารและเครื่องดื่ม</option>
+                            <option value="100632">ของเล่น สินค้าแม่และเด็ก</option>
+                            <option value="100637">กีฬาและกิจกรรมกลางแจ้ง</option>
+                            <option value="100631">สัตว์เลี้ยง</option>
+                            <option value="100634">เกมและอุปกรณ์เสริม</option>
+                            <option value="100640">ยานยนต์</option>
+                            <option value="100639">เครื่องเขียน หนังสือ และงานอดิเรก</option>
+                            <option value="100642">ตั๋วและบัตรกำนัล</option>
+                          </optgroup>
+                        </select>
+                      </label>
+                      <label>
+                        <span>จำนวนสูงสุด</span>
+                        <select id="shopeeDiscoveryLimit">
+                          <option value="0" selected>แสดงทั้งหมด</option>
+                          <option value="20">20 รายการ</option>
+                          <option value="100">100 รายการ</option>
+                          <option value="300">300 รายการ</option>
+                          <option value="600">600 รายการ</option>
+                        </select>
+                      </label>
+                      <fieldset class="discovery-sort-field">
+                        <legend>เรียงตาม (มากไปน้อย)</legend>
+                        <div class="discovery-segments" id="shopeeDiscoverySort">
+                          <label><input type="radio" name="shopeeDiscoverySort" value="1" /><span>เกี่ยวข้อง</span></label>
+                          <label><input type="radio" name="shopeeDiscoverySort" value="5" /><span>คอมมิชชัน</span></label>
+                          <label><input type="radio" name="shopeeDiscoverySort" value="2" checked /><span>ขายดี</span></label>
+                          <label><input type="radio" name="shopeeDiscoverySort" value="3" /><span>ราคา</span></label>
+                        </div>
+                      </fieldset>
+                      <fieldset class="discovery-check-field">
+                        <legend>ตัวกรองเพิ่มเติม</legend>
+                        <div class="discovery-checks">
+                          <label><input id="shopeeDiscoveryExtraCommission" type="checkbox" checked /><span>ค่าคอมพิเศษ</span></label>
+                          <label><input id="shopeeDiscoveryFreeSample" type="checkbox" /><span>สินค้ารีวิวฟรี</span></label>
+                        </div>
+                      </fieldset>
+                      <button class="discovery-rank-switch-card" id="shopeeDiscoveryRankToggle" type="button" aria-pressed="false">
+                        <span class="discovery-rank-switch-copy">
+                          <strong>เช็คอันดับวิดีโอ</strong>
+                          <small>ปิดอยู่ · กดเพื่อเช็ค 10 อันดับแรก</small>
+                        </span>
+                        <span class="discovery-power-switch" aria-hidden="true"></span>
+                      </button>
+                    </div>
+                  </section>
+
+                  <div id="shopeeDiscoveryStatus" class="showcase-status" aria-live="polite"></div>
+
+                  <section class="discovery-insights" aria-label="Search summary">
+                    <article><span>ผลลัพธ์</span><strong id="shopeeDiscoveryTotal">0</strong></article>
+                    <article><span>เลือกแล้ว</span><strong id="shopeeDiscoverySelected">0</strong></article>
+                    <article><span>ค่าคอมเฉลี่ย</span><strong id="shopeeDiscoveryAvgCommission">-</strong></article>
+                    <article><span>ยอดขายรวม</span><strong id="shopeeDiscoveryTotalSold">0</strong></article>
+                  </section>
+
+                  <section class="discovery-results-panel">
+                    <div class="discovery-toolbar">
+                      <div class="discovery-toolbar-left">
+                        <button id="shopeeDiscoverySelectAllBtn" class="outline-btn compact" type="button" disabled>
+                          <span class="material-symbols-outlined">select_all</span> เลือกทั้งหมด
+                        </button>
+                        <button id="shopeeDiscoveryCopyBtn" class="outline-btn compact" type="button" disabled>
+                          <span class="material-symbols-outlined">content_copy</span> คัดลอกลิงก์
+                        </button>
+                        <button id="shopeeDiscoveryQueueBtn" class="primary-btn compact" type="button" disabled>
+                          <span class="material-symbols-outlined">playlist_add</span> ส่งไป Queue
+                        </button>
+                      </div>
+                      <label class="discovery-local-filter">
+                        <span class="material-symbols-outlined">filter_list</span>
+                        <input id="shopeeDiscoveryLocalFilter" type="search" placeholder="กรองผลลัพธ์ที่โหลดมา..." disabled />
+                      </label>
+                    </div>
+                    <div class="discovery-table-wrap">
+                      <table class="discovery-table">
+                        <thead>
+                          <tr>
+                            <th class="select-col"></th>
+                            <th>สินค้า</th>
+                            <th>ราคา</th>
+                            <th>ยอดขาย/เดือน</th>
+                            <th>ขายแล้ว</th>
+                            <th>ค่าคอม</th>
+                            <th>สต๊อก</th>
+                            <th>ร้านค้า</th>
+                            <th id="shopeeDiscoveryRankHeading" hidden>อันดับวิดีโอ</th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody id="shopeeDiscoveryResults"></tbody>
+                      </table>
+                      <div id="shopeeDiscoveryEmpty" class="discovery-empty">
+                        <span class="material-symbols-outlined">inventory_2</span>
+                        <strong>เริ่มค้นหาสินค้าที่เหมาะกับคอนเทนต์ของคุณ</strong>
+                        <p>ตั้งเงื่อนไขด้านบนแล้วกดค้นหา ระบบจะแสดงข้อมูลจาก Shopee Affiliate ที่นี่</p>
+                      </div>
+                    </div>
+                  </section>
+                </section>
+                <section class="shopee-remix-page route-panel" id="shopeeRemixPanel" aria-label="Shopee review video remix workspace" hidden>
+                  <header class="shopee-remix-head">
+                    <div>
+                      <p class="eyebrow">Shopee Review Remix</p>
+                      <h1><span class="material-symbols-outlined">movie_edit</span> Remix วิดีโอรีวิว Shopee</h1>
+                      <p>ค้นหาสินค้าทีละคำ ดึงวิดีโอรีวิวจาก Rating API แล้วรวมเป็นวิดีโอพร้อมใช้งาน</p>
+                    </div>
+                    <span class="shopee-remix-platform">Shopee</span>
+                  </header>
+
+                  <div class="shopee-remix-workspace">
+                    <aside class="shopee-remix-controls" aria-label="ตั้งค่าค้นหาและ Remix">
+                      <section class="shopee-remix-control-section">
+                        <div class="shopee-remix-section-title">
+                          <span class="shopee-remix-step">1</span>
+                          <div>
+                            <h2>คำค้นสินค้า</h2>
+                            <p>หนึ่งบรรทัดต่อหนึ่งคำ ระบบจะค้นหาตามลำดับจากบนลงล่าง</p>
+                          </div>
+                        </div>
+                        <label class="shopee-remix-field" for="shopeeRemixKeywords">
+                          <span>รายการคำค้น</span>
+                          <textarea id="shopeeRemixKeywords" rows="8" placeholder="ส้ม&#10;หมู&#10;ไก่"></textarea>
+                        </label>
+                        <label class="shopee-remix-field" for="shopeeRemixLinkLimit">
+                          <span>จำนวนลิงก์ต่อคำค้น</span>
+                          <select id="shopeeRemixLinkLimit">
+                            <option value="10">10 ลิงก์</option>
+                            <option value="50">50 ลิงก์</option>
+                            <option value="100">100 ลิงก์</option>
+                            <option value="200">200 ลิงก์</option>
+                            <option value="0">ไม่จำกัด</option>
+                          </select>
+                        </label>
+                        <button class="primary-btn shopee-remix-wide-btn" id="shopeeRemixSearchBtn" type="button">
+                          <span class="material-symbols-outlined">manage_search</span>
+                          เริ่มค้นหาสินค้า
+                        </button>
+                        <div class="shopee-remix-progress" id="shopeeRemixSearchProgress" hidden>
+                          <div class="shopee-remix-progress-track"><span></span></div>
+                          <p id="shopeeRemixSearchStatus" aria-live="polite">กำลังเตรียมค้นหา...</p>
+                        </div>
+                      </section>
+
+                      <section class="shopee-remix-control-section">
+                        <div class="shopee-remix-section-title">
+                          <span class="shopee-remix-step">2</span>
+                          <div>
+                            <h2>ตั้งค่าวิดีโอ</h2>
+                            <p>ใช้เป็นค่าเริ่มต้นเมื่อเพิ่มสินค้าเข้า Queue</p>
+                          </div>
+                        </div>
+                        <div class="shopee-remix-two-fields">
+                          <label class="shopee-remix-field" for="shopeeRemixVideoCount">
+                            <span>วิดีโอต่อสินค้า</span>
+                            <select id="shopeeRemixVideoCount">
+                              <option value="1">1 วิดีโอ</option>
+                              <option value="2">2 วิดีโอ</option>
+                              <option value="3" selected>3 วิดีโอ</option>
+                              <option value="4">4 วิดีโอ</option>
+                              <option value="5">5 วิดีโอ</option>
+                              <option value="6">6 วิดีโอ</option>
+                              <option value="7">7 วิดีโอ</option>
+                              <option value="8">8 วิดีโอ</option>
+                              <option value="9">9 วิดีโอ</option>
+                              <option value="10">10 วิดีโอ</option>
+                            </select>
+                          </label>
+                          <label class="shopee-remix-field" for="shopeeRemixDuration">
+                            <span>ความยาว Final</span>
+                            <select id="shopeeRemixDuration">
+                              <option value="10">10 วินาที</option>
+                              <option value="15" selected>15 วินาที</option>
+                              <option value="20">20 วินาที</option>
+                              <option value="25">25 วินาที</option>
+                              <option value="30">30 วินาที</option>
+                            </select>
+                          </label>
+                        </div>
+                        <label class="shopee-remix-field" for="shopeeRemixEditMode">
+                          <span>รูปแบบการตัดต่อ</span>
+                          <select id="shopeeRemixEditMode">
+                            <option value="smart" selected>Smart Montage - ช็อตสั้นสลับจังหวะ</option>
+                            <option value="classic">ต่อคลิปแบบเดิม</option>
+                          </select>
+                        </label>
+                        <div class="shopee-remix-note">
+                          <span class="material-symbols-outlined">shuffle</span>
+                          <p>Smart Montage จะสลับช็อตสั้นจากวิดีโอ Rating API และเก็บเสียงต้นฉบับไว้</p>
+                        </div>
+                      </section>
+                    </aside>
+
+                    <div class="shopee-remix-main">
+                      <section class="shopee-remix-summary" aria-label="สรุปงาน Remix">
+                        <div><span>สินค้าที่พบ</span><strong id="shopeeRemixProductCount">0</strong></div>
+                        <div><span>เลือกแล้ว</span><strong id="shopeeRemixSelectedCount">0</strong></div>
+                        <div><span>ใน Queue</span><strong id="shopeeRemixQueueCount">0</strong></div>
+                        <div><span>เสร็จแล้ว</span><strong class="is-success" id="shopeeRemixCompleteCount">0</strong></div>
+                      </section>
+
+                      <section class="shopee-remix-panel shopee-remix-products-panel">
+                        <div class="shopee-remix-panel-head">
+                          <div>
+                            <p class="eyebrow">Product Links</p>
+                            <h2>สินค้าที่ค้นพบ</h2>
+                          </div>
+                          <div class="shopee-remix-actions">
+                            <button class="danger-outline-btn" id="shopeeRemixClearProductsBtn" type="button" disabled>
+                              <span class="material-symbols-outlined">backspace</span>
+                              ล้างรายการ
+                            </button>
+                            <button class="outline-btn" id="shopeeRemixSelectAllBtn" type="button" disabled>
+                              <span class="material-symbols-outlined">select_all</span>
+                              เลือกทั้งหมด
+                            </button>
+                            <button class="primary-btn" id="shopeeRemixAddQueueBtn" type="button" disabled>
+                              <span class="material-symbols-outlined">playlist_add</span>
+                              ส่งที่เลือกเข้า Queue
+                            </button>
+                          </div>
+                        </div>
+                        <div class="shopee-remix-product-list" id="shopeeRemixProductList">
+                          <div class="shopee-remix-empty">
+                            <span class="material-symbols-outlined">search</span>
+                            <strong>ยังไม่มีสินค้า</strong>
+                            <p>ใส่คำค้นทางซ้าย แล้วเริ่มค้นหาเพื่อสร้างรายการลิงก์สินค้า</p>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section class="shopee-remix-panel shopee-remix-queue-panel">
+                        <div class="shopee-remix-panel-head shopee-remix-queue-head">
+                          <div>
+                            <p class="eyebrow">Queue Process</p>
+                            <h2>จัดการคิว Remix</h2>
+                            <p class="shopee-remix-panel-description">ทำงานตามลำดับสินค้า ดึงวิดีโอรีวิว แล้วส่งต่อให้ FFmpeg สร้างไฟล์ Final</p>
+                          </div>
+                          <div class="shopee-remix-actions">
+                            <button class="primary-btn" id="shopeeRemixRunBtn" type="button" disabled>
+                              <span class="material-symbols-outlined">play_arrow</span>
+                              เริ่ม Queue
+                            </button>
+                            <button class="outline-btn" id="shopeeRemixPauseBtn" type="button" disabled>
+                              <span class="material-symbols-outlined">pause</span>
+                              พัก
+                            </button>
+                            <button class="danger-outline-btn" id="shopeeRemixStopBtn" type="button" disabled>
+                              <span class="material-symbols-outlined">stop</span>
+                              หยุด
+                            </button>
+                            <button class="outline-btn" id="shopeeRemixRetryBtn" type="button" disabled>
+                              <span class="material-symbols-outlined">refresh</span>
+                              ลองงานที่พลาดใหม่
+                            </button>
+                            <button class="outline-btn" id="shopeeRemixClearBtn" type="button" disabled>
+                              <span class="material-symbols-outlined">delete_sweep</span>
+                              ล้างงานสำเร็จ
+                            </button>
+                            <button class="danger-outline-btn" id="shopeeRemixClearQueueBtn" type="button" disabled>
+                              <span class="material-symbols-outlined">playlist_remove</span>
+                              ล้าง Queue
+                            </button>
+                          </div>
+                        </div>
+
+                        <div class="shopee-remix-queue-dashboard">
+                          <div class="shopee-remix-queue-stats" role="list" aria-label="สรุปสถานะ Queue">
+                            <div data-queue-stat="total" role="listitem"><span>ทั้งหมด</span><strong id="shopeeRemixQueueTotalStat">0</strong></div>
+                            <div data-queue-stat="waiting" role="listitem"><span>รอทำงาน</span><strong id="shopeeRemixQueueWaitingStat">0</strong></div>
+                            <div data-queue-stat="working" role="listitem"><span>กำลังทำ</span><strong id="shopeeRemixQueueWorkingStat">0</strong></div>
+                            <div data-queue-stat="complete" role="listitem"><span>สำเร็จ</span><strong id="shopeeRemixQueueCompleteStat">0</strong></div>
+                            <div data-queue-stat="failed" role="listitem"><span>ล้มเหลว</span><strong id="shopeeRemixQueueFailedStat">0</strong></div>
+                          </div>
+                          <div class="shopee-remix-queue-progress" aria-label="ความคืบหน้า Queue">
+                            <div>
+                              <span id="shopeeRemixQueueProgressText">ยังไม่มีงานใน Queue</span>
+                              <strong id="shopeeRemixQueueProgressPercent">0%</strong>
+                            </div>
+                            <div class="shopee-remix-queue-progress-track"><span id="shopeeRemixQueueProgressBar"></span></div>
+                          </div>
+                        </div>
+
+                        <div class="shopee-remix-queue-filterbar">
+                          <div class="shopee-remix-queue-filters" role="tablist" aria-label="กรองสถานะ Queue">
+                            <button class="is-active" type="button" data-remix-queue-filter="all" role="tab" aria-selected="true">ทั้งหมด</button>
+                            <button type="button" data-remix-queue-filter="waiting" role="tab" aria-selected="false">รอคิว</button>
+                            <button type="button" data-remix-queue-filter="working" role="tab" aria-selected="false">กำลังทำ</button>
+                            <button type="button" data-remix-queue-filter="complete" role="tab" aria-selected="false">สำเร็จ</button>
+                            <button type="button" data-remix-queue-filter="failed" role="tab" aria-selected="false">ล้มเหลว</button>
+                          </div>
+                          <span id="shopeeRemixQueueVisibleCount">0 งาน</span>
+                        </div>
+                        <div class="shopee-remix-queue-list" id="shopeeRemixQueueList">
+                          <div class="shopee-remix-empty shopee-remix-empty-compact">
+                            <span class="material-symbols-outlined">movie_filter</span>
+                            <strong>Queue ว่าง</strong>
+                            <p>เลือกสินค้าจากรายการด้านบนแล้วส่งเข้า Queue</p>
+                          </div>
+                        </div>
+                      </section>
+                    </div>
+                  </div>
+                </section>
+        <section class="mobile-post-workbench route-panel" id="mobilePostPanel" aria-label="TikTok mobile post workspace" hidden>
+                  <div class="mobile-main-column">
+                    <section class="mobile-panel mobile-hero-panel">
+                      <div class="mobile-section-head">
+                        <div>
+                          <p class="eyebrow">ADB Mobile Bridge</p>
+                          <h2 id="mobileHeroTitle"><span class="material-symbols-outlined">phonelink_setup</span> Connect ADB</h2>
+                          <p id="mobileHeroDescription">Scan Android devices, prepare TikTok mobile channels, and queue videos from the local library.</p>
+                        </div>
+                        <span id="mobileAdbStatus" class="queue-pill">ADB idle</span>
+                      </div>
+
+                      <section class="flow-process-stats mobile-process-stats" aria-label="Mobile post summary">
+                        <article class="flow-stat-card">
+                          <strong id="mobileChannelMetric">0</strong>
+                          <span>Channels</span>
+                        </article>
+                        <article class="flow-stat-card">
+                          <strong id="mobileVideoMetric">0</strong>
+                          <span>Library</span>
+                        </article>
+                        <article class="flow-stat-card is-success">
+                          <strong id="mobileQueueMetric">0</strong>
+                          <span>Queue</span>
+                        </article>
+                        <article class="flow-stat-card is-failed">
+                          <strong id="mobileErrorMetric">0</strong>
+                          <span>Issues</span>
+                        </article>
+                      </section>
+                    </section>
+
+                    <section class="mobile-panel mobile-queue-panel">
+                      <div class="mobile-section-head">
+                        <div>
+                          <h2 id="mobileQueueTitle"><span class="material-symbols-outlined">playlist_play</span> TikTok Mobile Queue</h2>
+                          <p id="mobileQueueDescription">Choose videos from Library, choose one or more Channels, then queue them for mobile posting.</p>
+                        </div>
+                        <span id="mobileQueueCount" class="queue-pill">0 jobs</span>
+                      </div>
+
+                      <div class="mobile-actions-row">
+                        <button id="mobileScanUploadsBtn" class="outline-btn" type="button">
+                          <span class="material-symbols-outlined">sync</span>
+                          Scan Uploads
+                        </button>
+                        <button id="mobileRandomBtn" class="outline-btn" type="button">
+                          <span class="material-symbols-outlined">shuffle</span>
+                          Random Distribute
+                        </button>
+                        <button id="mobileAutoRandomBtn" class="outline-btn" type="button">
+                          <span class="material-symbols-outlined">autoplay</span>
+                          Auto random : OFF
+                        </button>
+                        <button id="mobileQueueSelectedBtn" class="primary-btn" type="button">
+                          <span class="material-symbols-outlined">playlist_add</span>
+                          Queue Selected
+                        </button>
+                        <button id="mobileQueueAllBtn" class="outline-btn" type="button">
+                          <span class="material-symbols-outlined">shuffle</span>
+                          Queue All
+                        </button>
+                        <button id="mobileStartAllBtn" class="primary-btn" type="button">
+                          <span class="material-symbols-outlined">play_arrow</span>
+                          Start All
+                        </button>
+                        <button id="mobileStopAllBtn" class="outline-btn danger" type="button">
+                          <span class="material-symbols-outlined">stop</span>
+                          Stop All
+                        </button>
+                        <button id="mobileClearQueueBtn" class="outline-btn" type="button">
+                          <span class="material-symbols-outlined">delete_sweep</span>
+                          Clear Queue
+                        </button>
+                        <button id="mobileClearTimeSetBtn" class="outline-btn danger" type="button">
+                          <span class="material-symbols-outlined">event_busy</span>
+                          Clear Time Set
+                        </button>
+                        <button id="mobileClearHistoryBtn" class="outline-btn danger" type="button">
+                          <span class="material-symbols-outlined">history</span>
+                          Clear History
+                        </button>
+                      </div>
+
+                      <div class="mobile-schedule-tools">
+                        <button id="mobileSelectAllQueueBtn" class="outline-btn" type="button">Select All</button>
+                        <button id="mobileScheduleClearQueueBtn" class="outline-btn danger" type="button">Clear Queue</button>
+                        <input id="mobileScheduleAt" type="datetime-local" />
+                        <input id="mobileIntervalMinutes" type="number" min="0" placeholder="Interval min" />
+                        <button id="mobileSetScheduleBtn" class="primary-btn" type="button">Set</button>
+                      </div>
+
+                      <div class="flow-live-log mobile-live-log" aria-live="polite">
+                        <div>
+                          <span class="flow-live-dot"></span>
+                          <strong>Live log</strong>
+                          <span id="mobileLiveLogText">No recent mobile log</span>
+                        </div>
+                        <button id="mobileToggleFloatLogsBtn" class="outline-btn compact" type="button">
+                          <span class="material-symbols-outlined">receipt_long</span>
+                          Float Logs
+                        </button>
+                      </div>
+
+                      <div id="mobileQueueList" class="mobile-queue-list" aria-live="polite"></div>
+                    </section>
+                  </div>
+
+                  <aside class="mobile-side-column" aria-label="Mobile channels and video library">
+                    <section class="mobile-panel mobile-channel-panel">
+                      <div class="mobile-section-head compact">
+                        <div>
+                          <h2><span class="material-symbols-outlined">settings_remote</span> Channel</h2>
+                          <p>Top half: ADB devices and posting channels.</p>
+                        </div>
+                        <span id="mobileSelectedChannelCount" class="queue-pill">0 selected</span>
+                      </div>
+
+                      <div class="mobile-actions-row">
+                        <button id="mobileScanAdbBtn" class="primary-btn" type="button">
+                          <span class="material-symbols-outlined">usb</span>
+                          Scan ADB
+                        </button>
+                        <label class="mobile-check-inline">
+                          <input id="mobileHideOffline" type="checkbox" />
+                          Hide offline
+                        </label>
+                      </div>
+
+                      <form id="mobileChannelForm" class="mobile-channel-form">
+                        <input id="mobileChannelName" type="text" placeholder="Channel name" required />
+                        <input id="mobileChannelUdid" type="text" placeholder="UDID / 192.168.x.x:5555" required />
+                        <button class="outline-btn compact" type="submit">
+                          <span class="material-symbols-outlined">add</span>
+                          Add
+                        </button>
+                      </form>
+
+                      <div id="mobileDeviceList" class="mobile-device-list"></div>
+                      <div id="mobileChannelList" class="mobile-channel-list"></div>
+                    </section>
+
+                    <section class="mobile-panel mobile-library-panel">
+                      <div class="mobile-section-head compact">
+                        <div>
+                          <h2><span class="material-symbols-outlined">video_library</span> Library</h2>
+                          <p>Bottom half: final files and generated clips available for mobile posting.</p>
+                        </div>
+                        <span id="mobileSelectedVideoCount" class="queue-pill">0 selected</span>
+                      </div>
+
+                      <div class="mobile-actions-row">
+                        <button id="mobileScanLibraryBtn" class="primary-btn" type="button">
+                          <span class="material-symbols-outlined">sync</span>
+                          Scan Library
+                        </button>
+                        <button id="mobileClearSelectionBtn" class="outline-btn" type="button">
+                          <span class="material-symbols-outlined">backspace</span>
+                          Clear Select
+                        </button>
+                      </div>
+
+                      <label class="mobile-search">
+                        <span class="material-symbols-outlined">search</span>
+                        <input id="mobileLibrarySearch" type="search" placeholder="Search library..." />
+                      </label>
+                      <div id="mobileLibraryList" class="mobile-library-list"></div>
+                    </section>
+                  </aside>
+                </section>
+        <section class="adb-device-workbench route-panel" id="adbDevicePanel" aria-label="ADB device workspace" hidden>
+                  <div class="adb-device-main">
+                    <section class="adb-work-column adb-managed-column">
+                      <section class="adb-managed-head">
+                        <div>
+                          <h1>Managed Devices</h1>
+                          <p>Configured units in your workspace</p>
+                        </div>
+                        <div class="adb-head-actions">
+                          <button id="adbOfflineToggleBtn" class="adb-offline-toggle-btn" type="button">
+                            <span class="material-symbols-outlined">visibility_off</span>
+                            ซ่อน Offline
+                          </button>
+                          <div class="adb-filter-wrap">
+                            <button id="adbFilterBtn" class="adb-filter-btn" type="button" aria-haspopup="true" aria-expanded="false">
+                              <span class="material-symbols-outlined">filter_list</span>
+                              Filter
+                            </button>
+                            <div id="adbFilterMenu" class="adb-filter-menu" hidden>
+                              <button type="button" data-adb-sort="manual">ลำดับเดิม</button>
+                              <button type="button" data-adb-sort="online">ออนไลน์ก่อน</button>
+                              <button type="button" data-adb-sort="offline">ออฟไลน์ก่อน</button>
+                              <button type="button" data-adb-sort="name">ชื่อ A-Z</button>
+                              <button type="button" data-adb-sort="recent">อัปเดตล่าสุด</button>
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+                      <section id="adbManagedList" class="adb-managed-grid" aria-live="polite"></section>
+                    </section>
+
+                    <aside class="adb-work-column adb-connected-column">
+                      <section class="adb-connected-head">
+                        <div>
+                          <h2>Connected Devices (ADB)</h2>
+                          <p>Raw ADB socket detection</p>
+                        </div>
+                        <button id="adbScanBusBtn" class="adb-scan-btn" type="button">
+                          <span class="material-symbols-outlined">refresh</span>
+                          Scan Bus
+                        </button>
+                      </section>
+                      <section class="adb-connected-table" aria-label="Connected ADB devices">
+                        <div id="adbConnectedList" aria-live="polite"></div>
+                      </section>
+                    </aside>
+                  </div>
+                </section>
+        <section class="flow-workbench route-panel" data-flow-workbench hidden>
+                  <div class="flow-main-column">
+                    <section class="flow-editor panel">
+                      <div class="flow-editor-head">
+                        <h2><span class="material-symbols-outlined">auto_awesome</span> คิวสินค้าสร้างวิดีโอ (Queue Items)</h2>
+
+                      </div>
+                      <div class="clip-overview-panel" id="clipOverviewPanel">
+                        <h3>ภาพรวมคลิป</h3>
+                        <div class="clip-overview-grid">
+                          <label>
+                            <span>รูปแบบตัวละคร (ไม่เลือกก็ได้)</span>
+                            <div class="clip-select-row">
+                              <select id="clipCharacterStyle">
+                                <option>สมจริง</option>
+                                <option>UGC รีวิวสินค้า</option>
+                                <option>ไลฟ์สไตล์</option>
+                                <option>พรีเมียมแฟชั่น</option>
+                                <option>แม่บ้านใช้งานจริง</option>
+                                <option>วัยรุ่นสดใส</option>
+                                <option>ผู้เชี่ยวชาญแนะนำ</option>
+                                <option>Before / After</option>
+                                <option>ไม่ใช้ตัวละคร</option>
+                                <option>มินิมอลสินค้าเด่น</option>
+                                <option value="__custom__">+ เพิ่มเอง</option>
+                              </select>
+                              <button class="clip-delete-option" type="button" data-delete-option="clipCharacterStyle" disabled>ลบ</button>
+                            </div>
+                          </label>
+                          <label>
+                            <span>ฉากสำหรับ Gen รูปสมจริง</span>
+                            <div class="clip-select-row">
+                              <select id="clipSceneStyle">
+                                <option>ให้ AI เลือกฉากที่เหมาะกับสินค้า</option>
+                                <option>ในบ้านแสงธรรมชาติ</option>
+                                <option>สตูดิโอสินค้า</option>
+                                <option>คาเฟ่ / ไลฟ์สไตล์</option>
+                                <option>โต๊ะทำงาน</option>
+                                <option>ห้องครัว</option>
+                                <option>ห้องน้ำ / โต๊ะเครื่องแป้ง</option>
+                                <option>กลางแจ้ง</option>
+                                <option>ร้านค้า / ชั้นวางสินค้า</option>
+                                <option>พื้นหลังสีเรียบ</option>
+                                <option value="__custom__">+ เพิ่มเอง</option>
+                              </select>
+                              <button class="clip-delete-option" type="button" data-delete-option="clipSceneStyle" disabled>ลบ</button>
+                            </div>
+                          </label>
+                          <label>
+                            <span>ตัวละคร (ไม่เลือกก็ได้)</span>
+                            <div class="clip-select-row">
+                              <select id="clipCharacter">
+                                <option>-- เลือกตัวละคร --</option>
+                                <option>ผู้หญิงวัยทำงาน</option>
+                                <option>ผู้ชายวัยทำงาน</option>
+                                <option>แม่บ้าน / ครอบครัว</option>
+                                <option>วัยรุ่นนักศึกษา</option>
+                                <option>ครีเอเตอร์รีวิวสินค้า</option>
+                                <option>เจ้าของร้านแนะนำสินค้า</option>
+                                <option>ผู้เชี่ยวชาญ / ที่ปรึกษา</option>
+                                <option>คู่รัก</option>
+                                <option>คุณแม่ดูแลลูก</option>
+                                <option>ไม่แสดงตัวละคร</option>
+                                <option value="__custom__">+ เพิ่มเอง</option>
+                              </select>
+                              <button class="clip-delete-option" type="button" data-delete-option="clipCharacter" disabled>ลบ</button>
+                            </div>
+                          </label>
+                          <label>
+                            <span>อารมณ์ของคลิป</span>
+                            <div class="clip-select-row">
+                              <select id="clipMood">
+                                <option>สบายๆ</option>
+                                <option>สนุก สดใส</option>
+                                <option>พรีเมียม</option>
+                                <option>จริงจัง น่าเชื่อถือ</option>
+                                <option>อบอุ่น เป็นกันเอง</option>
+                                <option>เร่งด่วน กระตุ้นซื้อ</option>
+                                <option>หรูหรา</option>
+                                <option>มินิมอล สะอาดตา</option>
+                                <option>ตลกนิดๆ</option>
+                                <option>รีวิวจริงใจ</option>
+                                <option value="__custom__">+ เพิ่มเอง</option>
+                              </select>
+                              <button class="clip-delete-option" type="button" data-delete-option="clipMood" disabled>ลบ</button>
+                            </div>
+                          </label>
+                          <label>
+                            <span>อารมณ์การพูด</span>
+                            <div class="clip-select-row">
+                              <select id="clipVoiceMood">
+                                <option>สุภาพ</option>
+                                <option>เป็นกันเอง</option>
+                                <option>ขายเก่ง กระชับ</option>
+                                <option>รีวิวจริงใจ</option>
+                                <option>นุ่มนวล อธิบายละเอียด</option>
+                                <option>ตื่นเต้น มีพลัง</option>
+                                <option>มืออาชีพ</option>
+                                <option>เพื่อนแนะนำเพื่อน</option>
+                                <option>ไลฟ์ขายของ</option>
+                                <option>เล่าเรื่องธรรมชาติ</option>
+                                <option value="__custom__">+ เพิ่มเอง</option>
+                              </select>
+                              <button class="clip-delete-option" type="button" data-delete-option="clipVoiceMood" disabled>ลบ</button>
+                            </div>
+                          </label>
+                          <div class="clip-overview-action">
+                            <button id="applyClipOverviewBtn" class="primary-btn" type="button">บันทึก</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="flow-editor-actions flow-editor-actions-below">
+                        <button id="clearFlowQueueBtn" class="outline-btn" type="button">
+                            <span class="material-symbols-outlined">delete_sweep</span>
+                            ล้าง Queue
+                          </button>
+                        <button id="createFlowClipsBtn" class="primary-btn" type="button">
+                            สร้างคลิป
+                            <span class="material-symbols-outlined">bolt</span>
+                          </button>
+                        <button id="pauseFlowQueueBtn" class="outline-btn flow-runner-btn" type="button" disabled>
+                            <span class="material-symbols-outlined">pause</span>
+                            Pause
+                          </button>
+                        <button id="stopFlowQueueBtn" class="outline-btn danger flow-runner-btn" type="button" disabled>
+                            <span class="material-symbols-outlined">stop</span>
+                            Stop
+                          </button>
+                      </div>
+                      <div id="flowQueueItems" class="flow-queue-cards" aria-live="polite"></div>
+
+                    </section>
+
+                  </div>
+
+                  <div class="flow-side-column">
+                    <aside class="flow-settings panel flow-provider-settings">
+                    <div class="flow-settings-head">
+                      <h2>Setting</h2>
+                      <span id="flowProviderBadge">Google Flow</span>
+                    </div>
+
+                    <div class="flow-settings-grid" id="flowSettingsGrid" data-provider-settings="flow">
+                      <label>
+                        <span>Model ภาพ</span>
+                        <select id="flowImageModel">
+                          <option value="NARWHAL">Nano Banana 2</option>
+                          <option value="IMAGEN_4">Imagen 4</option>
+                          <option value="IMAGEN_3">Imagen 3</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>Model วิดีโอ</span>
+                        <select id="flowVideoModel">
+                          <option value="veo_3_1_i2v_lite">Lite (5 เครดิต)</option>
+                          <option value="veo_3_1_i2v">Veo Standard (10 เครดิต)</option>
+                          <option value="veo_3_1_i2v_quality">Veo Quality (20 เครดิต)</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>ขนาด (Aspect)</span>
+                        <select id="flowAspect">
+                          <option value="portrait">9:16</option>
+                          <option value="square">1:1</option>
+                          <option value="landscape">16:9</option>
+                          <option value="portrait">4:5</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>จำนวนคลิป <span class="opt">(1-10)</span></span>
+                        <select id="flowSceneCount">
+                          <option value="1">1 คลิป</option>
+                          <option value="2">2 คลิป</option>
+                          <option value="3">3 คลิป</option>
+                          <option value="4">4 คลิป</option>
+                          <option value="5">5 คลิป</option>
+                          <option value="6">6 คลิป</option>
+                          <option value="7">7 คลิป</option>
+                          <option value="8">8 คลิป</option>
+                          <option value="9">9 คลิป</option>
+                          <option value="10">10 คลิป</option>
+                        </select>
+                      </label>
+                    </div>
+                    <div class="flow-settings-actions">
+                      <button id="saveFlowSettingsBtn" class="primary-btn" type="button">
+                        <span class="material-symbols-outlined">save</span>
+                        บันทึก
+                      </button>
+                      <span id="flowSettingsSavedText" class="flow-settings-saved" aria-live="polite"></span>
+                    </div>
+                    </aside>
+
+                    <section class="flow-process-stats" aria-label="Queue Process summary">
+                      <article class="flow-stat-card">
+                        <strong id="flowTotalJobs">0</strong>
+                        <span>ทั้งหมด</span>
+                      </article>
+                      <article class="flow-stat-card is-success">
+                        <strong id="flowDoneJobs">0</strong>
+                        <span>สำเร็จ</span>
+                      </article>
+                      <article class="flow-stat-card is-failed">
+                        <strong id="flowFailedJobs">0</strong>
+                        <span>ไม่สำเร็จ</span>
+                      </article>
+                    </section>
+                    <section class="flow-live-log" id="flowLiveLog" aria-live="polite">
+                      <div>
+                        <span class="flow-live-dot"></span>
+                        <strong>Live log</strong>
+                        <span id="flowLiveLogText">ยังไม่มี log ล่าสุด</span>
+                      </div>
+                      <button class="outline-btn compact" type="button" data-open-logs>
+                        <span class="material-symbols-outlined">receipt_long</span>
+                        เปิด Logs
+                      </button>
+                    </section>
+                    <section class="flow-queue-panel panel">
+                      <div class="flow-section-head">
+                        <h2>Queue Process</h2>
+                        <div class="flow-process-head-actions">
+                          <button id="retryAllFlowJobsBtn" class="outline-btn compact" type="button" disabled>
+                            <span class="material-symbols-outlined">restart_alt</span>
+                            Retry All
+                          </button>
+                          <button id="clearFlowJobsBtn" class="outline-btn danger compact" type="button" disabled>
+                            <span class="material-symbols-outlined">delete</span>
+                            Clear Queue
+                          </button>
+                          <span id="flowQueueCount" class="queue-pill">0 งาน</span>
+                        </div>
+                      </div>
+                      <div class="flow-queue-table" id="flowQueueTable"></div>
+                    </section>
+                  </div>
+                </section>
+              </main>
+            </div>
+          </div>
+          <button class="back-btn" type="button" data-route="home">
+            <span class="material-symbols-outlined">arrow_back</span>
+            กลับหน้าเมนู
+          </button>
+          <div class="work-head">
+            <div>
+              <p class="eyebrow" id="modeEyebrow">Mode</p>
+              <h1 id="modeTitle">ขายสินค้า Shopee</h1>
+              <p class="lead" id="modeDesc"></p>
+            </div>
+            <button class="primary-btn small" type="button">เริ่มงานใหม่</button>
+          </div>
+
+          <div class="work-grid">
+            <section class="panel">
+              <h2>Configuration</h2>
+              <label>
+                ชื่องาน
+                <input id="jobName" type="text" placeholder="เช่น Campaign A" />
+              </label>
+              <label>
+                Prompt / Note
+                <textarea id="jobPrompt" rows="6" placeholder="ใส่รายละเอียดงานที่ต้องการทำ"></textarea>
+              </label>
+              <div class="row">
+                <button class="primary-btn" type="button">Save</button>
+                <button class="outline-btn" type="button">Preview</button>
+              </div>
+            </section>
+
+            <section class="panel">
+              <h2>Status</h2>
+              <div class="status-list">
+                <div><span>Connection</span><strong>Ready</strong></div>
+                <div><span>Queue</span><strong>0 jobs</strong></div>
+                <div><span>Last update</span><strong>Live</strong></div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>&copy; 2026 AutoGT Pro</span>
+      <span>Quiet automation workspace</span>
+    </footer>
+
+    <script type="module" src="flow-suite-shared-bridge.js?v=1"></script>
+    <script src="ui-shell.js?v=20260727-logs-modal-fix-01"></script>
+    <script src="app.js?v=20260727-account-picker-ui-01"></script>
+    <script>
+      new EventSource("/__live").addEventListener("reload", () => location.reload());
+    </script>
+  </body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

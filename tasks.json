@@ -1,0 +1,114 @@
+[
+  {
+    "step": 1,
+    "action": "open_app",
+    "package": "com.ss.android.ugc.trill",
+    "description": "เปิดแอพ TikTok",
+    "wait": 5
+  },
+  {
+    "step": 2,
+    "action": "tap_create_button",
+    "description": "กดปุ่มสร้าง",
+    "wait": 2
+  },
+  {
+    "step": 3,
+    "action": "tap_upload_button",
+    "description": "กดปุ่มอัปโหลดแบบไม่ fix resource-id และไม่ fix ตำแหน่ง",
+    "wait": 2
+  },
+  {
+    "step": 4,
+    "action": "tap_first_media_select_button",
+    "description": "กดปุ่มเลือกของรูปแรก",
+    "wait": 2
+  },
+  {
+    "step": 5,
+    "action": "tap_next_button",
+    "description": "กดปุ่มถัดไป",
+    "wait": 3
+  },
+  {
+    "step": 6,
+    "action": "tap_final_next_button",
+    "description": "กดปุ่มถัดไปหน้าพรีวิว",
+    "wait": 3
+  },
+  {
+    "step": 7,
+    "action": "tap_add_link_button",
+    "description": "กดเพิ่มลิงก์",
+    "wait": 2
+  },
+  {
+    "step": 8,
+    "action": "tap_product_link_option",
+    "description": "เลือกสินค้า",
+    "wait": 2
+  },
+  {
+    "step": 9,
+    "action": "search_product_keyword",
+    "description": "ค้นหาสินค้าด้วย keyword จาก product_name",
+    "keyword": "{{product_name}}",
+    "wait": 3
+  },
+  {
+    "step": 10,
+    "action": "tap_first_add_product_button",
+    "description": "กดปุ่มเพิ่มตัวแรกสุดด้วย OCR",
+    "wait": 3
+  },
+  {
+    "step": 8.5,
+    "action": "tap_add_product_entry_before_search",
+    "description": "กดเพิ่มสินค้าก่อนค้นหา",
+    "wait": 1
+  },
+  {
+    "step": 8.7,
+    "action": "tap_marketplace_option",
+    "description": "tap marketplace",
+    "wait": 1
+  },
+  {
+    "step": 9.5,
+    "action": "tap_product_viewpager_image",
+    "description": "กดรูปสินค้าใน ViewPager แล้วค้นหาสินค้า",
+    "keyword": "{{ชื่อวิดีโอ}}",
+    "wait": 3
+  },
+  {
+    "step": 10.5,
+    "action": "tap_all_add_product_buttons",
+    "description": "กดเพิ่มสินค้าทุกครั้งที่เจอ",
+    "wait": 3
+  },
+  {
+    "step": 11,
+    "action": "confirm_anchor_add_button",
+    "description": "กดยืนยันเพิ่มสินค้า",
+    "wait": 3
+  },
+  {
+    "step": 12,
+    "action": "input_caption",
+    "description": "ใส่คำอธิบายโพสต์",
+    "text": "{{caption}}",
+    "wait": 2
+  },
+  {
+    "step": 13,
+    "action": "tap_post_button",
+    "description": "โพสต์วิดีโอ",
+    "wait": 2
+  },
+  {
+    "step": 14,
+    "action": "post_warmup_and_stop",
+    "description": "ปัดหน้าจอ 3 นาทีแล้ว force-stop TikTok",
+    "wait": 1
+  }
+]

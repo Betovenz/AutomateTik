@@ -1,0 +1,19 @@
+# Generated builds
+dist/
+build/
+
+# Sensitive local browser profile
+.desktop-browser/
+
+# Runtime/local data
+ai_studio/runtime/
+thumbs/
+*.db
+*.log
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Local assistant configuration
+.claude/

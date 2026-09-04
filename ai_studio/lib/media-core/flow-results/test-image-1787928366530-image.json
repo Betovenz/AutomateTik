@@ -1,0 +1,44 @@
+{
+  "ok": true,
+  "jobId": "test-image-1787928366530",
+  "mediaType": "image",
+  "updatedAt": "2026-08-28T14:47:17.646Z",
+  "payload": {
+    "action": "generate",
+    "mediaType": "image",
+    "mediaUrl": "https://flow-content.google/image/35e9f8c2-d94b-4051-b724-538f41636e43?Expires=1787949981&KeyName=labs-flow-prod-cdn-key&Signature=0g3Wg8-lBwpz_4HFXSnIaZxgLew",
+    "localUrl": "/lib/media-core/flow-results/1787928436566-test-image-1787928366530-image.png",
+    "resultUrl": "https://flow-content.google/image/35e9f8c2-d94b-4051-b724-538f41636e43?Expires=1787949981&KeyName=labs-flow-prod-cdn-key&Signature=0g3Wg8-lBwpz_4HFXSnIaZxgLew",
+    "imageUrl": "/lib/media-core/flow-results/1787928436566-test-image-1787928366530-image.png",
+    "videoUrl": "",
+    "saved": {
+      "ok": true,
+      "file": "C:\\Users\\Blue\\Documents\\Automate Tik\\ai_studio\\lib\\media-core\\flow-results\\1787928436566-test-image-1787928366530-image.png",
+      "url": "/lib/media-core/flow-results/1787928436566-test-image-1787928366530-image.png"
+    },
+    "raw": {
+      "ok": true,
+      "mediaUrl": "https://flow-content.google/image/35e9f8c2-d94b-4051-b724-538f41636e43?Expires=1787949981&KeyName=labs-flow-prod-cdn-key&Signature=0g3Wg8-lBwpz_4HFXSnIaZxgLew",
+      "mediaType": "image",
+      "mediaId": "35e9f8c2-d94b-4051-b724-538f41636e43",
+      "workflowId": "8c532735-ae4d-4160-a339-b184be93c0c8",
+      "sceneId": "",
+      "width": 768,
+      "height": 1376,
+      "projectId": "e2c28f7f-5d50-485c-8e48-44ff7c408cea",
+      "referenceImageIds": [
+        "5ee5032f-c6bb-4ba0-b559-75290b443c43"
+      ],
+      "refRoot": "C:\\Users\\Blue\\Documents\\Automate Tik\\ai_studio\\lib\\media-core\\flow_engine"
+    },
+    "mediaId": "35e9f8c2-d94b-4051-b724-538f41636e43",
+    "workflowId": "8c532735-ae4d-4160-a339-b184be93c0c8",
+    "sceneId": "",
+    "projectId": "e2c28f7f-5d50-485c-8e48-44ff7c408cea",
+    "startImageMediaId": "",
+    "referenceImageIds": [
+      "5ee5032f-c6bb-4ba0-b559-75290b443c43"
+    ],
+    "canExtend": false
+  }
+}

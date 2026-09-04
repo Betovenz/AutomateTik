@@ -1,0 +1,7099 @@
+﻿:root {
+  /* neutral-grey base — matched 1:1 to the trippleviral web app's tokens
+     (--background #141414 / --card #1c1c1c / --border #292929, pure hue-0 greys).
+     Amber is the single accent; the ambient glow is amber-only (no magenta). */
+  --bg: #141414;
+  --bg-2: #181818;
+  --surface: #1c1c1c;
+  --surface-2: #242424;
+  --line: #292929;
+  --line-soft: #202020;
+  --surface-inset: #101010;   /* recessed surfaces: inputs, deep panels */
+  --surface-well: #161616;    /* media wells / thumbnails */
+  --text: #f0f0f0;
+  --muted: #a8a8a8;
+  --faint: #6e6e6e;
+  --amber: #fb9514;
+  --amber-bright: #ffc53d;
+  --amber-deep: #f2740c;
+  --green: #51d88a;
+  --red: #ff6b5e;
+  --blue: #6cb6ff;
+  --purple: #c08cff;
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius: 16px;
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  --sidebar-w: 232px;
+  /* unified to Kanit so the whole app reads as one typeface (matches the web,
+     which uses no monospace). tabular-nums on counts keeps numbers tidy. */
+  --mono: "Kanit", "Segoe UI", system-ui, sans-serif;
+  --sans: "Kanit", "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  /* --- design-system foundation (added in the craft-polish pass) ---
+     One spacing rhythm, one elevation ladder, one focus ring, one "ink on amber"
+     so future work reuses tokens instead of re-typing magic values. */
+  --on-amber: #1c1206;                              /* text/icons on amber fills */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px;
+  --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-7: 32px;
+  --elev-1: 0 4px 14px rgba(0, 0, 0, 0.22);         /* resting interactive lift */
+  --elev-2: 0 10px 24px rgba(0, 0, 0, 0.32);        /* hover lift */
+  --elev-modal: 0 24px 60px -12px rgba(0, 0, 0, 0.7);
+  --glow-amber: 0 6px 16px rgba(242, 116, 12, 0.32);
+  --ring-amber: 0 0 0 3px rgba(251, 149, 20, 0.14); /* focus ring */
+}
+
+* {
+  box-sizing: border-box;
+  /* kill the black tap/press flash WebView2 (Chromium) paints over buttons */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* visually hidden but available to assistive tech */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--sans);
+  color: var(--text);
+  /* amber aura over a flat neutral-grey base — mirrors trippleviral
+     .page-wrapper::after (two amber glows: top-right + bottom-left), no magenta. */
+  background:
+    radial-gradient(800px 520px at 82% 12%, rgba(255, 179, 0, 0.11) 0%, transparent 58%),
+    radial-gradient(760px 520px at 10% 88%, rgba(255, 179, 0, 0.085) 0%, transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* micro-grid + center-mask vignette behind the whole app — the signature texture
+   from the trippleviral web app (.page-wrapper::before). z-index:-1 keeps it behind
+   app content but above the body aura; the mask fades it out toward the edges. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0; /* behind .app-shell (which is lifted to z-index:1), above body bg */
+  pointer-events: none;
+  background:
+    radial-gradient(1200px 600px at 75% 20%, rgba(255, 255, 255, 0.03), transparent 60%),
+    radial-gradient(1000px 520px at 15% 85%, rgba(0, 0, 0, 0.3), transparent 60%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: auto, auto, 26px 26px, 26px 26px;
+  opacity: 0.8;
+  mask-image: radial-gradient(1300px 850px at 50% 42%, #000 70%, transparent 100%);
+  -webkit-mask-image: radial-gradient(1300px 850px at 50% 42%, #000 70%, transparent 100%);
+  animation: gridMove 40s linear infinite;
+}
+@keyframes gridMove {
+  0% { background-position: 0 0, 0 0, 0 0, 0 0; }
+  100% { background-position: 0 0, 0 0, 24px 24px, 24px 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; }
+}
+
+/* ============ app shell ============ */
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  z-index: 1; /* lift the whole app above the body::before micro-grid */
+}
+
+/* ============ sidebar ============ */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(28, 28, 28, 0.9), rgba(18, 18, 18, 0.92));
+  border-right: 1px solid var(--line);
+  padding: 16px 12px;
+  backdrop-filter: blur(6px);
+}
+
+.sb-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 6px 8px 16px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.sb-brand img {
+  border-radius: 10px;
+  flex: 0 0 auto;
+}
+
+/* "← back to home" arrow on the brand — shown only inside the AutoTik workspace */
+.sb-back {
+  display: none;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+body[data-section="workspace"] .sb-back {
+  display: inline-flex;
+}
+.sb-back svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.sb-back:hover {
+  background: rgba(251, 149, 20, 0.12);
+  border-color: var(--amber);
+  color: var(--amber-bright);
+}
+
+.sb-brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sb-brand-text strong {
+  font-size: 16px;
+  letter-spacing: 0.2px;
+}
+
+.sb-brand-text span {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- nav ---- */
+.sb-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 14.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s,
+    transform 0.08s ease;
+}
+/* press feedback so nav buttons feel as responsive as the form .btn family */
+.nav-item:active {
+  transform: translateY(0.5px);
+}
+
+.nav-item .nav-ico {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
+}
+
+/* Raster brand logos (Google Flow / SuperGrok / KIE) instead of monochrome SVGs:
+   keep their own colors, fit the 19px box, and don't get dimmed like line icons. */
+.nav-item .nav-ico.nav-logo {
+  object-fit: contain;
+  border-radius: 4px;
+  opacity: 1;
+}
+
+/* The SuperGrok mark is a solid-black logo on transparent — invert it to white
+   so it reads on the dark console sidebar (Grok branding is monochrome anyway). */
+.nav-item .nav-ico.nav-logo-invert {
+  filter: invert(1);
+}
+
+.nav-item:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.nav-item:focus-visible {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 2px rgba(251, 149, 20, 0.25);
+}
+
+.nav-item.active {
+  color: var(--on-amber);
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  /* a calmer resting glow reads as "you are here" rather than a floating button;
+     it intensifies on hover. */
+  box-shadow: 0 3px 10px rgba(242, 116, 12, 0.22);
+}
+.nav-item.active:hover {
+  box-shadow: 0 5px 14px rgba(242, 116, 12, 0.30);
+}
+
+/* dark ring so the focus indicator stays visible on the amber active button */
+.nav-item.active:focus-visible {
+  border-color: transparent;
+  outline: 2.5px solid #1c1206;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(28, 18, 6, 0.45);
+}
+
+.nav-item.active .nav-ico {
+  opacity: 1;
+  stroke-width: 2;
+}
+
+.nav-dot {
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--amber-bright);
+  box-shadow: 0 0 0 3px rgba(251, 149, 20, 0.18);
+}
+
+.nav-item.active .nav-dot {
+  background: #1c1206;
+  box-shadow: none;
+}
+
+.nav-sep {
+  height: 1px;
+  background: var(--line-soft);
+  margin: 9px 6px;
+}
+
+/* ---- collapsible nav groups ---- */
+.nav-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-parent .nav-caret {
+  margin-left: auto;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.7;
+  transition: transform 0.18s ease;
+}
+
+.nav-parent[aria-expanded="true"] .nav-caret {
+  transform: rotate(180deg);
+  opacity: 0.95;
+}
+
+/* a collapsed parent whose child is the active view: subtle amber tint */
+.nav-parent.has-active:not([aria-expanded="true"]) {
+  color: var(--amber-bright);
+  background: rgba(251, 149, 20, 0.08);
+}
+
+.nav-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 4px;
+  padding-left: 20px;
+  position: relative;
+}
+
+.nav-sub[hidden] {
+  display: none;
+}
+
+/* `hidden` attr must beat .nav-item / .nav-group `display:flex` — the UA rule
+   [hidden]{display:none} ties on specificity (0,1,0) and loses the cascade, so
+   give the guard (0,2,0). .nav-child/.nav-parent carry the .nav-item class too. */
+.nav-item[hidden],
+.nav-group[hidden],
+.nav-child[hidden],
+.nav-parent[hidden] {
+  display: none;
+}
+
+/* guide rail down the left of the submenu */
+.nav-sub::before {
+  content: "";
+  position: absolute;
+  left: 17px;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: var(--line);
+}
+
+.nav-child {
+  padding: 8px 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--faint);
+}
+
+.nav-child:hover {
+  color: var(--text);
+}
+
+.nav-child.active {
+  color: #1c1206;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  box-shadow: 0 5px 14px rgba(242, 116, 12, 0.28);
+}
+
+/* ---- bottom-pinned utility nav (ที่เก็บไฟล์ + Settings) ----
+   parked in the bottom-left corner: .sb-nav has flex:1 so this group is pushed
+   down to sit just above the footer. Items reuse the .nav-item cell treatment. */
+.sb-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+}
+
+/* ---- frame every top-level entry as its own grid cell ---- */
+.sb-nav > .nav-group,
+.sb-nav > .nav-item,
+.sb-bottom > .nav-item {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+/* the cell frame lives on the group wrapper; its header button sits flush inside */
+.sb-nav > .nav-group > .nav-parent {
+  border-color: transparent;
+  background: transparent;
+}
+.sb-nav > .nav-group > .nav-parent:hover {
+  background: var(--surface-2);
+}
+
+/* keep the expandable sub-list tucked inside the group cell */
+.sb-nav > .nav-group .nav-sub {
+  margin: 0 6px 6px;
+  padding-left: 18px;
+}
+.sb-nav > .nav-group .nav-sub::before {
+  left: 13px;
+}
+
+/* hover/active read on the whole cell */
+.sb-nav > .nav-item:hover,
+.sb-bottom > .nav-item:hover {
+  background: var(--surface-2);
+}
+/* active standalone tab → amber gradient like the sub-items (Clip 8s). This rule's
+   specificity (0,3,0) beats the .sb-nav > .nav-item card background (0,2,0), so the
+   amber wins instead of being painted over by the dark card fill (which read as black). */
+.sb-nav > .nav-item.active,
+.sb-bottom > .nav-item.active {
+  border-color: transparent;
+  color: var(--on-amber);
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  box-shadow: 0 3px 10px rgba(242, 116, 12, 0.22);
+}
+.sb-nav > .nav-item.active:hover,
+.sb-bottom > .nav-item.active:hover {
+  box-shadow: 0 5px 14px rgba(242, 116, 12, 0.30);
+}
+.sb-nav > .nav-item.active .nav-ico,
+.sb-bottom > .nav-item.active .nav-ico {
+  opacity: 1;
+  stroke-width: 2;
+}
+
+/* a group whose view is currently active gets an amber frame */
+.sb-nav > .nav-group:has(.nav-parent.has-active) {
+  border-color: rgba(251, 149, 20, 0.45);
+}
+
+/* ---- sidebar footer ---- */
+.sb-footer {
+  padding-top: 12px;
+  margin-top: 8px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sb-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.sb-status:hover {
+  border-color: var(--amber);
+}
+
+.sb-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6b6b6b;
+  transition: background 0.2s;
+}
+
+.sb-status[data-on="true"] {
+  color: var(--text);
+  border-color: rgba(251, 149, 20, 0.4);
+}
+
+.sb-status[data-on="true"] .sb-status-dot {
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(81, 216, 138, 0.18);
+}
+
+.sb-version {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* "What's new" reopen link by the version pill — quiet until hovered. */
+.sb-whatsnew {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--amber);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.sb-whatsnew:hover {
+  color: var(--amber-bright);
+  text-decoration: underline;
+}
+.sb-whatsnew[hidden] {
+  display: none;
+}
+
+/* ============ main area ============ */
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100vh;
+}
+
+.main-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(20, 20, 20, 0.55);
+  backdrop-filter: blur(8px);
+  flex: 0 0 auto;
+}
+
+.mh-title h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700; /* the page title must be the heaviest thing on screen */
+  letter-spacing: 0.2px;
+}
+
+.mh-sub {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+.mh-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.pill-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #6b6b6b;
+  transition: background 0.2s;
+}
+
+.pill[data-on="true"] {
+  color: var(--text);
+  border-color: rgba(251, 149, 20, 0.4);
+}
+
+.pill[data-on="true"] .pill-dot {
+  background: var(--amber);
+  box-shadow: 0 0 0 4px rgba(251, 149, 20, 0.16);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(251, 149, 20, 0.16); }
+  50% { box-shadow: 0 0 0 7px rgba(251, 149, 20, 0.05); }
+}
+
+/* ---- Product Showcase: pull-all result (total + full product list) ---- */
+.tt-pull { margin-top: 16px; }
+.tt-pull-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.tt-pull-head strong { font-size: 16px; color: var(--amber-bright); }
+.tt-pull-err { color: var(--red); }
+.tt-ok { color: var(--green); }
+.tt-pull-wrap {
+  max-height: 440px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.tt-pull-table .tt-thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+}
+.tt-pull-table .tt-id {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tt-pull-table .tt-price { white-space: nowrap; color: var(--amber-bright); }
+.tt-pull-table .tt-stock { text-align: center; color: var(--muted); }
+.tt-pull-table .tt-name { max-width: 360px; }
+
+/* ---- body / views ---- */
+.main-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 26px 28px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--amber) 30%, var(--line)) transparent;
+}
+
+/* themed page scrollbar — quieter than the Recent Jobs one so it stays in the back */
+.main-body::-webkit-scrollbar {
+  width: 12px;
+}
+.main-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.main-body::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--amber) 26%, var(--line));
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+.main-body::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--amber) 50%, var(--line));
+  background-clip: padding-box;
+}
+
+.view {
+  display: none;
+  animation: fade-in 0.22s ease;
+}
+
+.view.active {
+  display: block;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Stacked layout: the Configuration & Prompt card sits on top (full width, its inner
+   sections laid out horizontally — see #genForm), with Recent Jobs below it. */
+.gen-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* keep the jobs card a flex column so its grid-wrap can grow/scroll within the card */
+.gen-grid .jobs-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ---- the generate form, laid out horizontally ----
+   The System Prompt block spans the full width on top; the "Setting <provider>" and
+   "Setting TikTok" sections sit side by side as two columns; the submit button + note
+   span full width at the bottom. Pure auto-placement — only the two .form-sec are
+   column-width, everything else spans 1 / -1. */
+#genForm {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+  align-items: stretch;
+}
+#genForm > .field,
+#genForm > #submit,
+#genForm > .form-note {
+  grid-column: 1 / -1;
+}
+/* grid gap owns the spacing — drop the stacked-layout margins on the direct children */
+#genForm > .field,
+#genForm > .form-sec {
+  margin-bottom: 0;
+}
+/* collapse back to a single column when the card gets narrow */
+@media (max-width: 880px) {
+  #genForm {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============ cards ============ */
+.card {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.card + .card {
+  margin-top: 22px;
+}
+
+.card h2 {
+  margin: 0;
+  /* a real card title — normal-case, bold, full-colour, clearly above body
+     (was a tiny uppercase muted eyebrow that read smaller than its own content) */
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ctx-chip {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: #1c1206;
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  padding: 4px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.ctx-chip.soon {
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+/* right cluster in the card head: chips + the Custom Prompt gear */
+.head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* secondary chip (provider label next to the mode chip) */
+.head-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ctx-chip.alt {
+  color: var(--amber-bright);
+  background: rgba(251, 149, 20, 0.1);
+  border: 1px solid rgba(251, 149, 20, 0.3);
+}
+
+/* per-mode helper line under the card head */
+.mode-note {
+  margin: -4px 0 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+.mode-note[hidden] {
+  display: none;
+}
+
+.mode-note.soon {
+  color: var(--amber-bright);
+  background: linear-gradient(180deg, rgba(251, 149, 20, 0.1), rgba(251, 149, 20, 0.03));
+  border: 1px solid rgba(251, 149, 20, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+/* storyboard scene repeater */
+.scenes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.scene-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.scene-n {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--amber-bright);
+  background: rgba(251, 149, 20, 0.12);
+  border-radius: 6px;
+}
+
+.scene-row input {
+  flex: 1;
+}
+
+/* ============ form ============ */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 15px;
+}
+/* the author display:flex above beats the UA [hidden]{display:none}; restore it so
+   field.hidden actually collapses (product picker cart-gate, TikTok account field) */
+.field[hidden] {
+  display: none;
+}
+
+.field-row {
+  display: flex;
+  gap: 14px;
+}
+
+.field.grow {
+  flex: 1;
+}
+
+/* 2-column group for the image/video model · aspect · count controls (2×2) */
+.spec-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 15px;
+}
+.spec-grid .field {
+  margin-bottom: 0;
+  min-width: 0; /* let long option text shrink instead of overflowing the cell */
+}
+/* Delivery selector (เลือกวิธีลงคลิป) + its schedule field (เวลาที่จะโพสต์) form one
+   full-width sub-row so they always pair on their own row — selector left, date/time
+   right — instead of splitting across rows when the preceding cell count is odd. */
+.spec-grid .post-mode-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+/* No-text mode toggle (Google Flow) — full-width row at the foot of the spec grid,
+   reusing the TikTok switch look. */
+.spec-grid .notext-row {
+  grid-column: 1 / -1;
+}
+.spec-grid .notext-row .notext-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 2px 0 0;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+}
+.spec-grid .notext-row .notext-toggle:hover {
+  border-color: var(--line-strong, var(--line));
+}
+.spec-grid .notext-row .tk-row-label {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Loop "สินค้า & Banner" card — product picker + banner overlay with a live 9:16 preview.
+   [[flow-loop-mode]] */
+.banner-sep {
+  height: 1px;
+  background: var(--line);
+  margin: 14px 0 2px;
+}
+.banner-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.banner-body {
+  margin-top: 12px;
+  animation: fade-in var(--duration-fast, 150ms) ease-out;
+}
+.banner-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.banner-preview-col {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.banner-preview {
+  position: relative;
+  width: 152px;
+  aspect-ratio: 9 / 16;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong, var(--line));
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(251, 149, 20, 0.12), transparent 60%),
+    linear-gradient(160deg, #1a1c22, #0f1015);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  touch-action: none;
+}
+.banner-preview-tag {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  color: rgba(255, 255, 255, 0.38);
+  pointer-events: none;
+}
+/* The wrapper IS the banner box (position/size/opacity set in JS); the img fills it and the
+   resize handle tracks its bottom-right corner. */
+.banner-preview-item {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  user-select: none;
+  line-height: 0;
+  touch-action: none;
+}
+.banner-preview-item:active {
+  cursor: grabbing;
+}
+.banner-preview-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+.banner-resize-handle {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent, #fb9514);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.banner-preview-cap {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+.banner-controls {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+.banner-upload {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.banner-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.banner-shape-field {
+  grid-column: 1 / -1;
+}
+.btn-soft {
+  background: rgba(251, 149, 20, 0.12);
+  border: 1px solid rgba(251, 149, 20, 0.4);
+  color: var(--accent, #fb9514);
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--duration-fast, 150ms) ease;
+}
+.btn-soft:hover {
+  background: rgba(251, 149, 20, 0.2);
+}
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  border-radius: 9px;
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.btn-ghost:hover {
+  border-color: var(--line-strong, var(--line));
+  color: var(--text);
+}
+
+label,
+.field-label {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.opt {
+  color: var(--faint);
+  font-weight: 400;
+}
+
+.field-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+/* ============ form sections (Setting <provider> / Setting TikTok) ============ */
+.form-sec {
+  margin-bottom: 18px;
+  padding: 15px 15px 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+/* TikTok not connected → the card is hidden (JS sets [hidden]); the lone provider
+   section then spans both columns instead of leaving an empty one. */
+#genForm:has(#tiktokSection[hidden]) > .form-sec {
+  grid-column: 1 / -1;
+}
+
+.form-sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.form-sec-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--amber-bright);
+}
+
+.form-sec-tag {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  padding: 2px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* the publish half gets a faint amber edge so it reads apart from the engine section */
+#tiktokSection {
+  border-color: color-mix(in srgb, var(--amber) 24%, var(--line));
+}
+
+/* "สร้างภาพและคลิปอย่างเดียว" (เลือกวิธีลงคลิป) → dim + disable the PUBLISH-ONLY controls
+   (post toggles + the account dropdown). They stay visible but inert. The product picker is
+   deliberately LEFT ALONE: the chosen product also feeds GENERATION (its cover → productImage
+   reference, its name → the flow-clip8 AI script, and it drives the "หลายสินค้า" fan-out), so
+   it must stay usable when only posting is skipped. (Dimming the whole .form-sec via opacity
+   would cascade to the picker and can't be undone on a child — so target the children.) */
+.form-sec.sec-disabled .tk-settings,
+.form-sec.sec-disabled #tiktokAccountField {
+  opacity: 0.45;
+  pointer-events: none;
+  filter: saturate(0.6);
+}
+
+/* ---- "Setting TikTok" toggle group ---- */
+.tk-settings {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 14px;
+}
+
+.tk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 2px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tk-row-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* master row: a divider beneath sets the "toggle all" switch apart from the rest */
+.tk-master {
+  padding-bottom: 11px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.tk-master .tk-row-label {
+  letter-spacing: 0.3px;
+  color: var(--amber-bright);
+}
+
+.tk-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* master off → hide the inner toggles entirely; only the master switch stays. */
+.tk-settings.tk-off .tk-list {
+  display: none;
+}
+/* with the list gone, drop the master's divider so it doesn't dangle */
+.tk-settings.tk-off .tk-master {
+  border-bottom-color: transparent;
+  margin-bottom: 0;
+  padding-bottom: 9px;
+}
+
+/* the switch itself (iOS-style, amber when on) */
+.tk-switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 23px;
+}
+.tk-switch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.tk-track {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  transition: background 0.18s, border-color 0.18s;
+}
+.tk-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--faint);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), background 0.18s;
+}
+.tk-switch input:checked ~ .tk-track {
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  border-color: transparent;
+}
+.tk-switch input:checked ~ .tk-track .tk-thumb {
+  transform: translateX(17px);
+  background: #1c1206;
+}
+.tk-switch input:focus-visible ~ .tk-track {
+  box-shadow: 0 0 0 2px rgba(251, 149, 20, 0.35);
+}
+
+/* Disclose → Your brand / Branded content sub-options (revealed when ticked).
+   Indented under "Disclose post content" with a soft amber rail; each option is a
+   selectable card. */
+.tk-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 9px 14px;
+  padding-left: 12px;
+  border-left: 2px solid color-mix(in srgb, var(--amber) 35%, transparent);
+}
+/* display:flex above beats UA [hidden]{display:none}; restore it so Your brand /
+   Branded content only show when "Disclose post content" is on */
+.tk-sub[hidden] {
+  display: none;
+}
+.tk-opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.tk-opt:hover {
+  border-color: color-mix(in srgb, var(--amber) 50%, var(--line));
+}
+.tk-opt:has(input:checked) {
+  border-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 10%, var(--surface));
+}
+.tk-opt:has(input:focus-visible) {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+/* hide the native box; the label still toggles it on click */
+.tk-opt input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+}
+.tk-opt-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+.tk-opt-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: color 0.15s ease;
+}
+.tk-opt:has(input:checked) .tk-opt-name {
+  color: var(--text);
+}
+.tk-opt-desc {
+  font-size: 12px;
+  color: var(--faint);
+  line-height: 1.35;
+}
+/* check pip — a soft CIRCLE (not a boxy square): a thin ring when empty, an amber disc
+   with a crisp SVG tick that pops in when on */
+.tk-opt-check {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: transparent;
+  display: grid;
+  place-items: center;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.tk-opt-check svg {
+  width: 13px;
+  height: 13px;
+  stroke: #1c1206;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.13s ease, transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.tk-opt:has(input:checked) .tk-opt-check {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  box-shadow: 0 2px 9px color-mix(in srgb, var(--amber) 38%, transparent);
+}
+.tk-opt:has(input:checked) .tk-opt-check svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Per-mode System Prompt: a standing prompt reused for every job (no per-job box).
+   The amber left rule + tag signal "this is persistent", not an ephemeral input. */
+.sp-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.sp-save {
+  color: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--line));
+}
+
+/* Custom Prompt gear — top-right of the "Configuration & Prompt" card head. Opens the
+   per-mode System Prompt editor; the amber corner badge shows how many fields are
+   overridden from the factory defaults. */
+.sp-gear {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--line));
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.25s ease;
+}
+.sp-gear:hover {
+  border-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 16%, var(--surface));
+}
+.sp-gear:hover .sp-gear-ico {
+  transform: rotate(60deg);
+}
+.sp-gear-ico {
+  width: 19px;
+  height: 19px;
+  transition: transform 0.3s var(--ease-out, ease);
+}
+
+input,
+textarea,
+select {
+  font-family: var(--sans);
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px;
+  width: 100%;
+  resize: vertical;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(251, 149, 20, 0.12);
+}
+
+/* native <select> → shadcn-style: a custom chevron with breathing room from the
+   edge (not the default arrow jammed at the border) + a dark option list, so the
+   open menu matches the theme instead of the OS-default grey/white. */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 38px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a8a8a8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  cursor: pointer;
+  accent-color: var(--amber);
+}
+select:hover {
+  border-color: color-mix(in srgb, var(--amber) 35%, var(--line));
+}
+/* open dropdown list — dark surface + amber highlight on the chosen option
+   (Chromium/WebView2 honors option colours for the native popup) */
+select option {
+  background-color: var(--surface-2);
+  color: var(--text);
+}
+select option:checked {
+  background-color: color-mix(in srgb, var(--amber) 24%, var(--surface-2));
+  color: var(--amber-bright);
+}
+
+/* ============ custom dropdown (.cs) ============
+   Replaces the native <select> popup with a dark rounded popover matching the
+   trippleviral web. The real <select> stays in the DOM (.cs-native, hidden) so
+   app.js value/change logic is untouched. Driven by custom-select.js. */
+.cs {
+  position: relative;
+  width: 100%;
+}
+.cs-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.cs-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 13px;
+  font-family: var(--sans);
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.cs-trigger:hover {
+  border-color: color-mix(in srgb, var(--amber) 35%, var(--line));
+}
+.cs.is-open .cs-trigger,
+.cs-trigger:focus-visible {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(251, 149, 20, 0.12);
+}
+.cs-trigger-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cs.is-empty .cs-trigger-label {
+  color: var(--muted);
+}
+.cs-chevron {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  transition: transform 0.18s ease, color 0.15s ease;
+}
+.cs-chevron svg {
+  width: 14px;
+  height: 14px;
+}
+.cs.is-open .cs-chevron {
+  transform: rotate(180deg);
+  color: var(--amber-bright);
+}
+.cs.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* the floating popover — appended to <body>, positioned by JS (fixed) so overflow
+   containers can't clip it */
+.cs-panel {
+  position: fixed;
+  z-index: 1200;
+  min-width: 160px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elev-modal);
+  animation: cs-pop 0.13s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes cs-pop {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.cs-panel::-webkit-scrollbar {
+  width: 9px;
+}
+.cs-panel::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--amber) 30%, var(--line));
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+.cs-group {
+  padding: 8px 10px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--faint);
+}
+.cs-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 11px;
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.cs-opt:hover {
+  background: color-mix(in srgb, var(--amber) 14%, var(--surface-2));
+}
+.cs-opt.is-selected {
+  color: var(--amber-bright);
+  background: color-mix(in srgb, var(--amber) 16%, var(--surface-2));
+  font-weight: 600;
+}
+.cs-opt.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ============ custom date/time picker (.dtp) ============
+   Replaces the native <input type="datetime-local"> popup (un-styleable white OS chrome)
+   with a dark amber calendar matching the theme. The real input stays in the DOM
+   (visually hidden, .dtp-native) as the value source — see datetime-picker.js. */
+.dtp {
+  position: relative;
+  width: 100%;
+}
+.dtp-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  opacity: 0;
+  pointer-events: none;
+}
+/* the whole field is the trigger — large hit target, prominent calendar icon */
+.dtp-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 13px;
+  font-family: var(--sans);
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.dtp-trigger:hover {
+  border-color: color-mix(in srgb, var(--amber) 38%, var(--line));
+}
+.dtp.is-open .dtp-trigger,
+.dtp-trigger:focus-visible {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(251, 149, 20, 0.12);
+}
+.dtp-ico {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: #1c1206;
+  background: linear-gradient(155deg, var(--amber-bright), var(--amber-deep));
+  box-shadow: 0 2px 8px rgba(251, 149, 20, 0.28);
+}
+.dtp-ico svg {
+  width: 17px;
+  height: 17px;
+}
+.dtp-trigger-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.dtp.is-empty .dtp-trigger-label {
+  color: var(--muted);
+}
+.dtp-chevron {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  transition: transform 0.18s ease, color 0.15s ease;
+}
+.dtp-chevron svg {
+  width: 14px;
+  height: 14px;
+}
+.dtp.is-open .dtp-chevron {
+  transform: rotate(180deg);
+  color: var(--amber-bright);
+}
+
+/* the floating popover — body-appended, JS-positioned (fixed) so the form scroller
+   can't clip it */
+.dtp-panel {
+  position: fixed;
+  z-index: 1200;
+  width: 268px;
+  padding: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elev-modal);
+  animation: cs-pop 0.13s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dtp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.dtp-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--amber-bright);
+  letter-spacing: 0.2px;
+}
+.dtp-nav {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--muted);
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: border-color 0.13s, color 0.13s, background 0.13s;
+}
+.dtp-nav:hover {
+  color: var(--amber-bright);
+  border-color: color-mix(in srgb, var(--amber) 40%, var(--line));
+}
+.dtp-nav svg {
+  width: 15px;
+  height: 15px;
+}
+.dtp-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 2px;
+}
+.dtp-weekdays span {
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--faint);
+  padding: 1px 0;
+}
+.dtp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.dtp-day {
+  height: 28px;
+  display: grid;
+  place-items: center;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+}
+.dtp-day:hover {
+  background: color-mix(in srgb, var(--amber) 16%, var(--surface-2));
+}
+.dtp-day.dtp-out {
+  color: var(--faint);
+  opacity: 0.6;
+}
+/* past days can't be scheduled on TikTok — dim + block */
+.dtp-day:disabled,
+.dtp-day.dtp-past {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
+.dtp-day.dtp-past:hover {
+  background: transparent;
+}
+.dtp-day.dtp-today {
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--line));
+}
+.dtp-day.dtp-sel {
+  color: #1c1206;
+  font-weight: 700;
+  background: linear-gradient(155deg, var(--amber-bright), var(--amber-deep));
+  border-color: transparent;
+}
+.dtp-day.dtp-sel:hover {
+  background: linear-gradient(155deg, var(--amber-bright), var(--amber-deep));
+}
+
+/* time row: ▲ / number / ▼ spinners for hour + minute */
+.dtp-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+}
+.dtp-time-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-right: auto;
+}
+.dtp-spin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.dtp-step {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 16px;
+  color: var(--muted);
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+.dtp-step:hover {
+  color: var(--amber-bright);
+  border-color: color-mix(in srgb, var(--amber) 40%, var(--line));
+}
+/* a step arrow that would move the time into the past is greyed + inert (option A boundary) */
+.dtp-step:disabled,
+.dtp-step.is-disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.dtp-step svg {
+  width: 13px;
+  height: 13px;
+}
+.dtp-num {
+  width: 40px;
+  padding: 4px 0;
+  text-align: center;
+  font-size: 15.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+.dtp-num:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(251, 149, 20, 0.12);
+}
+.dtp-colon {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.dtp-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+}
+.dtp-actions-sp {
+  flex: 1;
+}
+.dtp-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  padding: 7px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.dtp-link:hover {
+  color: var(--amber-bright);
+  background: color-mix(in srgb, var(--amber) 12%, transparent);
+}
+.dtp-ok {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1c1206;
+  background: linear-gradient(155deg, var(--amber-bright), var(--amber-deep));
+  border: 0;
+  padding: 8px 16px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: filter 0.12s, transform 0.06s;
+}
+.dtp-ok:hover {
+  filter: brightness(1.06);
+}
+.dtp-ok:active {
+  transform: translateY(1px);
+}
+
+/* ============ batch schedule interval ("ระยะห่างเวลาต่อโพสต์") ============
+   The interval is set ONLY via the popup (scheduleGapDialog). Once a time is picked we
+   write a one-line note in the "เวลาที่จะโพสต์" area stating the gap; tapping it re-opens
+   the popup. Styled as flat text (not a chip/button). */
+.sched-gap-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 2px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--amber-bright);
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.sched-gap-note[hidden] {
+  display: none;
+}
+.sgn-text {
+  flex: 1;
+  min-width: 0;
+}
+.sgn-edit {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.sched-gap-note:hover .sgn-edit {
+  color: var(--amber-bright);
+}
+
+/* ---- interval popup (scheduleGapDialog): +5-step minute picker ---- */
+/* two classes so this width beats the generic `.modal { width: min(420px) }` defined
+   later in the file (equal specificity → later rule would otherwise win) */
+.modal.sg-dialog {
+  width: min(340px, 92vw);
+}
+.sg-stepper {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin: 6px 0 12px;
+}
+.sg-step {
+  flex: none;
+  width: 48px;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--amber-bright);
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.13s, background 0.13s;
+}
+.sg-step:hover {
+  border-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 12%, var(--surface-inset));
+}
+.sg-val {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+.sg-val input {
+  width: 72px;
+  padding: 0;
+  text-align: right;
+  font-size: 27px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+}
+.sg-val input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.sg-unit {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.sg-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.sg-chip {
+  width: auto;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.sg-chip:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--amber) 35%, var(--line));
+}
+.sg-chip.is-on {
+  color: #1c1206;
+  background: linear-gradient(155deg, var(--amber-bright), var(--amber-deep));
+  border-color: transparent;
+}
+.sg-preview {
+  margin: 0 0 4px;
+  font-size: 12.5px;
+  color: var(--amber-bright);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* Product picker (the `productId` field): a "เลือกสินค้า" trigger button that opens a
+   popup. The trigger shows the current pick (cover + name), a count in batch mode, or a
+   placeholder. The popup itself is styled under ".product-modal" further down. */
+.product-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+
+/* Publish account locked to a pinned product's source account
+   ([[publish-account-must-match-product-source]]). */
+.tt-lock-note {
+  color: var(--muted);
+}
+.tt-lock-note.tt-lock-warn {
+  color: var(--red);
+}
+#tiktokAccountField select:disabled {
+  opacity: 0.85;
+  cursor: not-allowed;
+}
+
+.picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.product-pick-trigger {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface); /* flat surface — cleaner than the old double gradient */
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease,
+    box-shadow 0.15s ease;
+}
+.product-pick-trigger:hover {
+  border-color: color-mix(in srgb, var(--amber) 50%, var(--line));
+  background: color-mix(in srgb, var(--amber) 5%, var(--surface));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+.product-pick-trigger:active {
+  transform: translateY(0);
+}
+.product-pick-trigger:focus-visible {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(251, 149, 20, 0.14);
+}
+/* a chosen product = solid amber-tinted border */
+.product-pick-trigger:not(:has(.pp-trigger-ph)) {
+  border-color: color-mix(in srgb, var(--amber) 40%, var(--line));
+}
+/* empty = a clear "add product" slot: dashed amber rail + soft amber wash; on hover
+   it firms up to a solid amber border so it reads as an inviting call-to-action */
+.product-pick-trigger:has(.pp-trigger-ph) {
+  border-style: dashed;
+  border-width: 1.5px;
+  border-color: color-mix(in srgb, var(--amber) 42%, var(--line));
+  background: color-mix(in srgb, var(--amber) 5%, var(--surface));
+}
+.product-pick-trigger:has(.pp-trigger-ph):hover {
+  border-style: solid;
+  border-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 9%, var(--surface));
+}
+/* the + add tile uses a lighter amber wash (distinct from the filled bag tile) */
+.pp-trigger-ico-add {
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber));
+}
+
+.pp-trigger-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+/* amber lead tile (empty / multi) — same lockup as the popup header chip */
+.pp-trigger-ico {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--amber) 22%, transparent);
+}
+.pp-trigger-thumb {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--surface-well);
+  border: 1px solid var(--line-soft);
+}
+.pp-trigger-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pp-trigger-title {
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pp-trigger-title.pp-trigger-ph {
+  font-weight: 600;
+  color: var(--muted);
+}
+.pp-trigger-desc {
+  font-size: 12.5px;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* minimal chevron on the right — no boxy border, just a quiet glyph */
+.pp-trigger-caret {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: var(--faint);
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+.product-pick-trigger:hover .pp-trigger-caret {
+  color: var(--amber-bright);
+  transform: translateY(1px);
+}
+
+/* "ล้างสินค้า" / Product Showcase "รีเซ็ต" — destructive, so they warm to red on
+   hover (like the Recent Jobs Clear) */
+.btn.picker-clear:hover,
+.btn.tt-reset:hover {
+  color: var(--red);
+  border-color: rgba(255, 107, 94, 0.5);
+  background: rgba(255, 107, 94, 0.08);
+}
+
+/* Product Showcase "Sync สินค้า" row + button (choose which providers get the catalog) */
+.tt-sync-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+/* `display: flex` above outranks the UA `[hidden] { display: none }` (equal specificity,
+   author wins), so the hidden attribute alone wouldn't hide the row — restore it. */
+.tt-sync-row[hidden] {
+  display: none;
+}
+.tt-sync-state {
+  font-size: 13px;
+  font-family: var(--mono);
+}
+.btn.tt-sync-btn {
+  padding: 9px 16px;
+  font-size: 14px;
+  color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--line));
+}
+.btn.tt-sync-btn:hover {
+  border-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 18%, var(--surface));
+}
+
+/* Sync dialog — provider cards */
+.sync-modal {
+  width: min(460px, 100%);
+}
+.sync-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  margin-bottom: 16px;
+}
+.sync-head-ico {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--amber) 38%, transparent);
+}
+.sync-head-text {
+  min-width: 0;
+}
+.sync-modal .modal-title {
+  margin: 1px 0 4px;
+}
+.sync-sub {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.sync-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0;
+}
+.sync-opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease,
+    transform 0.1s ease, box-shadow 0.15s ease;
+}
+.sync-opt:hover {
+  border-color: color-mix(in srgb, var(--amber) 55%, var(--line));
+  transform: translateY(-1px);
+}
+.sync-opt:active {
+  transform: translateY(0);
+}
+/* hide native box; the label still toggles it on click */
+.sync-opt input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+}
+.sync-opt:has(input:checked) {
+  border-color: var(--amber);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--amber) 16%, var(--surface-2)),
+    color-mix(in srgb, var(--amber) 7%, var(--surface))
+  );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber) 35%, transparent);
+}
+.sync-opt:has(input:focus-visible) {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+.sync-opt-logo {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: var(--surface-well);
+  border: 1px solid var(--line-soft);
+}
+.sync-opt-logo img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+.sync-opt-logo img.invert {
+  filter: invert(1);
+}
+
+.sync-opt-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.sync-opt-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.sync-opt-sub {
+  font-size: 12.5px;
+  color: var(--faint);
+  font-family: var(--mono);
+}
+
+/* custom check pip on the right */
+.sync-check {
+  margin-left: auto;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  display: grid;
+  place-items: center;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.sync-check::after {
+  content: "";
+  width: 10px;
+  height: 6px;
+  margin-top: -2px;
+  border-left: 2px solid #1a1206;
+  border-bottom: 2px solid #1a1206;
+  transform: rotate(-45deg) scale(0);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.sync-opt:has(input:checked) .sync-check {
+  border-color: var(--amber);
+  background: var(--amber);
+}
+.sync-opt:has(input:checked) .sync-check::after {
+  transform: rotate(-45deg) scale(1);
+}
+
+/* ---- Product picker popup (".product-modal") ---- */
+/* .modal.product-modal (not just .product-modal) so this width beats the generic
+   `.modal { width: min(420px) }` rule that's defined later in the file */
+.modal.product-modal {
+  width: min(640px, 100%);
+  display: flex;
+  flex-direction: column;
+  max-height: min(720px, 90vh);
+}
+
+.pp-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--bg-2);
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.pp-search:focus-within {
+  border-color: var(--amber);
+  color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(251, 149, 20, 0.12);
+}
+.pp-search input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 11px 0;
+  color: var(--text);
+  font: inherit;
+  font-size: 14.5px;
+  outline: none;
+}
+
+/* control strip: "เลือก N / total" (left) + select-all/clear (right) over a divider */
+.pp-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 11px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.pp-batch-tools {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-left: auto;
+}
+.pp-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--amber);
+  cursor: pointer;
+}
+.pp-link:hover {
+  color: var(--amber-bright);
+  text-decoration: underline;
+}
+.pp-sep {
+  color: var(--line);
+}
+.pp-count {
+  font-size: 13px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+/* the two compact used/unused filters ("ซ่อนที่เคยสร้าง" + "เฉพาะที่สร้างแล้ว")
+   sit side by side above the list, wrapping to a second line on narrow widths. */
+.pp-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  margin: -3px 0 11px;
+}
+/* "ซ่อนสินค้าที่เคยสร้างแล้ว" / "เฉพาะสินค้าที่สร้างแล้ว" — compact filters above the list */
+.pp-hideused {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: -3px 0 11px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+/* inside the filter row the container owns the spacing */
+.pp-filters .pp-hideused {
+  margin: 0;
+}
+.pp-hideused:hover {
+  color: var(--text);
+}
+/* match the product-card pick control (.pp-check): a white-ring circle that
+   fills solid amber when on, with the same -45deg tick that scales in. */
+.pp-hideused input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  background: rgba(10, 7, 3, 0.4);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.13s ease, border-color 0.13s ease;
+}
+.pp-hideused input::after {
+  content: "";
+  width: 9px;
+  height: 5px;
+  margin-top: -2px;
+  border-left: 2px solid #1a1206;
+  border-bottom: 2px solid #1a1206;
+  transform: rotate(-45deg) scale(0);
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pp-hideused:hover input {
+  border-color: var(--amber);
+}
+.pp-hideused input:checked {
+  border-color: var(--amber);
+  background: var(--amber);
+}
+.pp-hideused input:checked::after {
+  transform: rotate(-45deg) scale(1);
+}
+.pp-hideused input:checked ~ span {
+  color: var(--text);
+}
+
+/* product list = a responsive card grid (cover-on-top tiles), not a vertical list */
+.pp-list {
+  flex: 1;
+  min-height: 160px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  /* size each row to its card's content. Without this, the implicit `auto` rows
+     collapse to ~0 once the list overflows: `.pp-row` has overflow:hidden, which
+     zeroes its automatic minimum size, so the grid flattens the cards into thin
+     lines. max-content keeps every card its full height and lets the list scroll. */
+  grid-auto-rows: max-content;
+  gap: 12px;
+  align-content: start;
+  padding: 2px 8px 6px 2px;
+  margin: 0 -4px 0 -2px;
+  /* drag-to-paint selection: stop the drag from selecting card text/images */
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* while a paint-drag is in progress, show the grabbing cursor over every card */
+.pp-list.painting,
+.pp-list.painting .pp-row {
+  cursor: grabbing;
+}
+/* thin, branded scrollbar (Chromium/WebView2) */
+.pp-list::-webkit-scrollbar {
+  width: 9px;
+}
+.pp-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.pp-list::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--amber) 32%, var(--line));
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+.pp-list::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--amber) 55%, var(--line));
+  background-clip: padding-box;
+}
+.pp-empty {
+  grid-column: 1 / -1;
+  margin: auto;
+  padding: 34px 14px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--faint);
+}
+
+/* a product card: cover fills the top (controls float over it), name + price below */
+.pp-row {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.14s ease, transform 0.1s ease, box-shadow 0.16s ease;
+}
+.pp-row:hover {
+  border-color: color-mix(in srgb, var(--amber) 50%, var(--line));
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
+}
+.pp-row:active {
+  transform: translateY(0);
+}
+.pp-row.selected {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 1px var(--amber),
+    0 10px 24px color-mix(in srgb, var(--amber) 20%, transparent);
+}
+
+/* cover area — square, fills the card width; the badge/pip/รูป controls float over it.
+   `min-height` is a hard fallback so the cover can never collapse to a thin line if
+   aspect-ratio can't resolve yet (e.g. before a remote image reports its size). */
+.pp-media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  min-height: 130px;
+  background: var(--surface-well);
+  overflow: hidden;
+}
+/* the cover image is absolutely positioned to fill the box, so its (lazy/remote) load
+   state never feeds back into the card's height — the box owns the size, not the img */
+.pp-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.22s ease;
+}
+.pp-row:hover .pp-thumb {
+  transform: scale(1.05);
+}
+.pp-thumb-blank {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 40px;
+}
+
+.pp-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px 11px 11px;
+}
+.pp-row-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.32;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pp-row-sub {
+  font-size: 13.5px;
+  color: var(--amber);
+  font-weight: 700;
+  font-family: var(--mono);
+}
+/* "เคยสร้างแล้ว" badge — floats top-left over the cover; solid enough to read on any image */
+.pp-used-tag {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font, inherit);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: #eafff4;
+  background: color-mix(in srgb, #1f9b57 82%, transparent);
+  border: 1px solid color-mix(in srgb, #4ee894 45%, transparent);
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  backdrop-filter: blur(2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+/* an already-generated card is gently de-emphasised (still selectable for reuse) */
+.pp-row.is-used:not(.selected) {
+  opacity: 0.85;
+}
+.pp-row.is-used .pp-thumb {
+  filter: saturate(0.85) brightness(0.9);
+}
+/* select pip — floats top-right over the cover */
+.pp-check {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  background: rgba(10, 7, 3, 0.4);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  transition: border-color 0.13s ease, background 0.13s ease;
+}
+.pp-check::after {
+  content: "";
+  width: 9px;
+  height: 5px;
+  margin-top: -2px;
+  border-left: 2px solid #1a1206;
+  border-bottom: 2px solid #1a1206;
+  transform: rotate(-45deg) scale(0);
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pp-row:hover .pp-check {
+  border-color: var(--amber);
+}
+.pp-row.selected .pp-check {
+  border-color: var(--amber);
+  background: var(--amber);
+}
+.pp-row.selected .pp-check::after {
+  transform: rotate(-45deg) scale(1);
+}
+
+.product-modal .modal-actions {
+  margin-top: 15px;
+}
+
+/* ---- Image lightbox (product cover preview, layered above the picker) ---- */
+.img-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1100; /* above .modal-overlay (1000) */
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: rgba(8, 5, 2, 0.82);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  cursor: zoom-out;
+}
+.img-lightbox.open {
+  opacity: 1;
+}
+.img-lightbox-fig {
+  margin: 0;
+  max-width: min(680px, 92vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  transform: scale(0.96);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.img-lightbox.open .img-lightbox-fig {
+  transform: none;
+}
+.img-lightbox-fig img {
+  max-width: 100%;
+  max-height: 78vh;
+  object-fit: contain;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  background: var(--surface-well);
+}
+.img-lightbox-fig figcaption {
+  max-width: 90%;
+  text-align: center;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+.img-lightbox-close {
+  position: fixed;
+  top: 20px;
+  right: 22px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 17px;
+  cursor: pointer;
+  transition: background 0.13s ease, border-color 0.13s ease;
+}
+.img-lightbox-close:hover {
+  background: var(--surface-2);
+  border-color: var(--amber);
+}
+
+input:disabled,
+textarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.segmented {
+  display: inline-flex;
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 3px;
+}
+
+.segmented.locked {
+  opacity: 0.7;
+}
+
+.seg {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.segmented.locked .seg {
+  cursor: not-allowed;
+}
+
+.seg.active {
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  color: #1c1206;
+  box-shadow: 0 3px 10px rgba(242, 116, 12, 0.3);
+}
+
+.check-row {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.check input {
+  width: auto;
+  accent-color: var(--amber);
+}
+
+/* image-only / image→video switch row */
+.media-switch-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 12px;
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.media-switch-row .ms-opt {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--faint);
+  transition: color 0.15s;
+}
+
+/* highlight the side the switch currently points at */
+.media-switch-row:has(#mediaFlow:not(:checked)) .ms-opt[data-for="image"],
+.media-switch-row:has(#mediaFlow:checked) .ms-opt[data-for="image_video"] {
+  color: var(--amber-bright);
+}
+
+/* ============ buttons ============ */
+.btn {
+  font-family: var(--sans);
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  transition: transform 0.08s, filter 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn.primary {
+  width: 100%;
+  padding: 13px;
+  font-size: 15.5px;
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  color: #1c1206;
+  box-shadow: 0 8px 22px rgba(242, 116, 12, 0.28);
+}
+
+.btn.primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.btn.primary:disabled {
+  background: var(--surface-2);
+  color: var(--faint);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn.ghost {
+  padding: 8px 14px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+.btn.ghost:hover:not(:disabled) {
+  border-color: var(--amber);
+}
+
+.btn.ghost:disabled {
+  color: var(--faint);
+  cursor: not-allowed;
+}
+
+/* History view → back to the page that opened it (inline-flex so the ‹ glyph
+   centers; sits on its own line above the Pipeline card) */
+.history-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.btn.tiny {
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  background: transparent;
+  border-color: var(--line);
+}
+
+.btn.tiny:hover {
+  border-color: var(--amber);
+}
+
+.btn.danger {
+  color: #2a0d0a;
+  background: linear-gradient(135deg, #ff9a8f, var(--red));
+  border-color: transparent;
+}
+.btn.danger:hover:not(:disabled) { filter: brightness(1.05); }
+
+/* ---- in-app modal dialogs (themed confirm/alert) ---- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  /* Pin the centering track to ONE viewport-wide column. Without this the implicit
+     `auto` track sizes to the dialog content's max-content — a long, unwrapped
+     failure prompt (`.fail-item-prompt` is white-space:nowrap) blew it to ~12000px,
+     and place-items:center then parked the dialog thousands of px off-screen, so
+     only the dim/blur showed ("กดดูสาเหตุ → เบลอราง ๆ ไม่มีกล่อง"). minmax(0,1fr)
+     can't be stretched by content; the dialog's own overflow handles long text. */
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  padding: 24px;
+  background: rgba(10, 7, 3, 0.55);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.modal-overlay.open { opacity: 1; }
+
+.modal {
+  width: min(420px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px 22px 18px;
+  transform: translateY(8px) scale(0.98);
+  transition: transform 0.15s ease;
+}
+.modal-overlay.open .modal { transform: none; }
+
+.modal-title {
+  margin: 0 0 9px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+.modal-body {
+  margin: 0 0 18px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--muted);
+  white-space: pre-line; /* honour \n in the message */
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+/* modal buttons are auto-width (override .btn.primary's full width) */
+.modal-actions .btn {
+  width: auto;
+  padding: 9px 18px;
+  font-size: 14px;
+  box-shadow: none;
+}
+
+/* ---- "What's new" changelog popup (renderWhatsNew) ----
+   Shown once after an update lands (post-login, in the workspace) and reopenable
+   from the version-pill link. Sits above other overlays. */
+.modal-overlay.whats-new {
+  z-index: 1200;
+}
+/* an alert (e.g. the datetime picker's past-time warning) must sit ABOVE the picker panel
+   (z-1200) — otherwise it renders behind it and is invisible. */
+.modal-overlay.alert-modal {
+  z-index: 1300;
+}
+.modal.wn-card {
+  width: min(470px, 100%);
+  padding: 22px 22px 18px;
+}
+.wn-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 16px;
+}
+/* The AutoTik brand logo already carries the amber gradient + rounded corners,
+   so it's shown FLAT — no gradient box, glow, or shadow behind it (operator asked to
+   remove the layered circle/halo). */
+.wn-logo {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  display: block;
+}
+.wn-head-text {
+  min-width: 0;
+}
+.wn-head .modal-title {
+  margin: 0;
+}
+.wn-ver {
+  margin: 2px 0 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.wn-body {
+  margin: 0 0 18px;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  padding-right: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.wn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.wn-cat {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+.wn-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.wn-list li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.wn-list li::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+}
+.wn-body::-webkit-scrollbar {
+  width: 8px;
+}
+.wn-body::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+.wn-body::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+/* ---- multi-choice dialog (Clear → เลือกลบเฉพาะแถว / ลบทั้งหมด) ----
+   Icon header + selectable option cards + a full-width cancel. */
+.choice-modal {
+  width: min(450px, 100%);
+}
+.choice-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  margin-bottom: 17px;
+}
+.choice-head-ico {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--amber) 38%, transparent);
+}
+.choice-head-ico svg { width: 23px; height: 23px; display: block; }
+.choice-head-text { min-width: 0; padding-top: 1px; }
+.choice-modal .modal-title { margin: 0 0 5px; }
+.choice-sub {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  white-space: pre-line;
+}
+
+.choice-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-bottom: 13px;
+}
+/* author display:flex beats the UA [hidden] rule — restate it */
+.choice-opts[hidden] {
+  display: none;
+}
+.choice-opt {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease,
+    box-shadow 0.16s ease;
+}
+.choice-opt:hover {
+  border-color: color-mix(in srgb, var(--amber) 55%, var(--line));
+  transform: translateY(-1px);
+  box-shadow: 0 9px 22px rgba(0, 0, 0, 0.3);
+}
+.choice-opt:active { transform: translateY(0); }
+.choice-opt:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.choice-opt-ico {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  color: var(--amber-bright);
+  background: color-mix(in srgb, var(--amber) 14%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--amber) 30%, var(--line));
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.choice-opt-ico svg { width: 20px; height: 20px; display: block; }
+.choice-opt-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.choice-opt-name { font-size: 15px; font-weight: 700; }
+.choice-opt-sub { font-size: 12.5px; color: var(--faint); line-height: 1.35; }
+.choice-opt-caret {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  color: var(--faint);
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+.choice-opt-caret svg { width: 16px; height: 16px; display: block; }
+.choice-opt:hover .choice-opt-caret { color: var(--amber-bright); transform: translateX(2px); }
+
+/* ลบทั้งหมด — destructive variant: red icon chip + red hover edge */
+.choice-opt.choice-danger:hover {
+  border-color: color-mix(in srgb, var(--red) 55%, var(--line));
+}
+.choice-opt.choice-danger .choice-opt-ico {
+  color: #ff9a8f;
+  background: color-mix(in srgb, var(--red) 15%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--red) 32%, var(--line));
+}
+.choice-opt.choice-danger:hover .choice-opt-caret { color: #ff9a8f; }
+
+.choice-cancel {
+  width: 100%;
+  padding: 11px;
+  font-size: 14.5px;
+}
+
+/* ---- Custom Prompt editor (per-mode System Prompt) ---- */
+.pe-overlay {
+  align-items: stretch;
+  padding: clamp(16px, 4vh, 48px) 16px;
+}
+.pe-modal {
+  width: min(760px, 100%);
+  max-height: 100%;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.pe-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+}
+.pe-mode {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: var(--amber);
+  font-family: var(--mono);
+}
+.pe-x {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  font-size: 16px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.pe-x:hover { border-color: var(--amber); color: var(--text); }
+.pe-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.pe-section {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg-2) 60%, transparent);
+  padding: 14px;
+}
+.pe-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.pe-sec-head h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.pe-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 22%, transparent);
+}
+.pe-sec-sub {
+  font-size: 12.5px;
+  color: var(--faint);
+}
+.pe-group + .pe-group { margin-top: 10px; }
+.pe-group.pe-plain {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* collapsible Normal / No-Text groups */
+.pe-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  text-align: left;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.pe-trigger:hover { border-color: color-mix(in srgb, var(--amber) 50%, var(--line)); }
+.pe-badge {
+  padding: 2px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+}
+.pe-badge-normal {
+  color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 18%, transparent);
+}
+.pe-badge-notext {
+  color: var(--muted);
+  background: var(--surface-2);
+}
+.pe-gsub {
+  font-size: 13px;
+  color: var(--muted);
+}
+.pe-chev {
+  margin-left: auto;
+  color: var(--faint);
+  transition: transform 0.18s ease;
+}
+.pe-trigger[aria-expanded="true"] .pe-chev { transform: rotate(180deg); }
+.pe-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 10px 0 2px;
+  padding-left: 12px;
+  border-left: 2px solid color-mix(in srgb, var(--amber) 30%, var(--line));
+}
+/* author display:flex above beats the UA [hidden]{display:none}, so the collapse
+   would never hide — re-assert none for the hidden (collapsed) state. */
+.pe-group-body[hidden] {
+  display: none;
+}
+.pe-notext .pe-group-body {
+  border-left-color: var(--line);
+}
+.pe-field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.pe-field-head label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.pe-edited {
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--amber);
+}
+.pe-field textarea {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.pe-field.edited textarea {
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--line));
+}
+.pe-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+.pe-actions .btn { width: auto; padding: 9px 18px; font-size: 14px; box-shadow: none; }
+.pe-spacer { flex: 1; }
+
+/* ---- character reference popup ---- */
+.char-modal {
+  width: min(460px, 100%);
+}
+/* step-2 back button sits on the left of the actions row */
+.char-back {
+  margin-right: auto;
+}
+/* confirm-with-no-upload warning on the hint line */
+.char-modal .modal-hint.warn {
+  color: var(--amber-bright);
+}
+.modal-hint {
+  margin: -2px 0 16px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.char-modal .field {
+  margin-bottom: 14px;
+}
+.char-modal .segmented {
+  display: flex;
+  width: 100%;
+  margin-top: 6px;
+}
+/* saved-character pick row ("คลังตัวละคร") — thumbnails of remembered uploads */
+.char-saved {
+  margin-bottom: 14px;
+}
+.char-saved[hidden] { display: none; }
+.char-saved-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.char-saved-item {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.18);
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+.char-saved-item:hover {
+  border-color: var(--amber);
+  transform: translateY(-1px);
+}
+.char-saved-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.char-saved-del {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  line-height: 16px;
+  font-size: 14px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease, background 150ms ease;
+}
+.char-saved-item:hover .char-saved-del,
+.char-saved-del:focus-visible { opacity: 1; }
+.char-saved-del:hover { background: rgba(214, 64, 64, 0.92); }
+.char-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.char-slot {
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.18);
+}
+.char-slot .upload-row {
+  margin-top: 6px;
+  align-items: center;
+}
+.char-slot[hidden] { display: none; }
+.char-name {
+  font-size: 13px;
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- product image chooser (stacks above the picker popup) ---- */
+.modal-overlay.img-chooser { z-index: 1150; }
+.pi-grid { min-height: 80px; }
+.pi-note { margin: 0 0 10px; font-size: 13px; }
+.pi-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 10px;
+}
+.pi-thumb {
+  padding: 0;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-well);
+  cursor: pointer;
+  overflow: hidden;
+  aspect-ratio: 1;
+  transition: border-color 0.13s ease, transform 0.1s ease;
+}
+.pi-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pi-thumb:hover { border-color: color-mix(in srgb, var(--amber) 60%, var(--line)); transform: translateY(-1px); }
+.pi-thumb.active { border-color: var(--amber); box-shadow: 0 0 0 2px color-mix(in srgb, var(--amber) 35%, transparent); }
+
+/* cover action pills ("👁 ดู" + "🖼 รูป") — float bottom-right over the card cover */
+.pp-media-actions {
+  position: absolute;
+  bottom: 7px;
+  right: 7px;
+  z-index: 2;
+  display: flex;
+  gap: 5px;
+}
+.pp-media-btn {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(10, 7, 3, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 3px 8px;
+  white-space: nowrap;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+  transition: background 0.13s ease, color 0.13s ease, border-color 0.13s ease;
+}
+.pp-media-btn:hover {
+  background: var(--amber);
+  color: #1c1206;
+  border-color: transparent;
+}
+
+/* Showcase table: รูป cell is now a chooser button */
+.tt-thumb-btn {
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-well);
+  cursor: pointer;
+  overflow: hidden;
+  line-height: 0;
+  transition: border-color 0.13s ease;
+}
+.tt-thumb-btn:hover { border-color: var(--amber); }
+.tt-thumb-pick {
+  display: inline-block;
+  padding: 11px 8px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--amber);
+  white-space: nowrap;
+}
+
+.link {
+  border: 0;
+  background: none;
+  color: var(--amber-bright);
+  font: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.form-note {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--faint);
+  text-align: center;
+}
+
+.muted-text {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+/* ============ dashboard — AutoTik home + AI Studio launcher ============ */
+/* "home" section (Dashboard active): the sidebar shows ONLY Dashboard — every tool,
+   group, separator and the bottom utility row collapse. They reappear in "workspace"
+   (any tool view) where the brand also flips to "AutoTik". Driven by setNav(). */
+body[data-section="home"] .sb-nav > .nav-item:not([data-nav="dashboard"]),
+body[data-section="home"] .sb-nav > .nav-group,
+body[data-section="home"] .sb-nav > .nav-sep,
+body[data-section="home"] .sb-bottom,
+body[data-section="home"] .sb-footer,
+body[data-section="home"] .mh-right,
+body[data-section="home"] #updateBanner {
+  display: none !important;
+}
+
+/* left-aligned to the page gutter (main-body already pads 28px); no auto-centering */
+.dash-home {
+  padding: 20px 0 48px;
+  max-width: 1180px;
+}
+.dash-home-head {
+  margin-bottom: 30px;
+}
+.dash-home-head h2 {
+  margin: 0 0 7px;
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.dash-home-head .muted-text {
+  margin: 0;
+}
+
+/* poster grid — game-launcher style: left-packed, uniform poster cards, wraps as you add */
+.dash-apps {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 200px);
+  justify-content: start;
+  gap: 28px 22px;
+}
+/* framed card — one border wraps the whole thing: name (top) → icon → desc → buttons */
+.poster-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(168deg, rgba(34, 25, 15, 0.55), rgba(15, 11, 5, 0.7));
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, box-shadow 0.2s;
+}
+.poster-card:not(.poster-card-soon):hover {
+  transform: translateY(-4px);
+  border-color: var(--amber);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+}
+/* program name — pinned to the top of the frame */
+.poster-title {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+  padding: 2px 2px 0;
+}
+/* icon panel inside the frame (borderless — the frame carries the border) */
+.poster-art {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  /* flat dark panel — the glow now radiates from the icon itself, not a broad wash */
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 188, 55, 0.42) 0%, rgba(251, 149, 20, 0.12) 30%, transparent 56%),
+    linear-gradient(165deg, #1b1308 0%, #0d0a05 85%);
+  transition: filter 0.2s;
+}
+.poster-art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 22px 22px;
+  pointer-events: none;
+}
+.poster-card:not(.poster-card-soon):hover .poster-art {
+  filter: brightness(1.05);
+}
+.poster-art:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+.poster-bolt {
+  position: relative;
+  z-index: 1;
+  width: 78px;
+  height: 78px;
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(150deg, #ffc53d, #fb9514 55%, #f2740c);
+  box-shadow: 0 0 38px rgba(251, 149, 20, 0.5), 0 12px 26px rgba(242, 116, 12, 0.4), inset 0 1px 0 rgba(255, 234, 190, 0.45);
+}
+.poster-bolt svg {
+  width: 40px;
+  height: 40px;
+  fill: #140f08;
+}
+/* hover "play" overlay — game-launcher feel */
+.poster-play {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 11, 5, 0.5);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.poster-play svg {
+  width: 48px;
+  height: 48px;
+  fill: var(--amber-bright);
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.6));
+  transform: scale(0.85);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.poster-card:not(.poster-card-soon):hover .poster-play {
+  opacity: 1;
+}
+.poster-card:not(.poster-card-soon):hover .poster-play svg {
+  transform: scale(1);
+}
+/* description — below the icon */
+.poster-sub {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.4;
+  padding: 0 2px;
+}
+/* "เร็วๆ นี้" placeholder slots — fill the grid so it reads as a populated table */
+.poster-card-soon {
+  opacity: 0.5;
+}
+.poster-soon {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(165deg, #18110a 0%, #0d0a05 100%);
+}
+.poster-soon-ico {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+  font-size: 22px;
+  filter: grayscale(0.3);
+}
+.poster-soon-title {
+  color: var(--muted);
+}
+.poster-actions {
+  margin-top: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.poster-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, filter 0.15s, background 0.15s, border-color 0.15s, color 0.15s;
+}
+.poster-btn.primary {
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  color: #1a1208;
+  box-shadow: 0 6px 16px rgba(242, 116, 12, 0.3);
+}
+.poster-btn.primary:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+.poster-btn.ghost {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+}
+.poster-btn.ghost:hover {
+  border-color: var(--amber);
+  color: var(--amber-bright);
+}
+/* AutoTik "รายละเอียด" modal */
+.bot-detail-modal {
+  max-width: 440px;
+}
+.bot-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.bot-detail-ico {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(150deg, #ffc53d, #fb9514 55%, #f2740c);
+  box-shadow: 0 8px 20px rgba(242, 116, 12, 0.35);
+}
+.bot-detail-ico svg {
+  width: 28px;
+  height: 28px;
+  fill: #140f08;
+}
+.bot-detail-tag {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.bot-detail-body p {
+  margin: 0 0 12px;
+}
+.bot-detail-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.bot-detail-list li::marker {
+  color: var(--amber);
+}
+
+/* ============ workflow / pipeline ============ */
+.count {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--amber-bright);
+  background: rgba(251, 149, 20, 0.12);
+  padding: 2px 9px;
+  border-radius: 999px;
+}
+
+.pipeline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.pl-step {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.pl-arrow {
+  color: var(--amber);
+  font-weight: 700;
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+/* ---- per-mode job tally (generate view): 3 centered cards between the
+   Configuration & Prompt card and the Recent Jobs grid ---- */
+.gen-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.gen-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+}
+
+.gen-stat-n {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums; /* counts don't jitter width as they change */
+  color: var(--text);
+}
+
+.gen-stat.is-done .gen-stat-n {
+  color: var(--green);
+}
+
+.gen-stat.is-failed .gen-stat-n {
+  color: var(--red);
+}
+
+.gen-stat-l {
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  color: var(--muted);
+}
+
+/* "กดดูสาเหตุ" hint — only shown when the ไม่สำเร็จ card is clickable (has-fail) */
+.gen-stat-hint {
+  display: none;
+  font-size: 11.5px;
+  letter-spacing: 0.2px;
+  color: var(--red);
+}
+
+/* The ไม่สำเร็จ card becomes a button (open the causes modal) only when there are
+   failures — .has-fail is toggled by updateGenStats(). */
+.gen-stat.is-failed.has-fail {
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.gen-stat.is-failed.has-fail:hover,
+.gen-stat.is-failed.has-fail:focus-visible {
+  border-color: var(--red);
+  background: rgba(255, 107, 94, 0.07);
+  outline: none;
+}
+.gen-stat.is-failed.has-fail .gen-stat-hint {
+  display: block;
+}
+
+/* ---- failures modal (the ไม่สำเร็จ card → "งานที่ไม่สำเร็จ" list) ---- */
+.modal.modal-fail {
+  width: min(560px, 100%);
+}
+.modal-fail .modal-body {
+  max-height: 62vh;
+  overflow-y: auto;
+  white-space: normal;
+  padding-right: 4px;
+}
+.fail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.fail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fail-item-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.fail-item-n {
+  flex: none;
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--amber-bright);
+}
+.fail-item-prompt {
+  min-width: 0;
+  font-size: 13.5px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* reuse the History view's red cause box for each failed row */
+.fail-item .job-fail-body {
+  margin-top: 0;
+}
+.fail-empty {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* prompt popup — opened by clicking a Prompt Image / Prompt Video grid cell;
+   shows BOTH full prompts of the row (app.js openPromptPopup), side by side:
+   Prompt Image left, Prompt Video right, each box scrolling on its own so
+   neither pushes the other off-screen. Stacks back to a column on narrow windows. */
+.modal.modal-prompt {
+  width: min(1100px, calc(100vw - 48px));
+}
+.modal-prompt .modal-body {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 14px;
+  max-height: 68vh;
+  overflow: hidden; /* the two text boxes scroll themselves */
+  white-space: normal;
+}
+.prompt-pop-sec {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+.prompt-pop-label {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--amber-bright);
+}
+.prompt-pop-text {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 12px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+/* thin, branded scrollbar inside each prompt box (same look as .pp-list) */
+.prompt-pop-text::-webkit-scrollbar,
+.modal-prompt .modal-body::-webkit-scrollbar {
+  width: 9px;
+}
+.prompt-pop-text::-webkit-scrollbar-track,
+.modal-prompt .modal-body::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 4px;
+}
+.prompt-pop-text::-webkit-scrollbar-thumb,
+.modal-prompt .modal-body::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--amber) 32%, var(--line));
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+.prompt-pop-text::-webkit-scrollbar-thumb:hover,
+.modal-prompt .modal-body::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--amber) 55%, var(--line));
+  background-clip: padding-box;
+}
+@media (max-width: 860px) {
+  .modal-prompt .modal-body { flex-direction: column; overflow-y: auto; }
+  .prompt-pop-text { flex: none; max-height: 38vh; }
+}
+
+@media (max-width: 620px) {
+  .stat-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+}
+
+.stat-n {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--amber-bright);
+}
+
+.stat-l {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+/* ============ jobs ============ */
+.jobs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.jobs.jobs-tall {
+  max-height: 480px;
+}
+
+.jobs .empty {
+  color: var(--faint);
+  font-size: 14px;
+  padding: 10px 2px;
+}
+
+.job {
+  display: flex;
+  align-items: center;
+  /* wrap so the full-width "สาเหตุที่ล้มเหลว" dropdown can sit under the row */
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+}
+
+/* row number chip (#N, creation order) — lets a customer report "งาน #12" */
+.job-n {
+  flex-shrink: 0;
+  min-width: 30px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--amber-bright);
+  text-align: right;
+}
+
+/* row thumbnail — product cover / reference / image result; placeholder when none */
+.job-pic {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  object-fit: cover;
+  background: var(--bg-2);
+}
+
+.job-pic-empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  opacity: 0.55;
+}
+
+/* ---- "สาเหตุที่ล้มเหลว" dropdown — rendered ONLY on rows whose generation or
+   TikTok post really FAILED. Takes its own full-width line under the row. ---- */
+.job-fail {
+  flex-basis: 100%;
+  margin-top: 2px;
+}
+
+.job-fail summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--red);
+  user-select: none;
+}
+
+.job-fail summary::-webkit-details-marker {
+  display: none;
+}
+
+.job-fail summary::before {
+  content: "▸";
+  font-size: 11px;
+  transition: transform 0.15s ease;
+}
+
+.job-fail[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.job-fail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 107, 94, 0.25);
+  border-left: 3px solid var(--red);
+  border-radius: 8px;
+  background: rgba(255, 107, 94, 0.06);
+}
+
+.jf-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.jf-leg {
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  color: var(--muted);
+}
+
+.jf-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--red);
+}
+
+.jf-detail {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.jf-fix {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--amber-bright);
+}
+
+.jf-raw {
+  margin-top: 2px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--faint);
+  word-break: break-all;
+}
+
+.job-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.job-prompt {
+  font-size: 14.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.job-meta {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--faint);
+  margin-top: 3px;
+}
+
+.badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+/* A settled row's gen badge doubles as a button that opens its saved folder. */
+.badge-folder {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: filter var(--dur-fast, 150ms) ease;
+}
+.badge-folder:hover { filter: brightness(1.15); }
+.badge-folder:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.badge-folder-ico {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+  opacity: 0.72;
+  flex: 0 0 auto;
+}
+
+.badge.queued { background: var(--surface-2); color: var(--muted); }
+.badge.generating,
+.badge.publishing { background: rgba(108, 182, 255, 0.14); color: var(--blue); }
+.badge.done { background: rgba(81, 216, 138, 0.15); color: var(--green); }
+.badge.failed { background: rgba(255, 107, 94, 0.15); color: var(--red); }
+.badge.cancelled { background: var(--surface-2); color: var(--faint); }
+
+/* TikTok-post badge ("โพสต์ TikTok" column) — its own modifier set so it never
+   collides with the generation status palette above. "staged" (uploaded but Post not
+   confirmed) uses the single brand amber as a warn tone; the rest reuse the same
+   blue/green/red/muted semantics as the generation badges. */
+/* "🕒 รอคิว" — generated, parked WAITING its turn in the serial post queue (Flow parallel
+   Run). A neutral pending tone (mirrors the generation "queued" badge), distinct from the
+   active blue "กำลังโพสต์" and the amber/red error states. */
+.badge.post-queued { background: var(--surface-2); color: var(--muted); }
+.badge.post-publishing { background: rgba(108, 182, 255, 0.14); color: var(--blue); }
+.badge.post-posted { background: rgba(81, 216, 138, 0.15); color: var(--green); }
+/* "📝 ฉบับร่าง" / "🕒 ตั้งเวลาแล้ว" — deliberate SAVE_DRAFT / SCHEDULE successes, NOT errors:
+   green-leaning (drafted) and blue (scheduled), distinct from the red staged/failed. */
+.badge.post-drafted { background: rgba(81, 216, 138, 0.12); color: var(--green); }
+.badge.post-scheduled { background: rgba(108, 182, 255, 0.14); color: var(--blue); }
+.badge.post-staged { background: rgba(251, 149, 20, 0.16); color: var(--amber); }
+.badge.post-failed { background: rgba(255, 107, 94, 0.15); color: var(--red); }
+.badge.post-none { background: transparent; color: var(--faint); padding-left: 0; padding-right: 0; }
+/* "ไม่โพสต์" — the operator chose สร้างภาพและคลิปอย่างเดียว; muted, distinct from the "–" of post-none */
+.badge.post-skip { background: var(--surface-2); color: var(--muted); }
+
+/* per-row "↻ ลองใหม่" under a Failed badge — re-runs only that row's failed clip(s) */
+.btn-retry {
+  display: block;
+  width: fit-content;
+  margin: 6px auto 0;
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: var(--amber);
+  background: rgba(251, 149, 20, 0.12);
+  border: 1px solid rgba(251, 149, 20, 0.4);
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.btn-retry:hover {
+  background: rgba(251, 149, 20, 0.2);
+  border-color: var(--amber);
+  color: var(--text);
+}
+.btn-retry:disabled { opacity: 0.5; cursor: default; }
+
+/* "↻ โพสต์ใหม่" — re-publish ONLY (no regeneration). Same pill shape as .btn-retry,
+   sits under the post badge in the โพสต์ column. */
+.btn-republish {
+  display: block;
+  width: fit-content;
+  margin: 6px auto 0;
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: var(--amber);
+  background: rgba(251, 149, 20, 0.12);
+  border: 1px solid rgba(251, 149, 20, 0.4);
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.btn-republish:hover {
+  background: rgba(251, 149, 20, 0.2);
+  border-color: var(--amber);
+  color: var(--text);
+}
+.btn-republish:disabled { opacity: 0.5; cursor: default; }
+
+/* ============ jobs grid (read-only) ============ */
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- recent-jobs toolbar actions (Retry all / Run / Clear) ---- */
+.btn-retryall,
+.btn-run,
+.btn-stop,
+.btn-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 15px;
+  font-size: 13.5px;
+  line-height: 1;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: transform 0.12s ease, filter 0.15s, background 0.15s,
+    border-color 0.15s, color 0.15s, box-shadow 0.18s ease;
+}
+
+/* `hidden` must win over the inline-flex display above */
+.btn-stop[hidden],
+.btn-retryall[hidden] { display: none; }
+
+.btn-retryall .btn-ico,
+.btn-run .btn-ico,
+.btn-stop .btn-ico,
+.btn-clear .btn-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-retryall svg { width: 13px; height: 13px; display: block; }
+.btn-run svg { width: 11px; height: 11px; display: block; }
+.btn-stop svg { width: 12px; height: 12px; display: block; }
+.btn-clear svg { width: 13px; height: 13px; display: block; }
+
+/* Retry all — a quiet amber ghost; only shown when this mode has failed rows */
+.btn-retryall {
+  color: var(--amber);
+  background: var(--surface);
+  border-color: rgba(251, 149, 20, 0.4);
+}
+.btn-retryall:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--amber);
+  background: rgba(251, 149, 20, 0.12);
+  transform: translateY(-1px);
+}
+.btn-retryall:active:not(:disabled) { transform: translateY(0); }
+.btn-retryall:disabled { color: var(--faint); border-color: var(--line); cursor: not-allowed; }
+
+/* Stop — the live-only counterpart to Run: a filled red pill with a soft glow */
+.btn-stop {
+  /* same footprint as Run — they share the hero slot and swap in place */
+  padding: 8px 18px;
+  font-size: 14px;
+  color: #fff5f3;
+  background: linear-gradient(135deg, #ff6b5e, #e23b2c);
+  border-color: transparent;
+  box-shadow:
+    0 6px 16px rgba(226, 59, 44, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.btn-stop:hover:not(:disabled) {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow:
+    0 10px 22px rgba(226, 59, 44, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.btn-stop:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow:
+    0 4px 12px rgba(226, 59, 44, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.btn-stop:disabled {
+  color: var(--faint);
+  background: var(--surface-2);
+  border-color: var(--line);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Run — the toolbar's hero action: a filled amber pill with a soft glow */
+.btn-run {
+  /* the hero action — slightly larger footprint so the eye lands here first
+     (single-accent rule means size, not a second color, carries the hierarchy) */
+  padding: 8px 18px;
+  font-size: 14px;
+  color: var(--on-amber);
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  border-color: transparent;
+  box-shadow:
+    0 6px 16px rgba(242, 116, 12, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.btn-run:hover:not(:disabled) {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow:
+    0 10px 22px rgba(242, 116, 12, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+
+.btn-run:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow:
+    0 4px 12px rgba(242, 116, 12, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.btn-run:disabled {
+  color: var(--faint);
+  background: var(--surface-2);
+  border-color: var(--line);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* running state — swap the play glyph for a spinner */
+.btn-run.is-running .btn-ico svg { display: none; }
+.btn-run.is-running .btn-ico::after {
+  content: "";
+  box-sizing: border-box;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.6s linear infinite;
+}
+
+/* Clear — a quiet ghost that warms to a destructive red on hover */
+.btn-clear {
+  color: var(--muted);
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+.btn-clear:hover:not(:disabled) {
+  color: var(--red);
+  border-color: rgba(255, 107, 94, 0.5);
+  background: rgba(255, 107, 94, 0.08);
+  transform: translateY(-1px);
+}
+
+.btn-clear:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* ---- "เลือกลบเฉพาะแถว": grid selection mode ----
+   Clicking Clear can switch the grid into selection mode (.jobs-card.selecting):
+   a checkbox shows in each row's # cell and the toolbar swaps Run/Stop/Clear/retry
+   for เลือกทั้งหมด / ลบที่เลือก / ยกเลิก. */
+.btn-selall,
+.btn-delsel,
+.btn-cancelsel {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 15px;
+  font-size: 13.5px;
+  line-height: 1;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: transform 0.12s ease, filter 0.15s, background 0.15s,
+    border-color 0.15s, color 0.15s;
+}
+.btn-delsel .btn-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-delsel svg { width: 13px; height: 13px; display: block; }
+
+/* เลือกทั้งหมด / ยกเลิก — quiet neutral pills */
+.btn-selall,
+.btn-cancelsel {
+  color: var(--muted);
+  background: var(--surface);
+  border-color: var(--line);
+}
+.btn-selall:hover,
+.btn-cancelsel:hover {
+  color: var(--text);
+  border-color: var(--amber);
+  transform: translateY(-1px);
+}
+.btn-selall:active,
+.btn-cancelsel:active { transform: translateY(0); }
+
+/* ลบที่เลือก — a danger pill (red), disabled until at least one row is ticked */
+.btn-delsel {
+  color: #2a0d0a;
+  background: linear-gradient(135deg, #ff9a8f, var(--red));
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgba(255, 107, 94, 0.22);
+}
+.btn-delsel:hover:not(:disabled) { filter: brightness(1.05); transform: translateY(-1px); }
+.btn-delsel:active:not(:disabled) { transform: translateY(0); }
+.btn-delsel:disabled {
+  color: var(--faint);
+  background: var(--surface-2);
+  border-color: var(--line);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* toolbar swap: hide the normal actions while selecting, hide selection actions otherwise */
+.jobs-card:not(.selecting) .sel-only { display: none; }
+.jobs-card.selecting #clearJobs,
+.jobs-card.selecting .btn-run,
+.jobs-card.selecting .btn-stop,
+.jobs-card.selecting .btn-retryall,
+.jobs-card.selecting .head-actions > [data-goto] { display: none; }
+
+/* ---- inter-row delay dialog (pops on Run) ---- */
+.rd-dlg-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.rd-dlg-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  transition: opacity 0.18s;
+}
+.rd-dlg-range.rd-off { opacity: 0.4; } /* dim when the toggle is off (still editable) */
+.row-delay-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.row-delay-input {
+  width: 64px;
+  padding: 6px 8px;
+  text-align: center;
+  font: 600 13px / 1 var(--mono);
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.row-delay-input:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 2px rgba(251, 149, 20, 0.25);
+}
+/* trim the spinner so the field reads as a clean number box */
+.row-delay-input::-webkit-outer-spin-button,
+.row-delay-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.row-delay-dash { color: var(--faint); }
+.row-delay-unit { color: var(--muted); font-weight: 600; }
+
+/* ---- inter-row countdown overlay (HUD-styled, non-blocking) ---- */
+.rd-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 6, 3, 0.55);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  /* non-blocking: let clicks fall through to the toolbar (Stop) behind it… */
+  pointer-events: none;
+  animation: rd-fade 0.22s ease;
+}
+.rd-overlay[hidden] { display: none; }
+.rd-card {
+  width: 300px;
+  box-sizing: border-box;
+  padding: 26px 28px 22px;
+  text-align: center;
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(251, 149, 20, 0.06);
+  pointer-events: auto; /* …but the card itself stays interactive (the skip button) */
+}
+.rd-logo {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 14px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #fbb04a 0%, #f2740c 100%);
+  box-shadow: 0 8px 22px -6px rgba(242, 116, 12, 0.6);
+}
+.rd-title { font-size: 18px; font-weight: 700; letter-spacing: 0.2px; color: var(--text); }
+.rd-sub {
+  margin-top: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rd-statusrow {
+  margin: 16px 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 13.5px;
+  color: var(--amber-bright);
+}
+.rd-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fbb04a;
+  animation: rd-pulse 1.4s infinite;
+}
+.rd-count {
+  margin-top: 4px;
+  font: 800 34px / 1.1 var(--mono);
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, #fbb04a, #f2740c);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--amber-deep);
+}
+.rd-msg { margin-top: 6px; font-size: 13.5px; color: var(--muted); }
+.rd-bar {
+  margin: 14px 0 4px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.rd-bar-fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--amber-bright), var(--amber-deep));
+  transition: width 0.9s linear;
+}
+.rd-skip {
+  margin-top: 16px;
+  width: 100%;
+  padding: 9px 14px;
+  font: 600 12.5px var(--sans);
+  color: var(--amber-bright);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.rd-skip:hover { background: rgba(251, 149, 20, 0.12); border-color: var(--amber); }
+@keyframes rd-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(251, 176, 74, 0.55); }
+  70% { box-shadow: 0 0 0 7px rgba(251, 176, 74, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 176, 74, 0); }
+}
+@keyframes rd-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .rd-overlay, .rd-dot, .rd-bar-fill { animation: none !important; transition: none !important; }
+  /* the live-connection pill dot is the most persistent motion in the chrome —
+     honor reduced-motion here too, like the boot veil and .rd-* already do. */
+  .pill[data-on="true"] .pill-dot { animation: none; }
+}
+
+/* the per-row checkbox lives in the # cell — number normally, checkbox while selecting.
+   Custom-styled (not the native white box): a rounded amber-edged square that fills with
+   the brand gradient and pops a dark checkmark when ticked. */
+/* .row-pick is a <label> wrapping a hidden native <input> + a .row-pick-box visual
+   (square + crisp SVG checkmark — the same lockup as the TikTok disclosure cards, so
+   the tick is always perfectly centred). The input stays the source of truth for JS. */
+.row-pick {
+  display: none; /* shown only in selection mode */
+  position: relative;
+  width: 19px;
+  height: 19px;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.jobs-card.selecting .col-n .row-n { display: none; }
+.jobs-card.selecting .col-n .row-pick { display: inline-block; }
+/* the native input is fully removed from PAINT (sr-only: 1px + clip), not just made
+   transparent — WebView2 draws a checkbox's native control in a top layer that ignores
+   opacity/appearance, which would otherwise show as a dark square over our amber box.
+   The wrapping <label> still toggles it when the .row-pick-box is clicked. */
+.row-pick input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.row-pick-box {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  border: 1.6px solid color-mix(in srgb, var(--amber) 32%, var(--line));
+  background: var(--surface-2);
+  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.row-pick-box svg {
+  width: 13px;
+  height: 13px;
+  stroke: #1c1206;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.12s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* state driven off the parent label via :has() — the proven .tk-opt pattern */
+.row-pick:has(input:not(:disabled)):hover .row-pick-box {
+  border-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 14%, var(--surface-2));
+}
+.row-pick:has(input:focus-visible) .row-pick-box {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(251, 149, 20, 0.22);
+}
+.row-pick:has(input:checked) .row-pick-box {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  box-shadow: 0 2px 9px color-mix(in srgb, var(--amber) 38%, transparent);
+}
+.row-pick:has(input:checked) .row-pick-box svg {
+  opacity: 1;
+  transform: scale(1);
+}
+.row-pick:has(input:disabled) .row-pick-box {
+  opacity: 0.38;
+}
+.row-pick:has(input:disabled) {
+  cursor: not-allowed;
+}
+/* no text selection while click-dragging to paint-select rows */
+.jobs-card.selecting .jobs-grid { user-select: none; }
+/* ticked rows glow amber */
+.jobs-card.selecting .jobs-grid tbody tr:has([data-row-pick]:checked) {
+  background: rgba(251, 149, 20, 0.1);
+}
+.jobs-card.selecting .jobs-grid tbody tr:has([data-row-pick]:checked):hover {
+  background: rgba(251, 149, 20, 0.15);
+}
+
+.jobs-grid-wrap {
+  flex: 1 1 auto; /* fill the stretched jobs card so the box matches the form height */
+  overflow-x: auto;
+  overflow-y: auto;
+  min-height: 0;
+}
+.jobs-grid-wrap::-webkit-scrollbar { width: 12px; height: 12px; }
+.jobs-grid-wrap::-webkit-scrollbar-track { background: transparent; }
+.jobs-grid-wrap::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--amber) 26%, var(--line));
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+.jobs-grid-wrap::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--amber) 50%, var(--line));
+  background-clip: padding-box;
+}
+.jobs-grid-wrap::-webkit-scrollbar-corner { background: transparent; }
+
+.jobs-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.jobs-grid th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 9px 8px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--line);
+  /* depth cue so rows read as scrolling UNDER a frozen header, not through it */
+  box-shadow: 0 6px 10px -8px rgba(0, 0, 0, 0.6);
+}
+.jobs-grid th:not(:last-child),
+.jobs-grid td:not(:last-child) {
+  border-right: 1px solid var(--line-soft);
+}
+.jobs-grid td {
+  padding: 7px 8px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--text);
+}
+.jobs-grid tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.035); }
+.jobs-grid tbody tr:last-child td { border-bottom: none; }
+.jobs-grid tbody tr:hover { background: rgba(251, 149, 20, 0.07); }
+.jobs-grid .empty-row td,
+.jobs-grid .empty-row:hover { background: transparent; }
+.jobs-grid .empty-row td {
+  padding: 28px 8px;
+  text-align: center;
+  color: var(--faint);
+  border-bottom: none;
+}
+.jobs-grid .col-n {
+  width: 44px;
+  text-align: center;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+}
+/* Freeze the # column so the row anchor stays visible while the 14-column grid
+   scrolls sideways. Opaque backgrounds stop scrolled cells bleeding through; the
+   zebra + hover tints are restated as solid colors for the pinned cell. */
+.jobs-grid th.col-n,
+.jobs-grid td.col-n {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--bg-2);
+}
+/* crisp right seam — under border-collapse the cell's own border-right is owned by
+   the table and can drop while scrolled; a box-shadow edge always travels with the
+   pinned cell, so the freeze reads as deliberate at any scroll offset. */
+.jobs-grid td.col-n { box-shadow: 1px 0 0 var(--line-soft); }
+.jobs-grid thead th.col-n {
+  z-index: 3; /* top-left corner sits above both axes */
+  box-shadow: 1px 0 0 var(--line-soft), 0 6px 10px -8px rgba(0, 0, 0, 0.6);
+}
+.jobs-grid tbody tr:nth-child(even) td.col-n { background: #202020; }
+.jobs-grid tbody tr:hover td.col-n { background: #241d12; }
+.jobs-grid .col-ref { width: 58px; text-align: center; }
+.ref-stack {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.ref-stack .job-thumb { width: 26px; height: 26px; }
+.jobs-grid .col-result { width: 140px; min-width: 128px; text-align: center; }
+.jobs-grid td.col-prog,
+.jobs-grid th.col-prog { width: 56px; font-family: var(--mono); white-space: nowrap; text-align: center; }
+.jobs-grid td.col-status,
+.jobs-grid th.col-status { width: 74px; text-align: center; }
+.jobs-grid td.col-gen,
+.jobs-grid th.col-gen { width: 78px; }
+.jobs-grid td.col-post,
+.jobs-grid th.col-post { width: 90px; }
+.jobs-grid td.col-prompt,
+.jobs-grid th.col-prompt { width: 1%; white-space: nowrap; text-align: center; }
+/* The collapsed Prompt column: one "👁 ดู Prompt" chip per row → popup shows the full
+   Image + Video prompts (promptCell in app.js). Amber pill matching the console theme. */
+.prompt-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 30%, transparent);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.prompt-view-btn:hover {
+  color: var(--amber-bright);
+  background: color-mix(in srgb, var(--amber) 18%, transparent);
+  border-color: color-mix(in srgb, var(--amber) 50%, transparent);
+}
+.prompt-view-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--amber) 30%, transparent);
+}
+/* flow-extend: solid amber "🎬 N คลิป" chip so a row's clip count reads at a glance,
+   next to the (hollow) "ดู Prompt" button. */
+.clip-count-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 6px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #1c1206;
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  border-radius: 999px;
+}
+.jobs-grid .col-prompt {
+  white-space: nowrap;
+}
+.jobs-grid .col-dir {
+  width: 96px;
+  padding: 6px 5px;
+  text-align: left;
+}
+/* Generate-only / no-direction modes (Loop) hide the 6 creative-direction columns —
+   both <th> and <td> carry .col-dir, so display:none drops the whole column cleanly.
+   The flag is set per-table in renderJobsGrid from NAV[currentNav].noDirection. */
+.jobs-grid[data-hide-dir="1"] .col-dir {
+  display: none;
+}
+.dir-sel {
+  -webkit-appearance: auto;
+  appearance: auto; /* keep the compact native arrow in the dense table cells */
+  width: 100%;
+  padding: 3px 4px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.dir-sel:hover { border-color: color-mix(in srgb, var(--amber) 40%, var(--line)); }
+.dir-sel:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--amber) 22%, transparent);
+}
+/* set fields read amber; the blank "—" stays muted */
+.dir-sel:not(:has(option[value=""]:checked)) { color: var(--amber-bright); }
+.dir-sel:disabled { opacity: 0.55; cursor: default; }
+/* per-row "กำหนดเอง" wrapper: the select stacked over the free-text input (hidden until
+   "กำหนดเอง" is the active pick) */
+.dir-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dir-custom {
+  width: 100%;
+  padding: 3px 5px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--amber-bright);
+  background: var(--surface-2);
+  border: 1px solid color-mix(in srgb, var(--amber) 40%, var(--line));
+  border-radius: 6px;
+}
+.dir-custom::placeholder { color: var(--faint); }
+.dir-custom:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--amber) 22%, transparent);
+}
+.dir-custom:disabled { opacity: 0.55; }
+.dir-custom[hidden] { display: none; }
+/* Character column when a reference image was uploaded -> no dropdown, just a hint */
+.dir-na {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+/* ▾ on each direction column header: set the whole column at once — one value for
+   every row, or a random spread from ticked options (opens .dir-col-modal) */
+.dir-col-btn {
+  margin-left: 2px;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 15px;
+  color: var(--faint);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.dir-col-btn:hover {
+  color: var(--amber-bright);
+  border-color: color-mix(in srgb, var(--amber) 40%, var(--line));
+}
+.dir-col-btn:focus-visible {
+  outline: none;
+  color: var(--amber-bright);
+  border-color: var(--amber);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--amber) 22%, transparent);
+}
+.dir-col-modal {
+  width: min(500px, 100%);
+}
+.dir-col-modal .modal-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
+}
+/* the column name reads amber so the title scans as "set <X> for the column" */
+.dir-col-name {
+  color: var(--amber-bright);
+  font-weight: 700;
+}
+.dir-col-modal .modal-hint b {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* two-line segmented toggle: bold mode name + a small caption of what it does */
+.dir-col-seg {
+  display: flex;
+  width: 100%;
+  margin: 4px 0 14px;
+  padding: 4px;
+  gap: 4px;
+}
+.dir-col-seg .seg {
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 10px;
+  line-height: 1.25;
+}
+.dir-col-seg .seg-t {
+  font-size: 14px;
+  font-weight: 600;
+}
+.dir-col-seg .seg-d {
+  font-size: 11.5px;
+  opacity: 0.72;
+}
+.dir-col-body {
+  margin-bottom: 4px;
+}
+.dir-col-flabel {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* custom-caret select for the "ค่าเดียวทุกแถว" mode */
+.dir-select-wrap {
+  position: relative;
+}
+.dir-select-wrap::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
+}
+.dir-col-select {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  padding: 11px 36px 11px 13px;
+  font-size: 14.5px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.dir-col-select:hover {
+  border-color: color-mix(in srgb, var(--amber) 40%, var(--line));
+}
+.dir-col-select:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 20%, transparent);
+}
+/* free-text input shown in "ค่าเดียวทุกแถว" mode when "กำหนดเอง" is chosen */
+.dir-col-custom {
+  width: 100%;
+  margin-top: 9px;
+  padding: 11px 13px;
+  font-size: 14.5px;
+  font-family: inherit;
+  color: var(--amber-bright);
+  background: var(--surface-2);
+  border: 1px solid color-mix(in srgb, var(--amber) 40%, var(--line));
+  border-radius: 10px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.dir-col-custom::placeholder { color: var(--faint); }
+.dir-col-custom:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 20%, transparent);
+}
+.dir-col-custom[hidden] { display: none; }
+
+/* random mode: a cloud of selectable pill chips (replaces the old checkbox grid) */
+.dir-chip-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+.dir-chip-toolbtns {
+  display: flex;
+  gap: 6px;
+}
+.dir-tool-btn {
+  font: inherit;
+  font-size: 12.5px;
+  padding: 4px 11px;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.dir-tool-btn:hover {
+  color: var(--amber-bright);
+  border-color: color-mix(in srgb, var(--amber) 40%, var(--line));
+}
+.dir-tool-btn:focus-visible {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--amber) 22%, transparent);
+}
+.dir-chip-count {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--faint);
+}
+.dir-chip-count b {
+  color: var(--amber-bright);
+  font-weight: 700;
+}
+.dir-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  max-height: 46vh;
+  overflow-y: auto;
+  padding: 12px;
+  background: color-mix(in srgb, var(--surface-2) 55%, var(--bg));
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.dir-chip {
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.1;
+  padding: 7px 13px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.13s, background 0.13s, border-color 0.13s, transform 0.06s;
+}
+.dir-chip:hover {
+  border-color: color-mix(in srgb, var(--amber) 50%, var(--line));
+  color: var(--amber-bright);
+}
+.dir-chip:active {
+  transform: scale(0.96);
+}
+.dir-chip:focus-visible {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--amber) 22%, transparent);
+}
+.dir-chip.on {
+  color: #1c1206;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(242, 116, 12, 0.32);
+}
+.dir-chip.on:hover {
+  color: #1c1206;
+}
+.dir-chip-note {
+  margin: 9px 2px 0;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.grid-prompt {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 124px;
+  line-height: 1.4;
+}
+
+.cell-empty { color: var(--faint); }
+
+/* thumbnails (reference + result) */
+.thumb-link {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.job-thumb {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-inset);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.08s;
+}
+
+.thumb-link:hover .job-thumb { border-color: var(--amber); }
+.thumb-link:active .job-thumb { transform: translateY(1px); }
+
+.play-badge {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 15px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+/* one batch row's results: pairs of [image][video], wrapping when count is high */
+.result-batch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+/* one result = image→video pair (or a single thumb) kept visually together */
+.result-pair {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid var(--line-soft);
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.result-pair .job-thumb { width: 34px; height: 34px; }
+
+.result-pair.empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0 8px;
+  color: var(--faint);
+  border-style: dashed;
+  background: transparent;
+}
+.result-pair.empty.fail { color: var(--red); border-color: rgba(255, 107, 94, 0.4); }
+
+.result-copy {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--muted);
+  border-radius: 7px;
+  padding: 3px 5px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.result-copy:hover { border-color: var(--amber); color: var(--text); }
+.result-copy.copied { border-color: var(--green); color: var(--green); }
+
+/* done/total tally shown in the Progress column for multi-item batches */
+.prog-count {
+  color: var(--faint);
+  font-size: 12px;
+}
+
+/* progress spinner */
+.prog-spin {
+  display: inline-block;
+  color: var(--blue);
+  animation: spin 1.1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* reference-image upload control (in the generate form) */
+.upload-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.upload-row input[type="text"] { flex: 1; }
+
+.upload-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.upload-preview {
+  margin-top: 8px;
+}
+
+.upload-preview[hidden] { display: none; }
+
+.upload-preview .job-thumb {
+  width: 64px;
+  height: 64px;
+  cursor: default;
+}
+
+/* ============ prompt hub empty ============ */
+.hub-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 38px 0;
+  text-align: center;
+}
+
+.hub-empty svg {
+  fill: none;
+  stroke: var(--faint);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hub-empty p {
+  margin: 0;
+  color: var(--faint);
+  font-size: 14px;
+}
+
+/* ============ log ============ */
+.log {
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.7;
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 14px 16px;
+  height: calc(100vh - 220px);
+  min-height: 280px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.log-line {
+  color: var(--muted);
+}
+
+.log-line .ts {
+  color: var(--faint);
+  margin-right: 8px;
+}
+
+.log-line.error { color: var(--red); }
+.log-line.warn { color: var(--amber-bright); }
+
+/* separator drawn after each finished job — keeps the stream from blurring into
+   one wall of text; faint amber so it reads as a boundary, not a log entry */
+.log-divider {
+  height: 0;
+  margin: 9px 0;
+  border: 0;
+  border-top: 1px dashed rgba(251, 149, 20, 0.28);
+}
+
+/* The Log renders in its OWN window now (webui/log.html, styled there) — opened by
+   the sidebar "Log" button as a separate OS/browser window, so it can be dragged
+   outside the app. The .log-line / .log-divider / .ts rules above are shared with it. */
+
+/* ============ connect help / settings ============ */
+/* Program-side "เชื่อมต่อ Extension" action — primary CTA + a one-line hint beneath it.
+   .btn.primary is width:100% by design; override to auto so the button hugs its label
+   instead of stretching the whole card (same gotcha the setup wizard's .s-action fixes). */
+.connect-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.connect-action .btn.primary {
+  width: auto;
+  padding: 11px 22px;
+  font-size: 14.5px;
+}
+
+.connect-action .muted-text {
+  margin: 0;
+  font-size: 13px;
+}
+
+.connect-action .muted-text[hidden] {
+  display: none;
+}
+
+.info-list {
+  margin: 0;
+  display: grid;
+  gap: 1px;
+  background: var(--line-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.info-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 14px;
+  background: var(--surface-inset);
+}
+
+.info-list dt {
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.info-list dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+/* ============ settings sub-tabs ============ */
+.subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 22px;
+}
+
+.subtab {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 16px;
+  border-radius: 8px 8px 0 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.subtab:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.subtab.active {
+  color: var(--amber-bright);
+  border-bottom-color: var(--amber);
+  /* a faint top fill matches the .acc-group-tab.active language on the same panel */
+  background: linear-gradient(180deg, rgba(251, 149, 20, 0.08), transparent);
+}
+
+.subtab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(251, 149, 20, 0.3);
+}
+
+.subpanel {
+  display: none;
+  animation: fade-in 0.2s ease;
+}
+
+.subpanel.active {
+  display: block;
+}
+
+/* ============ account manager ============ */
+.warn-banner {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--amber-bright);
+  background: linear-gradient(180deg, rgba(251, 149, 20, 0.1), rgba(251, 149, 20, 0.03));
+  border: 1px solid rgba(251, 149, 20, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin-bottom: 18px;
+}
+
+.warn-banner b {
+  color: var(--text);
+}
+
+.muted-text a {
+  color: var(--amber-bright);
+}
+
+/* ============ auto-update banner ============ */
+/* Shown by app.js (renderUpdate) under the header when the release manifest
+   reports a newer build. Notify-only phase: the CTA opens the download URL. */
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--text);
+  /* aligned to the .warn-banner language (same gradient, radius token, border) */
+  background: linear-gradient(180deg, rgba(251, 149, 20, 0.1), rgba(251, 149, 20, 0.03));
+  border: 1px solid rgba(251, 149, 20, 0.3);
+  border-radius: var(--radius-sm);
+}
+.update-banner[hidden] { display: none; }
+.update-banner.mandatory {
+  background: rgba(251, 149, 20, 0.18);
+  border-color: rgba(251, 149, 20, 0.8);
+}
+.update-banner .ub-ico { font-size: 17px; line-height: 1; }
+.update-banner .ub-text { flex: 1 1 auto; line-height: 1.4; }
+.update-banner .ub-btn {
+  flex: 0 0 auto;
+  padding: 6px 16px;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1;
+  color: #1a1205;
+  text-decoration: none;
+  background: linear-gradient(180deg, #fdb34d, var(--amber));
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: filter 0.15s;
+}
+.update-banner .ub-btn:hover { filter: brightness(1.07); }
+.update-banner .ub-btn[hidden] { display: none; }
+.update-banner .ub-x {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s;
+}
+.update-banner .ub-x:hover { color: var(--text); }
+.update-banner .ub-x[hidden] { display: none; }
+
+/* ===== Auto-update: full-screen "updating" overlay (covers the app while the new
+   build downloads, then auto-restarts at 100%) ===== */
+.update-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 11000; /* above #bootVeil (10000) and the auth/setup gates */
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(251, 149, 20, 0.10), transparent 60%),
+    rgba(10, 10, 10, 0.93);
+  backdrop-filter: blur(6px);
+  animation: uo-in 200ms ease-out;
+}
+.update-overlay[hidden] { display: none; }
+@keyframes uo-in { from { opacity: 0; } to { opacity: 1; } }
+.uo-card {
+  width: min(440px, 86vw);
+  padding: 38px 36px 30px;
+  text-align: center;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow), 0 0 0 1px rgba(251, 149, 20, 0.08);
+}
+.uo-logo {
+  display: block;
+  margin: 0 auto 18px;
+  filter: drop-shadow(0 6px 16px rgba(251, 149, 20, 0.30));
+  animation: uo-pulse 1.8s ease-in-out infinite;
+}
+@keyframes uo-pulse {
+  0%, 100% { transform: translateY(0); opacity: 1; }
+  50% { transform: translateY(-3px); opacity: 0.85; }
+}
+.uo-title { font-size: 1.06rem; font-weight: 600; color: var(--text); margin-bottom: 22px; }
+.uo-title span { color: var(--amber-bright); }
+.uo-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.uo-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--amber-deep), var(--amber), var(--amber-bright));
+  box-shadow: 0 0 12px rgba(251, 149, 20, 0.55);
+  transition: width 260ms ease-out;
+}
+.uo-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+.uo-pct {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--amber-bright);
+  font-variant-numeric: tabular-nums;
+}
+.uo-status { color: var(--muted); font-size: 0.92rem; }
+.uo-hint { margin-top: 18px; color: var(--faint); font-size: 0.8rem; }
+
+.add-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+/* KIE API-key card: Save / Clear sit side by side under the input */
+.kie-key-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+@media (max-width: 880px) {
+  .add-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.add-card h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.add-card .muted-text {
+  margin-bottom: 14px;
+}
+
+.add-card input,
+.add-card textarea,
+.add-card select {
+  margin-bottom: 10px;
+}
+
+.cookie-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.cookie-row textarea {
+  flex: 1;
+}
+
+.cookie-row select {
+  width: auto;
+  min-width: 92px;
+}
+
+.btn.wide {
+  width: 100%;
+}
+
+.accounts-card .card-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.acc-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.acc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.acc-table th {
+  text-align: center;
+  padding: 10px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line-soft);
+  white-space: nowrap;
+}
+.acc-table th:last-child { border-right: none; }
+
+.acc-table td {
+  padding: 9px 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-soft);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.acc-table td:last-child { border-right: none; }
+.acc-table tbody tr:last-child td { border-bottom: none; }
+
+.acc-table tbody tr:hover {
+  background: rgba(251, 149, 20, 0.05);
+}
+
+.empty-row td {
+  color: var(--muted);
+  text-align: center;
+  padding: 22px;
+}
+
+.acc-email {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.acc-tier {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.acc-tier.tier-free { color: var(--green); }
+.acc-tier.tier-pro { color: var(--blue); }
+.acc-tier.tier-ultra { color: var(--purple); }
+
+.acc-credit .credit-pill {
+  display: inline-block;
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--amber-bright);
+  background: rgba(251, 149, 20, 0.08);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 9px;
+  min-width: 44px;
+}
+
+.acc-exp {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* "✓ รีแล้ว …" under Token EXP: the working access token was just re-minted on Refresh
+   even though the session-expiry date is unchanged. Subtle green so it reads as healthy. */
+.acc-checked {
+  margin-top: 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--green);
+  white-space: nowrap;
+}
+
+.acc-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.acc-badge.active { background: rgba(81, 216, 138, 0.15); color: var(--green); }
+.acc-badge.expired,
+.acc-badge.error { background: rgba(255, 107, 94, 0.15); color: var(--red); }
+.acc-badge.checking { background: var(--surface-2); color: var(--muted); }
+
+.chk {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--amber);
+  cursor: pointer;
+}
+
+/* on/off toggle */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  vertical-align: middle;
+}
+
+.switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.switch .track {
+  position: absolute;
+  inset: 0;
+  background: var(--line);
+  border-radius: 999px;
+  transition: background 0.15s;
+}
+
+.switch .track::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--faint);
+  transition: transform 0.15s, background 0.15s;
+}
+
+.switch input:checked + .track {
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
+}
+
+.switch input:checked + .track::before {
+  transform: translateX(18px);
+  background: #1c1206;
+}
+
+.switch input:focus-visible + .track {
+  box-shadow: 0 0 0 3px rgba(251, 149, 20, 0.3);
+}
+
+.acc-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.acc-actions button {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 7px;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.acc-actions button:hover { filter: brightness(1.12); }
+
+.acc-actions .a-refresh { background: var(--green); color: #07291b; }
+.acc-actions .a-proxy { background: var(--amber); color: #2a1700; }
+.acc-actions .a-del { background: var(--red); color: #fff; }
+
+.proxy-edit {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.proxy-edit input {
+  width: 130px;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+/* the inline TikTok account-name editor reuses .proxy-edit layout but needs a wider field */
+.rename-edit input {
+  width: 180px;
+}
+
+/* the ✎ rename trigger sits next to the account name — quiet until hovered */
+.a-rename {
+  margin-left: 6px;
+  padding: 1px 5px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.a-rename:hover {
+  opacity: 1;
+  color: var(--amber);
+  border-color: var(--amber);
+}
+
+/* ============ in-app media viewer (lightbox) ============ */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: rgba(8, 5, 2, 0.88);
+  backdrop-filter: blur(4px);
+}
+.lightbox[hidden] {
+  display: none;
+}
+.lightbox-body {
+  display: flex;
+  max-width: 92vw;
+  max-height: 88vh;
+}
+.lightbox-body img,
+.lightbox-body video {
+  max-width: 92vw;
+  max-height: 88vh;
+  border-radius: 12px;
+  background: #000;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+}
+.lightbox-close {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  cursor: pointer;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  transition: background 0.15s, border-color 0.15s;
+}
+.lightbox-close:hover {
+  background: var(--surface);
+  border-color: var(--amber);
+}
+
+/* ============ narrow window ============ */
+@media (max-width: 720px) {
+  .app-shell {
+    grid-template-columns: 64px 1fr;
+  }
+  /* purely decorative — safe to drop entirely */
+  .sb-brand-text,
+  .sb-version {
+    display: none;
+  }
+  /* hide visually but keep the accessible name on the icon-only buttons */
+  .nav-item span:not(.nav-dot),
+  .sb-status #sbStatusText {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .nav-item {
+    justify-content: center;
+  }
+  /* groups don't fit in the 64px icon rail — hide carets. Submenus stay hidden
+     via the aria-expanded/hidden mechanism (gated by NARROW_MQ in app.js), so
+     the announced state and the visible state never disagree. */
+  .nav-caret {
+    display: none;
+  }
+}
+
+/* ============ login gate removed for no-login build ============ */`r`n`r`n/* ============ setup wizard — post-login one-time onboarding ============
+   Full-screen overlay shown after the login gate unlocks, until the two
+   guided steps (extension + AI key) are done. Sits at z-index 9990 — just
+   BELOW the auth gate (9999), since the two are mutually exclusive (auth gate
+   only shows while locked, this only while unlocked). Mirrors the .auth-* look. */
+.setup-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  display: flex;
+  padding: 24px;
+  overflow: auto;
+  background:
+    radial-gradient(140% 120% at 100% 0%, #2a1d0d 0%, transparent 55%),
+    radial-gradient(120% 120% at 0% 0%, #241a0d 0%, var(--bg) 55%);
+  background-attachment: fixed;
+}
+.setup-gate[hidden] { display: none; }
+.setup-card {
+  width: 100%;
+  max-width: 480px;
+  margin: auto;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+
+/* slim overall progress (0/3 → 3/3) */
+.setup-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 14px;
+}
+.setup-progress-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.setup-progress-track > span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--amber-bright), var(--amber-deep));
+  transition: width 360ms var(--ease-out, ease);
+}
+.setup-progress-text { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+/* one step ROW — all three visible at once; the action sits on the RIGHT of the row */
+.s-step {
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.s-step:first-of-type { border-top: 0; padding-top: 4px; }
+.s-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.s-badge {
+  position: relative;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  margin-top: 1px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--amber) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 45%, transparent);
+  color: var(--amber-bright);
+}
+.s-step[data-done="true"] .s-badge {
+  background: color-mix(in srgb, var(--green) 20%, transparent);
+  border-color: color-mix(in srgb, var(--green) 55%, transparent);
+}
+.s-check {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: none;
+}
+.s-step[data-done="true"] .s-n { display: none; }
+.s-step[data-done="true"] .s-check { display: block; }
+.s-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.s-title strong { font-size: 14px; }
+.s-title span { font-size: 12px; color: var(--muted); line-height: 1.5; }
+/* the action button on the right of the row */
+.s-action {
+  flex: 0 0 auto;
+  align-self: center;
+  white-space: nowrap;
+}
+/* body content under the head, indented past the badge to line up with the title */
+.s-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 0 0 38px;
+}
+.s-body:empty { display: none; }
+
+/* 🔒 lock chip on the right of a LOCKED step (replaces the action button) */
+.s-lock {
+  display: none;
+  flex: 0 0 auto;
+  align-self: center;
+  font-size: 15px;
+  opacity: 0.8;
+}
+/* LOCKED step — dimmed, body + action hidden, lock shown, badge shows the number
+   (not a green check) since it's "not your turn yet". */
+.s-step[data-locked="true"] { opacity: 0.5; }
+.s-step[data-locked="true"] .s-body,
+.s-step[data-locked="true"] .s-action { display: none; }
+.s-step[data-locked="true"] .s-lock { display: block; }
+.s-step[data-locked="true"] .s-badge {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--faint);
+}
+.s-step[data-locked="true"] .s-check { display: none; }
+.s-step[data-locked="true"] .s-n { display: inline; }
+/* disabled "เริ่มใช้งาน" while the gate isn't satisfied */
+.setup-finish:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
+/* step ③ — key inputs (left, stacked) + Save button (right) */
+.s-keys {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+.s-keys-inputs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.s-keys-save { flex: 0 0 auto; }
+/* the inline action buttons must NOT take the full-width `.btn.primary` width —
+   override it (higher specificity than `.btn.primary`), like the app's modal buttons. */
+.s-head .s-action,
+.s-keys .s-keys-save {
+  width: auto;
+  padding: 9px 16px;
+  font-size: 13px;
+  box-shadow: none;
+}
+.s-keys .s-keys-save { align-self: stretch; padding-left: 20px; padding-right: 20px; }
+.setup-getkey-line { margin: 0; font-size: 11.5px; color: var(--faint); }
+.setup-getkey-line a { color: var(--amber-bright); text-decoration: none; }
+.setup-getkey-line a:hover { text-decoration: underline; }
+
+.setup-path {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #0e0a05;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 8px 8px 8px 12px;
+}
+.setup-path code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--amber-bright);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.setup-wait {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+/* fallback message when Chrome couldn't be opened automatically */
+.setup-wait.warn { color: var(--amber-bright); }
+.setup-wait.warn .setup-spinner { display: none; }
+.setup-spinner {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--amber) 30%, transparent);
+  border-top-color: var(--amber-bright);
+  animation: setup-spin 0.8s linear infinite;
+}
+@keyframes setup-spin { to { transform: rotate(360deg); } }
+
+/* "หรือ" divider between the two key fields */
+.setup-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--faint);
+}
+.setup-or::before,
+.setup-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.setup-getkey {
+  font-size: 11.5px;
+  color: var(--amber-bright);
+  text-decoration: none;
+}
+.setup-getkey:hover { text-decoration: underline; }
+.setup-key-msg {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.setup-key-msg.ok { color: var(--green); }
+.setup-key-msg.warn { color: var(--amber-bright); }
+
+.setup-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.setup-finish { width: 100%; }
+.setup-gate.is-complete .setup-finish {
+  background: linear-gradient(180deg, var(--green) 0%, color-mix(in srgb, var(--green) 78%, #0a3a22) 100%);
+  color: #07210f;
+}
+@media (prefers-reduced-motion: reduce) {
+  .setup-spinner { animation: none; }
+}
+
+/* ============ boot veil — in-page splash overlay ============
+   Reuses the existing :root tokens (var(--bg) / var(--amber) / etc.).
+   Sits at z-index 10000 above the app.
+   Add `.is-hiding` once the first server state arrives to fade it out. */
+
+#bootVeil {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  /* same dark page bg as the app -> seamless reveal under the veil */
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(800px 520px at 82% 12%, rgba(255, 179, 0, 0.11) 0%, transparent 58%),
+    radial-gradient(760px 520px at 10% 88%, rgba(255, 179, 0, 0.085) 0%, var(--bg) 50%);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 460ms ease, visibility 0s linear 0s;
+  --bv-tile: 188px;
+  --bv-ring: 268px;
+}
+
+/* faint warm vignette for depth */
+#bootVeil::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: radial-gradient(120% 120% at 50% 42%, transparent 58%, rgba(10, 7, 3, 0.55) 100%);
+}
+
+/* fade-out state: drop it cleanly + stop intercepting clicks */
+#bootVeil.is-hiding {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 460ms ease, visibility 0s linear 460ms;
+}
+
+.bv-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.5;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(20, 15, 8, 0) 0px,
+    rgba(20, 15, 8, 0) 2px,
+    rgba(8, 5, 2, 0.32) 3px,
+    rgba(8, 5, 2, 0.32) 4px
+  );
+  animation: bv-scan 9s linear infinite;
+}
+
+@keyframes bv-scan {
+  from { background-position: 0 0; }
+  to   { background-position: 0 -120px; }
+}
+
+.bv-stage {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 38px;
+  padding: 32px;
+}
+
+/* ---- orbital mark ---- */
+.bv-mark {
+  position: relative;
+  width: var(--bv-ring);
+  height: var(--bv-ring);
+  display: grid;
+  place-items: center;
+}
+
+.bv-glow {
+  position: absolute;
+  width: 78%;
+  height: 78%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%,
+      rgba(255, 197, 61, 0.42) 0%,
+      rgba(251, 149, 20, 0.26) 34%,
+      rgba(242, 116, 12, 0.10) 58%,
+      transparent 72%);
+  filter: blur(6px);
+  animation: bv-glowPulse 3.4s ease-in-out infinite;
+}
+
+@keyframes bv-glowPulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.92); }
+  50%      { opacity: 1;    transform: scale(1.08); }
+}
+
+.bv-ring-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(58, 44, 26, 0.85);
+}
+
+.bv-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(251, 149, 20, 0)    0deg,
+    rgba(251, 149, 20, 0)    150deg,
+    rgba(242, 116, 12, 0.55) 248deg,
+    var(--amber)             312deg,
+    var(--amber-bright)      352deg,
+    #fff3d6                  360deg
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  animation: bv-sweep 2.6s linear infinite;
+}
+
+@keyframes bv-sweep {
+  to { transform: rotate(360deg); }
+}
+
+.bv-spark-orbit {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  animation: bv-sweep 2.6s linear infinite;
+}
+
+.bv-spark {
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  margin-left: -4.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff7e6 0%, var(--amber-bright) 42%, var(--amber) 70%, transparent 100%);
+  box-shadow:
+    0 0 8px 2px rgba(255, 197, 61, 0.9),
+    0 0 18px 6px rgba(251, 149, 20, 0.55);
+  animation: bv-sparkTwinkle 2.6s ease-in-out infinite;
+}
+
+@keyframes bv-sparkTwinkle {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(1.35); opacity: 0.85; }
+}
+
+.bv-tile {
+  position: relative;
+  z-index: 3;
+  width: var(--bv-tile);
+  height: var(--bv-tile);
+  border-radius: 38px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(160deg, rgba(30, 30, 30, 0.92), rgba(18, 18, 18, 0.96));
+  border: 1px solid rgba(58, 44, 26, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 160, 0.06),
+    0 18px 44px rgba(0, 0, 0, 0.55);
+  animation: bv-tileBreathe 3.4s ease-in-out infinite;
+}
+
+@keyframes bv-tileBreathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.02); }
+}
+
+.bv-badge {
+  width: 116px;
+  height: 116px;
+  display: block;
+  filter: drop-shadow(0 6px 14px rgba(242, 116, 12, 0.4));
+}
+
+.bv-bolt-charge {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bv-boltSweep 2.6s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+}
+
+@keyframes bv-boltSweep {
+  0%   { transform: translateY(-120%); opacity: 0; }
+  16%  { opacity: 0.95; }
+  50%  { transform: translateY(0%);    opacity: 1; }
+  84%  { opacity: 0.95; }
+  100% { transform: translateY(120%);  opacity: 0; }
+}
+
+/* ---- copy ---- */
+.bv-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.bv-eyebrow {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.bv-headline {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: clamp(1.55rem, 3.2vw, 2.1rem);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  background: linear-gradient(
+    100deg,
+    var(--text) 0%,
+    var(--text) 38%,
+    var(--amber-bright) 50%,
+    var(--text) 62%,
+    var(--text) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: bv-shimmer 5s linear infinite;
+}
+
+@keyframes bv-shimmer {
+  0%   { background-position: 130% 0; }
+  100% { background-position: -130% 0; }
+}
+
+.bv-track {
+  position: relative;
+  width: min(300px, 70vw);
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(58, 44, 26, 0.7);
+  overflow: hidden;
+}
+
+.bv-track::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 40%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(242, 116, 12, 0.55) 28%,
+    var(--amber) 48%,
+    var(--amber-bright) 50%,
+    var(--amber) 52%,
+    rgba(242, 116, 12, 0.55) 72%,
+    transparent 100%
+  );
+  transform: translateX(-130%);
+  animation: bv-trackSweep 1.7s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes bv-trackSweep {
+  0%   { transform: translateX(-130%); }
+  100% { transform: translateX(360%); }
+}
+
+.bv-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--mono);
+  font-size: 14.5px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.bv-dots {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.bv-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--amber);
+  animation: bv-dot 1.4s ease-in-out infinite;
+}
+.bv-dots i:nth-child(1) { animation-delay: 0s; }
+.bv-dots i:nth-child(2) { animation-delay: 0.22s; }
+.bv-dots i:nth-child(3) { animation-delay: 0.44s; }
+
+@keyframes bv-dot {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40%      { opacity: 1;   transform: scale(1.15); }
+}
+
+@media (max-width: 480px) {
+  #bootVeil { --bv-ring: 220px; --bv-tile: 154px; }
+  .bv-badge { width: 96px; height: 96px; }
+  .bv-tile { border-radius: 32px; }
+}
+
+/* ---- reduced motion : collapse to a single gentle opacity pulse ---- */
+@media (prefers-reduced-motion: reduce) {
+  #bootVeil, #bootVeil.is-hiding {
+    transition: opacity 200ms linear, visibility 0s linear 0s;
+  }
+  #bootVeil.is-hiding {
+    transition: opacity 200ms linear, visibility 0s linear 200ms;
+  }
+  .bv-scanlines { animation: none; opacity: 0.4; }
+  .bv-ring, .bv-spark-orbit, .bv-tile, .bv-glow, .bv-spark, .bv-bolt-charge {
+    animation: none !important;
+  }
+  .bv-headline {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: var(--text);
+    color: var(--text);
+  }
+  .bv-bolt-charge { opacity: 1; transform: none; }
+  .bv-spark { opacity: 0.9; }
+  .bv-glow {
+    opacity: 0.7;
+    animation: bv-softPulse 3s ease-in-out infinite !important;
+  }
+  .bv-track::before {
+    animation: bv-softPulse 2.4s ease-in-out infinite !important;
+    transform: none;
+    left: 0;
+    width: 100%;
+  }
+  .bv-dots i {
+    animation: bv-softPulse 1.8s ease-in-out infinite !important;
+  }
+  .bv-dots i:nth-child(2) { animation-delay: 0.3s !important; }
+  .bv-dots i:nth-child(3) { animation-delay: 0.6s !important; }
+  @keyframes bv-softPulse {
+    0%, 100% { opacity: 0.4; }
+    50%      { opacity: 1; }
+  }
+}
+
+/* ============================================================================
+   Post TikTok (โพสต์ TikTok อย่างเดียว) — the staged-clip builder. A list of clips
+   (each = one post) above the shared posting settings. [[tiktok-post-only-mode]]
+   ========================================================================== */
+.post-clips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-3);
+}
+.post-clips-empty {
+  margin: 0;
+  padding: var(--space-4);
+  text-align: center;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-well);
+}
+.post-clip-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.post-clip-row .pc-index {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface-inset);
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.post-clip-row .pc-thumb {
+  flex: 0 0 auto;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+  background: var(--surface-well);
+}
+.post-clip-row .pc-thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.post-clip-row .pc-thumb-ico { font-size: 22px; opacity: 0.7; }
+.post-clip-row .pc-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.post-clip-row .pc-label {
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.post-clip-row .pc-kind {
+  font-size: 11px;
+  color: var(--faint);
+}
+.post-clip-row .pc-caption {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+}
+.post-clip-row .pc-caption:focus-visible {
+  outline: none;
+  border-color: var(--amber);
+}
+.post-clip-row .pc-remove {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-xs);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.post-clip-row .pc-remove:hover {
+  color: var(--red);
+  border-color: var(--line);
+  background: var(--surface-inset);
+}
+.post-clips-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* "เลือกคลิป" picker — a card grid of REAL playable clips, labelled by mode + product. */
+.clip-pick-modal {
+  width: min(760px, 94vw);
+  max-width: 760px;
+}
+.clip-pick-modal .modal-hint {
+  margin: 4px 0 var(--space-3);
+  color: var(--muted);
+}
+.clip-pick-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 4px 0 6px;
+}
+/* "เลือกทั้งหมด" — a custom chip with an amber check box (check = all, dash = some) */
+.clip-pick-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 12px 6px 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+.clip-pick-all:hover { border-color: var(--faint); }
+.clip-pick-all:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.clip-pick-all .cpa-box {
+  position: relative;
+  width: 19px;
+  height: 19px;
+  border-radius: 6px;
+  border: 2px solid var(--faint);
+  background: transparent;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+/* all selected → filled box + check */
+.clip-pick-all.is-all { color: var(--amber-bright); border-color: rgba(251, 149, 20, 0.5); }
+.clip-pick-all.is-all .cpa-box { background: var(--amber); border-color: var(--amber); }
+.clip-pick-all.is-all .cpa-box::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 10px;
+  border: solid var(--on-amber);
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg);
+}
+/* some selected → filled box + dash (indeterminate) */
+.clip-pick-all.is-some { color: var(--amber-bright); border-color: rgba(251, 149, 20, 0.5); }
+.clip-pick-all.is-some .cpa-box { background: var(--amber); border-color: var(--amber); }
+.clip-pick-all.is-some .cpa-box::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 7.5px;
+  width: 9px;
+  height: 2.5px;
+  border-radius: 2px;
+  background: var(--on-amber);
+}
+.clip-pick-head-left { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+/* "ยกเลิกทั้งหมด" — subtle text button, shown only while something is selected */
+.clip-pick-clear {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 5px 9px;
+  border-radius: var(--radius-xs);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.clip-pick-clear:hover { color: var(--red); background: var(--surface-inset); text-decoration: none; }
+.clip-pick-clear:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.clip-pick-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.clip-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-3);
+  max-height: 52vh;
+  overflow-y: auto;
+  padding: 2px;
+  margin-bottom: var(--space-3);
+}
+.clip-pick-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+.clip-pick-card:hover { border-color: var(--faint); }
+.clip-pick-card:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.clip-pick-card.is-selected {
+  border-color: var(--amber);
+  background: rgba(251, 149, 20, 0.08);
+  box-shadow: 0 0 0 1px var(--amber) inset;
+}
+/* tick badge (top-left); fills amber with a check when the card is selected */
+.clip-pick-check {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  display: grid;
+  place-items: center;
+}
+.clip-pick-card.is-selected .clip-pick-check {
+  background: var(--amber);
+  border-color: var(--amber);
+}
+.clip-pick-card.is-selected .clip-pick-check::after {
+  content: "";
+  width: 6px;
+  height: 11px;
+  margin-top: -2px;
+  border: solid var(--on-amber);
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg);
+}
+.clip-pick-thumb {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+  background: #000;
+}
+.clip-pick-thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  display: block;
+}
+/* ▶ watch button — bottom-right of the thumbnail; opens the video lightbox */
+.clip-pick-play {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.58);
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+.clip-pick-play svg { width: 16px; height: 16px; fill: currentColor; margin-left: 1px; }
+.clip-pick-play:hover { background: var(--amber); color: var(--on-amber); transform: scale(1.06); }
+.clip-pick-play:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.clip-pick-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.clip-pick-title {
+  font-size: 12.5px;
+  line-height: 1.25;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.clip-pick-noprod { color: var(--faint); font-style: italic; }
+.clip-pick-meta-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.clip-pick-mode {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+/* tint the mode chip by provider, matching the section tags */
+.clip-pick-mode.src-google_labs { color: var(--amber-bright); border-color: rgba(251, 149, 20, 0.4); }
+.clip-pick-mode.src-grok { color: var(--blue); border-color: rgba(108, 182, 255, 0.4); }
+.clip-pick-mode.src-kie { color: var(--purple); border-color: rgba(192, 140, 255, 0.4); }
+
+/* Video lightbox — watch a clip full-size above the picker. */
+.video-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 4vh 4vw;
+  background: rgba(0, 0, 0, 0.78);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.video-lightbox.open { opacity: 1; }
+.video-lightbox-inner {
+  max-width: min(440px, 92vw);
+  max-height: 90vh;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.video-lightbox-inner video {
+  display: block;
+  max-width: 100%;
+  max-height: 90vh;
+  background: #000;
+}
+.video-lightbox-close {
+  position: fixed;
+  top: 18px;
+  right: 22px;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+.video-lightbox-close:hover { background: var(--amber); color: var(--on-amber); }
+
+

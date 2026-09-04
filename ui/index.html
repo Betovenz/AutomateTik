@@ -1,0 +1,509 @@
+﻿<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TikTok Manager Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/ai-studio-embed.css" />
+    <link rel="stylesheet" href="/postweb.css" />
+  </head>
+  <body>
+    <div id="desktopTitlebar" class="desktop-titlebar hidden"></div>
+    <div class="desktop-window-controls hidden">
+      <button id="desktopMinimizeBtn" type="button" aria-label="Minimize">remove</button>
+      <button id="desktopMaximizeBtn" type="button" aria-label="Maximize">crop_square</button>
+      <button id="desktopCloseBtn" type="button" aria-label="Close">close</button>
+    </div>
+    <div id="desktopResizeHandles" class="desktop-resize-handles hidden" aria-hidden="true">
+      <div class="desktop-resize-handle resize-n" data-resize-edge="n"></div>
+      <div class="desktop-resize-handle resize-e" data-resize-edge="e"></div>
+      <div class="desktop-resize-handle resize-s" data-resize-edge="s"></div>
+      <div class="desktop-resize-handle resize-w" data-resize-edge="w"></div>
+      <div class="desktop-resize-handle resize-ne" data-resize-edge="ne"></div>
+      <div class="desktop-resize-handle resize-se" data-resize-edge="se"></div>
+      <div class="desktop-resize-handle resize-sw" data-resize-edge="sw"></div>
+      <div class="desktop-resize-handle resize-nw" data-resize-edge="nw"></div>
+    </div>
+    <header class="app-header">
+      <div class="app-brand pywebview-drag-region">
+        <span class="brand-mark">AT</span>
+        <div>
+          <strong>TikTok Manager Pro</strong>
+          <small>TikTok Manager</small>
+        </div>
+      </div>
+      <nav class="view-tabs" aria-label="Main views">
+        <button class="view-tab active" data-view="dashboard">All Channels</button>
+        <button class="view-tab" data-view="postweb">POST WEB</button>
+        <button class="view-tab" data-view="videos">Video</button>
+        <button class="view-tab" data-view="idle">Device</button>
+        <button class="view-tab" data-view="channel">Channel</button>
+        <button class="view-tab" data-view="gtpro">AI Studio</button>
+      </nav>
+      <div class="header-tools" aria-label="Header tools">
+        <button id="toggleLibraryBtn" class="ghost shell-toggle-btn" type="button" aria-label="Toggle library">video_library</button>
+      </div>
+    </header>
+
+    <aside class="sidebar">
+      <div id="deviceSidebar" class="sidebar-scope">
+        <div class="brand">
+          <span class="brand-mark">AT</span>
+          <div>
+            <strong>Device Channel</strong>
+            <div class="brand-subrow">
+              <label class="channel-filter-toggle">
+                <input id="hideOfflineChannels" type="checkbox" />
+                <span>ซ่อนช่อง offline</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <button id="scanDevicesBtn" class="ghost full">Scan ADB</button>
+        <div id="deviceList" class="device-list"></div>
+
+        <form id="channelForm" class="channel-form">
+          <input id="channelName" placeholder="Channel name" required />
+          <input id="channelUdid" placeholder="UDID / 192.168.x.x:5555" required />
+          <button class="primary full">Add Channel</button>
+        </form>
+
+        <div id="channels" class="channels"></div>
+      </div>
+
+      <!-- POST WEB uses the same rail for its TikTok accounts: pick a channel on
+           the left, the workspace posts as that account (mirrors All Channels). -->
+      <div id="postwebSidebar" class="sidebar-scope" hidden>
+        <div class="brand">
+          <span class="brand-mark">AT</span>
+          <div>
+            <strong>TikTok Channel</strong>
+            <div class="brand-subrow"><span class="pw-side-sub">เลือกช่องที่จะโพสต์</span></div>
+          </div>
+        </div>
+
+        <button id="pwSideReloadBtn" class="ghost full" type="button">สแกนหา Account</button>
+        <button id="pwAiSettingsBtn" class="ghost full pw-side-settings-btn" type="button">ตั้งค่า API</button>
+        <div id="pwSideStatus" class="pw-side-status">กำลังโหลดช่อง...</div>
+        <div id="pwSideChannels" class="channels"></div>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <section id="dashboardView" class="view-panel active">
+        <header class="topbar">
+          <div>
+            <h1 id="pageTitle">Dashboard</h1>
+            <p id="pathHint"></p>
+          </div>
+        </header>
+
+        <section class="metrics">
+          <div><strong id="metricChannels">0</strong><span>Channels</span></div>
+          <div><strong id="metricQueued">0</strong><span>Queued</span></div>
+          <div><strong id="metricComplete">0</strong><span>Complete</span></div>
+          <div><strong id="metricFailed">0</strong><span>Failed</span></div>
+        </section>
+
+        <div class="dashboard-actions">
+          <button id="scanUploadsBtn" class="ghost">Scan Uploads</button>
+          <button id="randomBtn" class="ghost">Random Distribute</button>
+          <button id="autoRandomBtn" class="ghost auto-random-off">Auto random : OFF</button>
+          <button id="startAllBtn" class="primary">Start All</button>
+          <button id="stopAllBtn" class="danger">Stop All</button>
+          <button id="clearTimeSetBtn" class="danger">Clear Time Set</button>
+          <button id="clearHistoryBtn" class="danger">Clear History</button>
+        </div>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2 id="queueTitle">Channel Queue</h2>
+              <p id="queueSubtitle">เลือก channel ทางซ้ายเพื่อดูคิว</p>
+            </div>
+            <div class="schedule-tools">
+              <button id="selectAllQueueBtn" class="ghost">Select All</button>
+              <button id="clearQueueBtn" class="danger">Clear Queue</button>
+              <input id="scheduleAt" type="datetime-local" />
+              <input id="intervalMinutes" type="number" min="0" placeholder="Interval min" />
+              <button id="setScheduleBtn" class="ghost">Set</button>
+            </div>
+          </div>
+          <div id="queueList" class="queue-list empty"></div>
+        </section>
+      </section>
+
+      <section id="postwebView" class="view-panel">
+        <header class="pw-head">
+          <div>
+            <h1>Post TikTok (Web)</h1>
+            <p>โพสต์คลิปขึ้น TikTok ผ่านเบราว์เซอร์ด้วยบัญชีที่เก็บ cookie ไว้ในหน้า Channel</p>
+          </div>
+          <div id="pwExtensionState" class="pw-ext-state" aria-live="polite">
+            <span class="pw-dot"></span><span id="pwExtensionLabel">กำลังตรวจ Extension...</span>
+          </div>
+        </header>
+
+        <section class="metrics">
+          <div><strong id="pwMetricQueued">0</strong><span>Queued</span></div>
+          <div><strong id="pwMetricDone">0</strong><span>Posted</span></div>
+          <div><strong id="pwMetricFailed">0</strong><span>Failed</span></div>
+        </section>
+
+        <div class="postweb-grid">
+          <section class="panel pw-setup-panel">
+            <div class="panel-head">
+              <div>
+                <h2>ตั้งค่าการโพสต์</h2>
+                <p>เลือกบัญชี คลิป และรูปแบบการโพสต์</p>
+              </div>
+            </div>
+
+            <div class="pw-setup-grid">
+            <div class="pw-field">
+              <label>บัญชี TikTok ที่จะโพสต์</label>
+              <div id="pwActiveAccount" class="pw-active-account is-empty">เลือกช่องจากแถบ TikTok Channel ทางซ้าย</div>
+            </div>
+
+            <div class="pw-field">
+              <label>วิธีลงคลิป</label>
+              <div class="pw-mode-row">
+                <button class="pw-mode is-active" type="button" data-pw-mode="post">โพสต์เลย</button>
+                <button class="pw-mode" type="button" data-pw-mode="schedule">ตั้งเวลา</button>
+                <button class="pw-mode" type="button" data-pw-mode="draft">บันทึกร่าง</button>
+              </div>
+            </div>
+
+            <div class="pw-field" id="pwScheduleField" hidden>
+              <label>เวลาที่จะโพสต์ (คลิปถัดไปเว้นตามระยะห่าง)</label>
+              <div class="pw-schedule-row">
+                <input id="pwScheduleAt" type="datetime-local" />
+                <input id="pwScheduleGap" type="number" min="5" step="5" value="60" placeholder="เว้น (นาที)" />
+              </div>
+            </div>
+
+            <div class="pw-field">
+              <label>ตะกร้าสินค้า</label>
+              <label class="pw-check"><input id="pwCartEnabled" type="checkbox" checked /> เปิดตะกร้า — ปักสินค้าลงในโพสต์</label>
+              <div class="pw-hint">เปิดไว้ ระบบจะดึงสินค้าจาก Showcase แล้วจับคู่กับวิดีโอให้เองตอนกด "Add to Tiktok"</div>
+            </div>
+
+            <div class="pw-field">
+              <label>ตัวเลือกเพิ่มเติม</label>
+              <label class="pw-check"><input id="pwAiLabel" type="checkbox" /> ติดป้าย AI-generated</label>
+              <label class="pw-check"><input id="pwDisclose" type="checkbox" /> เปิดเผยเนื้อหาโปรโมท (Your brand)</label>
+            </div>
+            </div>
+          </section>
+
+          <section class="panel pw-queue-panel">
+            <div class="panel-head">
+              <div>
+                <h2>คิวงานโพสต์</h2>
+                <p id="pwQueueSubtitle">ยังไม่มีงานในคิว</p>
+              </div>
+              <button id="pwRetryFailedBtn" class="ghost" type="button">ลองใหม่ที่ไม่สำเร็จ</button>
+            </div>
+            <div id="pwClipStatus" class="pw-status" hidden></div>
+            <div id="pwQueueList" class="pw-queue-list empty"></div>
+
+            <div class="pw-run-row">
+              <button id="pwRunBtn" class="primary" type="button">Run</button>
+              <button id="pwStopBtn" class="danger" type="button" disabled>Stop</button>
+              <button id="pwClearQueueBtn" class="ghost" type="button">ล้างคิว</button>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- API settings live in a dialog off the sidebar: the keys are shared by
+           every TikTok channel, not a property of the channel being posted. -->
+      <div id="pwAiModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="pwAiModalTitle">
+        <div class="modal-backdrop" data-pw-ai-close></div>
+        <div class="pw-ai-card">
+          <div class="modal-head">
+            <div>
+              <h2 id="pwAiModalTitle">ตั้งค่า API</h2>
+              <p>ใส่ API key ไว้ให้ AI คิดแคปชั่นและแฮชแท็กตอนโพสต์ — ใช้ร่วมกันทุกช่อง TikTok</p>
+            </div>
+            <button class="ghost" type="button" data-pw-ai-close>Close</button>
+          </div>
+
+          <div class="pw-ai-body">
+            <div class="pw-field">
+              <label>ให้ AI คิดแคปชั่นและแฮชแท็ก</label>
+              <label class="pw-check"><input id="pwAiCaptionEnabled" type="checkbox" /> เปิดใช้งาน — ตอนกด "Add to Tiktok" จะเอาชื่อสินค้าไปให้ AI คิดแคปชั่น + แฮชแท็กขายของ แล้วแสดงบนการ์ดคิว</label>
+              <div class="pw-hint">ปิดอยู่ = ใช้ชื่อสินค้าเป็นแคปชั่น เหมือนหน้า All Channels</div>
+            </div>
+            <div class="pw-field">
+              <label for="pwAiProvider">ผู้ให้บริการที่ใช้</label>
+              <select id="pwAiProvider">
+                <option value="openai">OpenAI</option>
+                <option value="gemini">Gemini</option>
+                <option value="openrouter">OpenRouter</option>
+              </select>
+            </div>
+            <div class="pw-field">
+              <label for="pwKeyOpenai">OpenAI API key</label>
+              <input id="pwKeyOpenai" type="password" autocomplete="off" spellcheck="false" placeholder="sk-..." />
+              <div class="pw-key-row">
+                <div class="pw-hint" data-pw-key-state="openai">ยังไม่ได้ตั้งค่า</div>
+                <button class="ghost pw-key-delete" type="button" data-pw-key-delete="openai" hidden>ลบคีย์</button>
+              </div>
+            </div>
+            <div class="pw-field">
+              <label for="pwKeyGemini">Gemini API key</label>
+              <input id="pwKeyGemini" type="password" autocomplete="off" spellcheck="false" placeholder="AIza..." />
+              <div class="pw-key-row">
+                <div class="pw-hint" data-pw-key-state="gemini">ยังไม่ได้ตั้งค่า</div>
+                <button class="ghost pw-key-delete" type="button" data-pw-key-delete="gemini" hidden>ลบคีย์</button>
+              </div>
+            </div>
+            <div class="pw-field">
+              <label for="pwKeyOpenrouter">OpenRouter API key</label>
+              <input id="pwKeyOpenrouter" type="password" autocomplete="off" spellcheck="false" placeholder="sk-or-..." />
+              <div class="pw-key-row">
+                <div class="pw-hint" data-pw-key-state="openrouter">ยังไม่ได้ตั้งค่า</div>
+                <button class="ghost pw-key-delete" type="button" data-pw-key-delete="openrouter" hidden>ลบคีย์</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="pwAiStatus" class="pw-status" hidden></div>
+
+          <div class="pw-ai-foot">
+            <button id="pwAiTestBtn" class="ghost" type="button">ทดสอบ API</button>
+            <button id="pwAiSaveBtn" class="primary" type="button">บันทึก</button>
+          </div>
+        </div>
+      </div>
+
+      <section id="idleView" class="view-panel">
+        <header class="topbar">
+          <div>
+            <h1>Device</h1>
+            <p>จัดการ channel และเลือก devices ที่จะใช้งาน</p>
+          </div>
+        </header>
+
+        <section class="metrics">
+          <div><strong id="idleTotal">0</strong><span>Device Channels</span></div>
+          <div><strong id="idleReady">0</strong><span>Ready Devices</span></div>
+          <div><strong id="idleQueue">0</strong><span>Pending Queue</span></div>
+          <div><strong id="idleHealth">OK</strong><span>System Health</span></div>
+        </section>
+
+        <section class="idle-grid">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>ADB Device Management</h2>
+                <p>Device Channel / UDID Selection</p>
+              </div>
+              <button id="idleScanBtn" class="ghost">Scan ADB</button>
+            </div>
+            <div id="idleDevices" class="device-table"></div>
+          </div>
+        </section>
+      </section>
+
+      <section id="videosView" class="view-panel">
+        <header class="topbar">
+          <div>
+            <h1>Video</h1>
+            <p id="videoManagePathHint"></p>
+          </div>
+        </header>
+
+        <section class="panel video-manager-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Manage Video</h2>
+              <p>เลือก ลบ และตรวจสถานะวิดีโอในโฟลเดอร์</p>
+            </div>
+            <div class="video-manage-tools">
+              <button id="scanManageVideosBtn" class="ghost">Scan Folder</button>
+              <button id="selectAllManageVideosBtn" class="ghost">Select All</button>
+              <button id="clearManageVideosBtn" class="ghost">Clear</button>
+              <button id="deleteManageVideosBtn" class="danger">Delete Selected</button>
+            </div>
+          </div>
+          <div id="videoManageSummary" class="video-manage-summary"></div>
+          <div id="videoManageList" class="video-manage-list"></div>
+        </section>
+
+        <section class="panel video-manager-panel bin-manager-panel">
+          <div class="panel-head">
+            <div>
+              <h2>ถังขยะ</h2>
+              <p>วิดีโอที่ลงเสร็จแล้วในโฟลเดอร์ Bin</p>
+            </div>
+            <div class="video-manage-tools">
+              <button id="scanBinVideosBtn" class="ghost">Scan Folder</button>
+              <button id="selectAllBinVideosBtn" class="ghost">Select All</button>
+              <button id="clearBinVideosBtn" class="ghost">Clear</button>
+              <button id="deleteBinVideosBtn" class="danger">Delete Selected</button>
+            </div>
+          </div>
+          <div id="binVideoSummary" class="video-manage-summary"></div>
+          <div id="binVideoList" class="video-manage-list"></div>
+        </section>
+      </section>
+
+      <section id="channelView" class="view-panel">
+        <header class="channel-page-head">
+          <div>
+            <h1>TikTok Channel</h1>
+            <p>บัญชี TikTok ที่ extension เก็บ cookie/token ไว้ให้ — ใช้เชื่อมต่อกับ AI Studio</p>
+          </div>
+          <button id="channelScanAccountsBtn" class="primary" type="button">
+            <span class="material-symbols-outlined">sync</span> สแกนหา Account
+          </button>
+        </header>
+        <div id="channelAccountStatus" class="channel-account-status" aria-live="polite"></div>
+        <div id="channelAccountList" class="channel-account-list" aria-live="polite"></div>
+      </section>
+
+      <section id="gtproView" class="view-panel">
+        <div class="ai-studio-frame-shell">
+          <iframe
+            id="aiStudioFrame"
+            title="AutoTik AI Studio"
+            src="http://127.0.0.1:18787/#tiktok-shop"
+            allow="clipboard-read; clipboard-write; fullscreen"
+          ></iframe>
+        </div>
+      </section>
+    </main>
+
+    <aside class="library">
+      <div class="panel-head">
+        <div>
+          <h2>Video Library</h2>
+          <p>แสดงเฉพาะโฟลเดอร์ที่เลือก</p>
+        </div>
+        <button id="browseFolderBtn" class="ghost browse-folder-btn" type="button">Browse</button>
+      </div>
+      <div id="libraryFolderHint" class="library-folder-hint"></div>
+      <div class="library-actions">
+        <div class="library-action-row">
+          <button id="selectAllVideosBtn" class="ghost">Select All</button>
+          <button id="clearVideoSelectionBtn" class="ghost">Clear</button>
+        </div>
+        <button id="assignBtn" class="primary full">Add to Queue</button>
+      </div>
+      <div id="videoList" class="video-list"></div>
+    </aside>
+
+    <section id="activityLogPanel" class="panel log-panel bottom-log-panel">
+      <div id="bottomLogHandle" class="panel-head bottom-log-handle">
+        <div>
+          <h2 id="logPanelTitle">Activity Log</h2>
+          <p id="logPanelSubtitle">ติดตามการโอนวิดีโอ การโพสต์ และ error ล่าสุด</p>
+        </div>
+        <div class="log-panel-actions">
+          <button id="clearLogsBtn" class="ghost log-clear-btn">Clear</button>
+          <button id="closeLogsBtn" class="ghost icon-only-btn" type="button" aria-label="Toggle logs">expand_less</button>
+        </div>
+      </div>
+      <div id="activityLog" class="activity-log"></div>
+    </section>
+
+    <div id="videoModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-backdrop" id="videoModalBackdrop"></div>
+      <div class="video-modal-card">
+        <div class="modal-head">
+          <h2 id="videoModalTitle">Preview</h2>
+          <button id="videoModalClose" class="ghost">Close</button>
+        </div>
+        <video id="videoModalPlayer" controls playsinline></video>
+      </div>
+    </div>
+
+    <div id="deviceChannelModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-backdrop" id="deviceChannelModalBackdrop"></div>
+      <div class="device-channel-modal-card">
+        <div class="modal-head">
+          <div>
+            <h2 id="deviceChannelModalTitle">Add Device Channel</h2>
+            <p id="deviceChannelModalSubtitle">ตั้งชื่อ channel สำหรับ UDID ที่เลือก</p>
+          </div>
+          <button id="deviceChannelModalClose" class="ghost" type="button">Close</button>
+        </div>
+        <form id="deviceChannelModalForm" class="device-channel-form">
+          <label>
+            <span>UDID</span>
+            <input id="deviceChannelUdid" readonly />
+          </label>
+          <label>
+            <span>Channel name</span>
+            <input id="deviceChannelName" placeholder="เช่น ช่องที่ 1" required />
+          </label>
+          <div class="modal-actions">
+            <button id="deviceChannelAddBtn" class="primary" type="submit">Add</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="folderPathModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-backdrop" id="folderPathModalBackdrop"></div>
+      <div class="device-channel-modal-card">
+        <div class="modal-head">
+          <div>
+            <h2>Browse Video Folder</h2>
+            <p>ใส่ path โฟลเดอร์วิดีโอ ระบบจะ scan จาก path นี้โดยตรง</p>
+          </div>
+          <button id="folderPathModalClose" class="ghost" type="button">Close</button>
+        </div>
+        <form id="folderPathForm" class="device-channel-form">
+          <label>
+            <span>Folder path</span>
+            <input id="folderPathInput" placeholder="C:\Xampp\htdocs\NProject\Videos" required />
+          </label>
+          <div class="modal-actions">
+            <button id="folderPathScanBtn" class="primary" type="submit">Scan Folder</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="confirmDeleteModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-backdrop" id="confirmDeleteModalBackdrop"></div>
+      <div class="confirm-delete-card">
+        <div class="confirm-delete-icon">delete</div>
+        <div>
+          <h2 id="confirmDeleteTitle">ยืนยันการลบ</h2>
+          <p id="confirmDeleteMessage">วิดีโอจะถูกลบออกจากโฟลเดอร์จริง</p>
+        </div>
+        <div class="confirm-delete-actions">
+          <button id="confirmDeleteCancelBtn" class="ghost" type="button">ยกเลิก</button>
+          <button id="confirmDeleteOkBtn" class="danger" type="button">ยืนยันการลบ</button>
+        </div>
+      </div>
+    </div>
+    <div id="scheduleScopeModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-backdrop" id="scheduleScopeModalBackdrop"></div>
+      <div class="schedule-scope-card">
+        <div class="schedule-scope-icon">event_available</div>
+        <div>
+          <h2>เลือกการตั้งเวลา</h2>
+          <p>ใช้เวลาที่กรอกไว้กับทุก Channel หรือเฉพาะ Channel ปัจจุบัน</p>
+        </div>
+        <div class="schedule-scope-actions">
+          <button id="setAllChannelsBtn" class="primary" type="button">Set ทุก Channel</button>
+          <button id="setCurrentChannelBtn" class="ghost" type="button">Set Channel ปัจจุบัน</button>
+          <button id="cancelScheduleScopeBtn" class="ghost" type="button">ยกเลิก</button>
+        </div>
+      </div>
+    </div>
+    <script src="/app.js"></script>
+    <script src="/postweb.js"></script>
+  </body>
+</html>

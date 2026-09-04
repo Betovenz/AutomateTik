@@ -1,0 +1,53 @@
+/* AutoTik embeds only the four requested AutoGT workspaces. */
+.start-view,
+.app-topbar,
+.mode-tabs [data-route="shopee-shop"],
+.mode-tabs [data-route="adb-connect"],
+.side-bottom,
+.app-topbar .serial-control,
+.app-topbar .activate-button,
+.app-topbar .license-state,
+.app-topbar .icon-button,
+.app-topbar .profile-avatar {
+  display: none !important;
+}
+
+.app-frame {
+  height: 100vh !important;
+  min-height: 100vh !important;
+}
+
+.extension-sidebar-status i {
+  background: var(--danger);
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+}
+
+.extension-sidebar-status strong {
+  color: #f87171;
+  line-height: 1.35;
+}
+
+.extension-sidebar-status.is-connected i {
+  background: var(--success);
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+}
+
+.extension-sidebar-status.is-connected strong {
+  color: var(--success);
+}
+
+@media (max-width: 760px) {
+  .system-health.extension-sidebar-status {
+    display: grid !important;
+    place-items: center;
+    padding: 10px 4px;
+  }
+
+  .extension-sidebar-status span {
+    font-size: 0;
+  }
+
+  .extension-sidebar-status strong {
+    display: none;
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "autogt-pro",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AutoGT Pro menu shell with live reload",
+  "scripts": {
+    "dev": "node server.js"
+  }
+}

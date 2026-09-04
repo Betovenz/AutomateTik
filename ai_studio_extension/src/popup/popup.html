@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="popup.css" />
+    <title>AutoGT Pro TikTok Extension</title>
+  </head>
+  <body>
+    <header class="head">
+      <div>
+        <h1>AutoGT Pro TikTok Extension</h1>
+        <p>TikTok channel bridge</p>
+      </div>
+      <span class="version" id="version"></span>
+    </header>
+
+    <main class="content">
+      <div class="hero" id="hero">
+        <div class="hero-name">AutoGT Pro App</div>
+        <div class="hero-state">
+          <span class="status-mark" id="heroDot"></span>
+          <span id="heroText">Waiting for app</span>
+        </div>
+      </div>
+
+      <ul class="status-grid" id="statusGrid">
+        <li class="status-row off">
+          <span class="status-mark" id="dotBridge"></span>
+          <span class="status-label">AutoGT Pro App</span>
+          <span class="status-value" id="valBridge">&times;</span>
+        </li>
+      </ul>
+
+      <button class="btn btn-primary btn-full" id="reconnect" title="Reconnect">re-connect</button>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

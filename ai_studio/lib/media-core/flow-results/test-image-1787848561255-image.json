@@ -1,0 +1,44 @@
+{
+  "ok": true,
+  "jobId": "test-image-1787848561255",
+  "mediaType": "image",
+  "updatedAt": "2026-08-27T16:36:44.631Z",
+  "payload": {
+    "action": "generate",
+    "mediaType": "image",
+    "mediaUrl": "https://flow-content.google/image/2cb2ee9c-c2cb-41db-894f-c788034893b8?Expires=1787870172&KeyName=labs-flow-prod-cdn-key&Signature=4JEqghb9GGqUOltVYSmC8JIVmac",
+    "localUrl": "/lib/media-core/flow-results/1787848603954-test-image-1787848561255-image.png",
+    "resultUrl": "https://flow-content.google/image/2cb2ee9c-c2cb-41db-894f-c788034893b8?Expires=1787870172&KeyName=labs-flow-prod-cdn-key&Signature=4JEqghb9GGqUOltVYSmC8JIVmac",
+    "imageUrl": "/lib/media-core/flow-results/1787848603954-test-image-1787848561255-image.png",
+    "videoUrl": "",
+    "saved": {
+      "ok": true,
+      "file": "C:\\Users\\Blue\\Documents\\Automate Tik\\ai_studio\\lib\\media-core\\flow-results\\1787848603954-test-image-1787848561255-image.png",
+      "url": "/lib/media-core/flow-results/1787848603954-test-image-1787848561255-image.png"
+    },
+    "raw": {
+      "ok": true,
+      "mediaUrl": "https://flow-content.google/image/2cb2ee9c-c2cb-41db-894f-c788034893b8?Expires=1787870172&KeyName=labs-flow-prod-cdn-key&Signature=4JEqghb9GGqUOltVYSmC8JIVmac",
+      "mediaType": "image",
+      "mediaId": "2cb2ee9c-c2cb-41db-894f-c788034893b8",
+      "workflowId": "f4711a74-a850-43e2-8799-e088f816de8e",
+      "sceneId": "",
+      "width": 768,
+      "height": 1376,
+      "projectId": "9ec7ac18-cff5-4883-850c-fc3b6e5016b0",
+      "referenceImageIds": [
+        "46c56c6d-14e6-4b04-ae39-bf65d52e5bf0"
+      ],
+      "refRoot": "C:\\Users\\Blue\\Documents\\Automate Tik\\ai_studio\\lib\\media-core\\flow_engine"
+    },
+    "mediaId": "2cb2ee9c-c2cb-41db-894f-c788034893b8",
+    "workflowId": "f4711a74-a850-43e2-8799-e088f816de8e",
+    "sceneId": "",
+    "projectId": "9ec7ac18-cff5-4883-850c-fc3b6e5016b0",
+    "startImageMediaId": "",
+    "referenceImageIds": [
+      "46c56c6d-14e6-4b04-ae39-bf65d52e5bf0"
+    ],
+    "canExtend": false
+  }
+}

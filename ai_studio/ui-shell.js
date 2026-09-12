@@ -222,6 +222,16 @@
         <div class="fs-card fs-column">
           <strong>1. รายละเอียดคลิป</strong>
           <div class="fs-direction-grid" id="fsDirectionGrid"></div>
+          <div class="fs-direction-grid">
+            <div class="fs-field">
+              <label for="fsCharacterMode">หน้าตัวละคร</label>
+              <select id="fsCharacterMode">
+                <option value="random">สุ่มตัวละคร (แบบเก่า ไม่สร้างภาพตัวละคร)</option>
+                <option value="consistent">ใช้ตัวละครตัวเดียวกัน (สร้างภาพตัวละครก่อน)</option>
+              </select>
+              <small class="fs-muted">ค่าเริ่มต้น: สุ่มตัวละคร</small>
+            </div>
+          </div>
         </div>
         <div class="fs-card fs-column">
           <strong>2. โมเดลและขนาด</strong>
@@ -239,6 +249,14 @@
               <label for="fsAspect">ขนาด</label>
               <select id="fsAspect"></select>
             </div>
+            <div class="fs-field" data-flow-extended-control hidden>
+              <label for="fsSceneMode">วิธีเพิ่มฉาก</label>
+              <select id="fsSceneMode">
+                <option value="independent">ไม่ต่อเนื่อง (แบบปัจจุบัน)</option>
+                <option value="continuous">ต่อเนื่อง (Extended)</option>
+              </select>
+              <small id="fsSceneModeNote" class="fs-muted"></small>
+            </div>
             <div class="fs-field">
               <label for="fsSceneCount">จำนวนฉาก</label>
               <input type="number" id="fsSceneCount" min="1" max="10" step="1" value="1" />
@@ -255,17 +273,34 @@
           </div>
         </div>
         <div class="fs-card fs-column">
-          <strong>3. Prompt เพิ่มเติม (ไม่บังคับ)</strong>
-          <textarea id="fsExtraPrompt" rows="3" placeholder="อยากให้เน้นอะไรเป็นพิเศษ…"></textarea>
+          <div class="fs-mandatory-prompt-head">
+            <strong>3. Prompt บังคับใช้</strong>
+            <span id="fsMandatoryPromptState" class="fs-scene-prompt-state" data-state="default">Default ปัจจุบัน</span>
+            <button id="fsResetMandatoryPrompt" class="fs-btn fs-ghost fs-scene-prompt-reset" type="button">↶ กลับ Default</button>
+          </div>
+          <p class="fs-muted fs-scene-prompt-help">Prompt นี้จะถูกใส่ในทุกฉาก เปลี่ยนครั้งเดียวมีผลกับทุกฉาก และกลับมาใช้ค่า Default ของระบบได้เสมอ</p>
+          <textarea id="fsExtraPrompt" rows="6" maxlength="5000" placeholder="Prompt บังคับใช้สำหรับทุกฉาก"></textarea>
+        </div>
+        <div class="fs-card fs-column">
+          <strong>4. คำสั่งวิดีโอรายฉาก</strong>
+          <p class="fs-muted fs-scene-prompt-help">แก้คำสั่งของแต่ละฉากได้โดยตรง ข้อความนี้จะแทนส่วนคำสั่งฉาก ส่วนข้อมูลสินค้า บทพูด และข้อห้ามยังประกอบให้อัตโนมัติ กด “กลับ Default” เพื่อใช้ Prompt ปัจจุบันของระบบได้เสมอ</p>
+          <div id="fsSceneVideoPrompts" class="fs-scene-prompt-grid"></div>
+          <div class="fs-scene-prompt-save-row">
+            <button id="fsApplyScenePromptsBtn" class="fs-btn fs-primary" type="button">💾 บันทึก Prompt และดู Preview</button>
+            <span id="fsApplyScenePromptsStatus" class="fs-muted" aria-live="polite"></span>
+          </div>
         </div>
       </div>
       <div class="fs-col">
         <div class="fs-card fs-column fs-sticky">
           <div class="fs-row" style="justify-content: space-between; align-items: center;">
             <strong>ตัวอย่าง Prompt</strong>
-            <button id="fsSampleBtn" class="fs-btn fs-ghost" type="button" title="สุ่มสินค้าอื่นมาดูตัวอย่าง">🎲 สุ่มสินค้าใหม่</button>
+            <div class="fs-row fs-preview-actions">
+              <button id="fsTemplateBtn" class="fs-btn fs-ghost" type="button">โครง Prompt (-)</button>
+              <button id="fsSampleBtn" class="fs-btn fs-ghost" type="button" title="สุ่มสินค้าจริงมาดูตัวอย่าง">🎲 สินค้าจริง</button>
+            </div>
           </div>
-          <p class="fs-muted">สุ่มจากสินค้าใน Showcase ใช้ค่าตั้งค่าปัจจุบัน — เปลี่ยนค่าด้านซ้ายแล้วดูผลได้ทันที</p>
+          <p class="fs-muted">แสดง Prompt ที่จะใช้จริงตามค่าด้านซ้าย ข้อมูลที่ต้องดึงจากสินค้าจะแทนด้วย - และเลือกตรวจแยกแต่ละฉากได้</p>
           <div id="fsSampleBox" class="fs-sample-box"></div>
         </div>
       </div>
@@ -288,12 +323,13 @@
     panel.innerHTML = `
       <div class="fs-toolbar">
         <span id="fsQueueCounts"></span>
-        <button id="fsRunQueue" class="fs-btn fs-primary" type="button">▶ รันคิว</button>
-        <button id="fsStopQueue" class="fs-btn fs-ghost" type="button">■ หยุด</button>
-        <button id="fsClearQueued" class="fs-btn fs-ghost fs-danger" type="button" hidden>เคลียร์คิว</button>
-        <button id="fsClearJobs" class="fs-btn fs-ghost fs-danger" type="button">ล้างงานที่จบแล้ว</button>
-        <button id="fsClearFailed" class="fs-btn fs-ghost fs-danger" type="button" hidden>ล้าง Failed</button>
-        <button id="fsRetryAllFailed" class="fs-btn fs-ghost" type="button" hidden>ลองใหม่ทั้งหมด</button>
+        <button id="fsRunQueue" class="fs-btn fs-primary" type="button" disabled>▶ รันคิว</button>
+        <button id="fsStopQueue" class="fs-btn fs-ghost" type="button" disabled>■ หยุดคิว</button>
+        <button id="fsClearQueued" class="fs-btn fs-ghost fs-danger" type="button" hidden>ล้างงานรอคิว</button>
+        <button id="fsClearJobs" class="fs-btn fs-ghost fs-danger" type="button" hidden>ล้างงานที่สำเร็จ</button>
+        <button id="fsClearFailed" class="fs-btn fs-ghost fs-danger" type="button" hidden>ล้างงานที่ล้มเหลว</button>
+        <button id="fsClearCancelled" class="fs-btn fs-ghost fs-danger" type="button" hidden>ล้างงานที่ยกเลิก</button>
+        <button id="fsRetryAllFailed" class="fs-btn fs-ghost" type="button" hidden>ลองงานที่ล้มเหลวทั้งหมด</button>
         <label class="fs-switch-row" for="fsAutoPlay">
           <span class="fs-switch">
             <input type="checkbox" id="fsAutoPlay">

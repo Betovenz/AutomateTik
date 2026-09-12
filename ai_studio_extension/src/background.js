@@ -2098,18 +2098,24 @@ async function sendToTabWithRetry(tabId, msg, tries = 10) {
 // one (grecaptcha.enterprise.execute in the page's MAIN world) and relays it back
 // over the WS bridge — this is what replaces DOM automation for labs.google.
 const LABS_FLOW_URL = "https://labs.google/fx/tools/flow";
+const FLOW_TAB_WARMUP_PROFILES = { blueviral: 0, bkode: 15_000 };
+const FLOW_TAB_WARMUP_PROFILE = "bkode";
+const FLOW_TAB_WARMUP_MS = FLOW_TAB_WARMUP_PROFILES[FLOW_TAB_WARMUP_PROFILE];
 
 async function runMintCaptcha(jobId, data) {
   const reply = (extra) =>
     bus.send(envelope(MSG.EXT_RESULT, jobId, { action: ACTION.MINT_CAPTCHA, ...extra }));
+  const siteKey = data?.siteKey || "";
+  const captchaAction = data?.captchaAction || data?.action || "";
+  if (!siteKey || !captchaAction) {
+    return reply({ ok: false, error: "siteKey and captchaAction are required" });
+  }
   let tabId;
   try {
     tabId = await ensureLabsTab();
   } catch (e) {
     return reply({ ok: false, error: `no labs tab: ${e?.message || e}` });
   }
-  const siteKey = data?.siteKey || "";
-  const captchaAction = data?.captchaAction || data?.action || "";
   // grecaptcha may still be initialising on a freshly opened tab — one retry.
   for (let attempt = 0; attempt < 2; attempt++) {
     let result;
@@ -2157,30 +2163,40 @@ async function findLabsTab() {
   return labs.length ? labs[0].id : null;
 }
 
+async function closeOtherLabsTabs(keepTabId = null) {
+  const tabs = await chrome.tabs.query({});
+  const staleTabIds = tabs
+    .filter((tab) => {
+      const url = String(tab.url || "");
+      const isFlowTab = url.includes("labs.google/fx/tools/flow");
+      const isTrackedFlowContext = tab.id === _labsTabId && url.includes("labs.google/fx");
+      return tab.id !== keepTabId && (isFlowTab || isTrackedFlowContext);
+    })
+    .map((tab) => tab.id)
+    .filter(Number.isInteger);
+  await Promise.allSettled(staleTabIds.map((tabId) => chrome.tabs.remove(tabId)));
+}
+
 /** Find a live labs.google tab (don't reload it — that resets grecaptcha), or
  *  open ONE in the background, shared across concurrent callers. */
 async function ensureLabsTab() {
-  // 1) the tab we opened earlier, if it's still alive and on Flow
-  if (_labsTabId != null) {
-    try {
-      const t = await chrome.tabs.get(_labsTabId);
-      if (t && t.url && t.url.includes("labs.google/fx")) return _labsTabId;
-    } catch (_) {
-      /* tab was closed */
-    }
-    _labsTabId = null;
-  }
-  // 2) the user's real, most-recently-used Flow tab (best reCAPTCHA score)
+  // Always select the latest real Flow tab, then close every older duplicate.
   const existing = await findLabsTab();
   if (existing != null) {
+    await waitForTabComplete(existing);
+    await closeOtherLabsTabs(existing);
     _labsTabId = existing;
     return existing;
   }
-  // 3) create one — concurrent callers await the SAME create (no tab-per-job storm)
+  // Create one only after stale Flow tabs are closed. Concurrent callers await
+  // the same promise, so a batch can never open one tab per job.
   if (!_labsTabCreating) {
     _labsTabCreating = (async () => {
+      await closeOtherLabsTabs();
       const tab = await chrome.tabs.create({ url: LABS_FLOW_URL, active: false });
       await waitForTabComplete(tab.id);
+      await sleep(FLOW_TAB_WARMUP_MS);
+      await closeOtherLabsTabs(tab.id);
       _labsTabId = tab.id;
       return tab.id;
     })();

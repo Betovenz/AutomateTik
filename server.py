@@ -1217,6 +1217,13 @@ def safe_upload_name(filename):
     return safe or "video.mp4"
 
 
+def product_id_from_video_name(value):
+    """Return the leading TikTok Product ID from ProductID-title filenames."""
+    stem = Path(str(value or "")).stem.strip()
+    match = re.match(r"^(\d{6,})(?:[-_\s]|$)", stem)
+    return match.group(1) if match else ""
+
+
 def unique_upload_path(filename):
     base_name = safe_upload_name(filename)
     candidate = UPLOAD_DIR / base_name
@@ -1690,12 +1697,24 @@ def finalize_posted_item(item, channel_id=None, queue_item_id=None):
 
 def run_main_for_item(udid, item, channel_id=None, queue_item_id=None):
     env = automation_env()
+    video_name = Path(item.get("filename") or item.get("file_path") or "").stem
+    product_id = product_id_from_video_name(video_name)
+    if not product_id:
+        raise RuntimeError(
+            "ไม่พบ Product ID ที่หน้าชื่อวิดีโอ กรุณาใช้ชื่อไฟล์รูปแบบ ProductID-ชื่อสินค้า.mp4"
+        )
     env["ADB_SERIAL"] = udid
     env["AUTOPOST_CAPTION"] = ""
     env["AUTOPOST_PRODUCT_NAME"] = item.get("product_name") or ""
-    env["AUTOPOST_VIDEO_NAME"] = Path(item.get("filename") or item.get("file_path") or "").stem
+    env["AUTOPOST_VIDEO_NAME"] = video_name
+    env["AUTOPOST_PRODUCT_ID"] = product_id
     env["AUTOPOST_SPEED"] = os.environ.get("AUTOPOST_SPEED", "normal")
     env["PYTHONIOENCODING"] = "utf-8"
+    add_log(
+        f"ADB Showcase: กำลังเพิ่ม Product ID {product_id} เข้า Showcase ก่อนจับคู่",
+        channel_id=channel_id,
+        queue_item_id=queue_item_id,
+    )
     command = python_command_for_main()
     proc = subprocess.Popen(
         command,

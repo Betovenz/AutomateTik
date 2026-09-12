@@ -48,44 +48,28 @@ export const FLOW_VIDEO_MODELS = [
   {
     id: "veo_3_1_r2v_lite", label: "Veo 3.1 Lite 8s", group: "Veo 3.1",
     family: "r2v", seconds: 8, credits: 5, tiers: ["x20", "x5", "below"],
-  },
-  {
-    id: "veo_3_1_i2v_lite_low_priority", label: "Veo 3.1 I2V Lite ฟรี 8s", group: "Veo 3.1 · I2V",
-    family: "i2v", seconds: 8, credits: 0, free: true, tiers: ["x20"],
-    note: "0 เครดิต — คิวช้ากว่า และมีเฉพาะบัญชี Ultra x20",
-  },
-  {
-    id: "veo_3_1_i2v_lite", label: "Veo 3.1 I2V Lite 8s", group: "Veo 3.1 · I2V",
-    family: "i2v", seconds: 8, credits: 5, tiers: ["x20", "x5", "below"],
     recommended: true,
-  },
-  {
-    id: "veo_3_1_i2v_s_fast_portrait_ultra", label: "Veo 3.1 I2V Fast 8s", group: "Veo 3.1 · I2V",
-    family: "i2v", seconds: 8, credits: 10, tiers: ["x20", "x5", "below"],
   },
 ];
 
-export const DEFAULT_VIDEO_MODEL = "veo_3_1_i2v_lite";
+export const DEFAULT_VIDEO_MODEL = "veo_3_1_r2v_lite";
 export const DEFAULT_IMAGE_MODEL = "NARWHAL";
 
-// How many jobs the queue runner is allowed to run at once. Above 1, only R2V
-// models are selectable: Omni Flash (credit-costing) and Veo 3.1 Lite ฟรี
-// (free) — I2V needs an EXTRA generateImage() call per job before the video
-// call even starts, roughly doubling Flow traffic per concurrent slot.
+// How many jobs the queue runner is allowed to run at once. Each lane owns one
+// Flow room and runs its storyboard sequentially (image -> video -> image), so
+// jobs may run in parallel without sharing media ids or room state.
 export const MAX_CONCURRENCY = 150;
 export const DEFAULT_CONCURRENCY = 1;
 export const CONCURRENT_SAFE_MODELS = [
-  "veo_3_1_r2v_lite_low_priority", "abra_r2v_4s", "abra_r2v_6s", "abra_r2v_8s", "abra_r2v_10s",
+  "veo_3_1_r2v_lite_low_priority", "veo_3_1_r2v_lite",
+  "abra_r2v_4s", "abra_r2v_6s", "abra_r2v_8s", "abra_r2v_10s",
 ];
 
-// Whether the video should carry an AI-composed ad headline (I2V generates a
-// start frame with a header/banner baked in, text stays on screen the whole
-// clip) or none at all (I2V skips the image-generation step entirely and
-// feeds the product's own photo straight into the video call). See
-// shared/prompt.mjs's buildPrompt().
+// Both modes generate a storyboard image before the matching video. The only
+// difference is whether the generated frame contains an AI-composed headline.
 export const TEXT_MODES = [
   { id: "withText", label: "มีข้อความ (AI คิดหัวข้อโฆษณา)" },
-  { id: "noText", label: "ไม่มีข้อความ (ข้ามขั้นตอนสร้างภาพ)" },
+  { id: "noText", label: "ไม่มีข้อความ (สร้าง Storyboard ไม่มีข้อความ)" },
 ];
 export const DEFAULT_TEXT_MODE = "withText";
 

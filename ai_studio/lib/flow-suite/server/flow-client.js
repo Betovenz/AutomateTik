@@ -30,6 +30,24 @@ const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 
 const RECAPTCHA_ACTION_IMAGE = "IMAGE_GENERATION";
 const RECAPTCHA_ACTION_VIDEO = "VIDEO_GENERATION";
+const IMAGE_POLL_INTERVAL_MS = Number(process.env.FLOW_SUITE_IMAGE_POLL_MS || 2000);
+const IMAGE_POLL_TIMEOUT_MS = Number(process.env.FLOW_SUITE_IMAGE_TIMEOUT_MS || 300000);
+const AUDIO_FAILURE_PREFERENCE = String(
+  process.env.AUTOTIK_FLOW_AUDIO_FAILURE_PREFERENCE || "BLOCK_SILENCED_VIDEOS",
+).trim() || "BLOCK_SILENCED_VIDEOS";
+
+function randomSeed() {
+  return Math.floor(Math.random() * 1_000_000);
+}
+
+function normalizedSeed(value) {
+  const numeric = Number(value);
+  return Number.isInteger(numeric) && numeric >= 0 ? numeric : randomSeed();
+}
+
+function required(value, label) {
+  if (typeof value === "string" ? !value.trim() : !value) throw new Error(`${label} is required before submit`);
+}
 
 function sessionId() {
   return `;${Date.now()}`;
@@ -185,6 +203,32 @@ async function createProject(cookieHeader, title, signal) {
   return projectId;
 }
 
+// Turn the first generated clip into a Flow scene. Extended generation needs the
+// scene id plus the clip's media id; this endpoint is the same prerequisite used
+// by Flow before its Extend button becomes available and does not need captcha.
+async function createScene({ accessToken, projectId, workflowId, signal }) {
+  required(accessToken, "accessToken");
+  required(projectId, "projectId");
+  required(workflowId, "workflowId");
+  const data = await sandboxPost(
+    "createScene",
+    `${SANDBOX_BASE}/flow/projects/${encodeURIComponent(projectId)}/scenes`,
+    accessToken,
+    { workflowIds: [workflowId] },
+    signal,
+  );
+  let sceneId = String(deepFind(data, "sceneId") || deepFind(data, "scene_id") || "").trim();
+  let primaryMediaId = String(
+    deepFind(data, "primaryMediaId") || deepFind(data, "primary_media_id") || deepFind(data, "mediaId") || "",
+  ).trim();
+  if (Array.isArray(data)) {
+    if (!sceneId && typeof data[0] === "string") sceneId = data[0].trim();
+    if (!primaryMediaId && typeof data[1] === "string") primaryMediaId = data[1].trim();
+  }
+  if (!sceneId) throw new Error(`Flow ไม่คืน sceneId สำหรับ Extended — response: ${JSON.stringify(data).slice(0, 400)}`);
+  return { sceneId, primaryMediaId, projectId, workflowId };
+}
+
 // ------------------------------------------------------------------ sandbox POST
 async function sandboxPost(label, url, accessToken, body, signal) {
   const res = await tracedFetch(label, url, {
@@ -195,7 +239,9 @@ async function sandboxPost(label, url, accessToken, body, signal) {
   });
   const text = await res.text();
   if (res.status === 401) throw new Error("labs.google session expired (HTTP 401) — ล็อกอินใหม่");
-  if (res.status === 403) throw new Error(`HTTP 403 (อาจโดน reCAPTCHA บล็อก): ${text.slice(0, 300)}`);
+  // Keep 403 neutral. Retry logic may resubmit only when the response itself
+  // explicitly says the reCAPTCHA evaluation/assessment failed.
+  if (res.status === 403) throw new Error(`HTTP 403: ${text.slice(0, 300)}`);
   if (res.status >= 400) throw new Error(`HTTP ${res.status}: ${text.slice(0, 300)}`);
   try {
     return JSON.parse(text);
@@ -233,13 +279,17 @@ const ASPECT_TO_IMAGE_RATIO = {
  * Generate the I2V start frame (Nano Banana / Imagen etc). Reference mediaIds are
  * the SAME uploaded-image ids uploadReferenceImage() returns — Flow lets an image
  * generation be steered by reference images too, which is what keeps the product
- * recognisable in the generated frame. Flow returns the signed URL synchronously in
- * the common case (confirmed); an "acknowledged but pending" async shape has been
- * observed live by ref1 but its poll contract for IMAGES specifically is not
- * confirmed here, so that case surfaces as a clear error rather than a guess.
+ * recognisable in the generated frame. Flow may return either an immediate signed
+ * URL or an accepted media/workflow checkpoint; callers persist that checkpoint
+ * and poll media.getMediaUrlRedirect every two seconds until the image is ready.
  */
-async function generateImage({ accessToken, projectId, recaptchaToken, prompt, aspect, model, referenceMediaIds = [], signal }) {
-  const seed = Math.floor(Math.random() * 1_000_000);
+async function generateImage({ accessToken, projectId, recaptchaToken, prompt, aspect, model, referenceMediaIds = [], seed: requestedSeed, signal }) {
+  required(accessToken, "accessToken");
+  required(projectId, "projectId");
+  required(recaptchaToken, "recaptchaToken");
+  required(prompt, "prompt");
+  required(model, "image model");
+  const seed = normalizedSeed(requestedSeed);
   const imageInputs = referenceMediaIds.filter(Boolean).map((name) => ({ imageInputType: "IMAGE_INPUT_TYPE_REFERENCE", name }));
   const ctx = clientContext(recaptchaToken, projectId);
   const body = {
@@ -257,13 +307,22 @@ async function generateImage({ accessToken, projectId, recaptchaToken, prompt, a
   };
   const data = await sandboxPost("generateImage", `${SANDBOX_BASE}/projects/${projectId}/flowMedia:batchGenerateImages`, accessToken, body, signal);
 
-  const url = deepFind(data, "fifeUrl");
-  const mediaId = deepFind(data, "name");
-  if (!url) {
+  const url = String(deepFind(data, "fifeUrl") || "").trim();
+  const media = Array.isArray(data?.media) ? data.media[0] : data?.media;
+  const mediaId = String(media?.name || media?.mediaId || deepFind(data, "mediaId") || deepFind(data, "name") || "").trim();
+  const workflowId = String(deepFind(data, "workflowId") || deepFind(data, "workflowName") || "").trim();
+  if (!url && !mediaId) {
     const reason = failureReason(data) || (data && typeof data === "object" ? `response shape: ${Object.keys(data).sort().join(", ") || "empty"}` : "");
-    throw new Error(`Flow ไม่คืน URL ภาพทันที${reason ? ` — ${reason}` : ""} (อาจเป็นแบบ acknowledge-then-poll ที่ยังไม่รองรับ)`);
+    throw new Error(`Flow ไม่คืน checkpoint ของภาพ${reason ? ` — ${reason}` : ""}`);
   }
-  return { mediaId, url };
+  return {
+    accepted: true,
+    mediaId,
+    pendingMediaName: mediaId,
+    workflowId,
+    seed,
+    url,
+  };
 }
 
 // ------------------------------------------------------------------ R2V generate
@@ -277,12 +336,21 @@ const ASPECT_TO_VIDEO_RATIO = {
  * that take product photos directly as reference images). Returns the pending
  * media name to poll.
  */
-async function submitR2V({ accessToken, projectId, recaptchaToken, prompt, videoModel, aspect, referenceMediaIds, signal }) {
-  const seed = Math.floor(Math.random() * 1_000_000);
+async function submitR2V({ accessToken, projectId, recaptchaToken, prompt, videoModel, aspect, referenceMediaIds, seed: requestedSeed, signal }) {
+  required(accessToken, "accessToken");
+  required(projectId, "projectId");
+  required(recaptchaToken, "recaptchaToken");
+  required(prompt, "prompt");
+  required(videoModel, "video model");
+  if (!Array.isArray(referenceMediaIds) || !referenceMediaIds.filter(Boolean).length) {
+    throw new Error("reference image is required before video submit");
+  }
+  const seed = normalizedSeed(requestedSeed);
+  const batchId = crypto.randomUUID();
   const body = {
     mediaGenerationContext: {
-      batchId: crypto.randomUUID(),
-      audioFailurePreference: "BLOCK_SILENCED_VIDEOS",
+      batchId,
+      audioFailurePreference: AUDIO_FAILURE_PREFERENCE,
     },
     clientContext: clientContext(recaptchaToken, projectId),
     requests: [{
@@ -300,7 +368,9 @@ async function submitR2V({ accessToken, projectId, recaptchaToken, prompt, video
   const data = await sandboxPost("submitR2V", `${SANDBOX_BASE}/video:batchAsyncGenerateVideoReferenceImages`, accessToken, body, signal);
   const mediaName = data?.media?.[0]?.name || deepFind(data, "name");
   if (!mediaName) throw new Error("Flow ไม่คืนชื่อ media ของงานที่ส่ง");
-  return mediaName;
+  const workflow = Array.isArray(data?.workflows) ? data.workflows[0] : data?.workflows;
+  const workflowId = String(workflow?.workflowId || workflow?.name || deepFind(data, "workflowId") || "");
+  return { accepted: true, pendingMediaName: mediaName, mediaName, workflowId, batchId, seed };
 }
 
 /**
@@ -311,12 +381,19 @@ async function submitR2V({ accessToken, projectId, recaptchaToken, prompt, video
  * with R2V (same batchCheckAsyncVideoGenerationStatus + media.getMediaUrlRedirect —
  * confirmed: ref1's poll_video is one function used by both paths).
  */
-async function startVideoFromImage({ accessToken, projectId, recaptchaToken, prompt, videoModel, aspect, startImageMediaId, signal }) {
-  const seed = Math.floor(Math.random() * 1_000_000);
+async function startVideoFromImage({ accessToken, projectId, recaptchaToken, prompt, videoModel, aspect, startImageMediaId, seed: requestedSeed, signal }) {
+  required(accessToken, "accessToken");
+  required(projectId, "projectId");
+  required(recaptchaToken, "recaptchaToken");
+  required(prompt, "prompt");
+  required(videoModel, "video model");
+  required(startImageMediaId, "startImageMediaId");
+  const seed = normalizedSeed(requestedSeed);
+  const batchId = crypto.randomUUID();
   const body = {
     mediaGenerationContext: {
-      batchId: crypto.randomUUID(),
-      audioFailurePreference: "BLOCK_SILENCED_VIDEOS",
+      batchId,
+      audioFailurePreference: AUDIO_FAILURE_PREFERENCE,
     },
     clientContext: clientContext(recaptchaToken, projectId),
     requests: [{
@@ -332,7 +409,9 @@ async function startVideoFromImage({ accessToken, projectId, recaptchaToken, pro
   const data = await sandboxPost("startVideoFromImage", `${SANDBOX_BASE}/video:batchAsyncGenerateVideoStartImage`, accessToken, body, signal);
   const mediaName = data?.media?.[0]?.name || deepFind(data, "name");
   if (!mediaName) throw new Error("Flow ไม่คืนชื่อ media ของงานที่ส่ง");
-  return mediaName;
+  const workflow = Array.isArray(data?.workflows) ? data.workflows[0] : data?.workflows;
+  const workflowId = String(workflow?.workflowId || workflow?.name || deepFind(data, "workflowId") || "");
+  return { accepted: true, pendingMediaName: mediaName, mediaName, workflowId, batchId, seed };
 }
 
 // ------------------------------------------------------------------ poll + resolve
@@ -352,15 +431,57 @@ async function pollStatus(accessToken, projectId, mediaName, signal) {
   return { done: false, status };
 }
 
-/** Resolve the pending media name to its signed, downloadable clip URL. */
-async function resolveVideoUrl(cookieHeader, mediaName, signal) {
+/** Resolve one accepted media checkpoint. Empty means the artifact is not ready yet. */
+async function resolveMediaUrl(cookieHeader, mediaName, signal) {
+  required(cookieHeader, "cookieHeader");
+  required(mediaName, "mediaName");
+  const endpoint = MEDIA_REDIRECT_URL + encodeURIComponent(mediaName);
   const res = await tracedFetch("resolveUrl", MEDIA_REDIRECT_URL + encodeURIComponent(mediaName), {
     signal,
+    redirect: "manual",
     headers: { cookie: cookieHeader, "user-agent": UA, accept: "*/*", referer: "https://labs.google/fx/tools/flow" },
   });
-  if (!res.ok && !res.url) throw new Error(`ขอ URL วิดีโอไม่สำเร็จ (HTTP ${res.status})`);
+  const location = res.headers.get("location");
+  if (location) {
+    res.body?.cancel?.();
+    return new URL(location, endpoint).href;
+  }
+  if (res.status === 401 || res.status === 403) throw new Error(`media session rejected (HTTP ${res.status})`);
+  if (!res.ok) {
+    res.body?.cancel?.();
+    return "";
+  }
+  const contentType = String(res.headers.get("content-type") || "").toLowerCase();
+  if (res.url && res.url !== endpoint && !contentType.includes("application/json")) {
+    res.body?.cancel?.();
+    return res.url;
+  }
   res.body?.cancel?.();
-  return res.url;
+  return "";
+}
+
+async function pollImageResult({ cookieHeader, checkpoint, signal, intervalMs = IMAGE_POLL_INTERVAL_MS, timeoutMs = IMAGE_POLL_TIMEOUT_MS }) {
+  const mediaName = String(checkpoint?.pendingMediaName || checkpoint?.mediaId || "").trim();
+  required(mediaName, "image checkpoint mediaName");
+  const deadline = Date.now() + Math.max(1000, Number(timeoutMs) || IMAGE_POLL_TIMEOUT_MS);
+  for (;;) {
+    const url = await resolveMediaUrl(cookieHeader, mediaName, signal);
+    if (url) return { ...checkpoint, accepted: true, mediaId: checkpoint?.mediaId || mediaName, pendingMediaName: mediaName, url };
+    if (Date.now() >= deadline) {
+      const error = new Error("รอผลภาพจาก Flow นานเกินกำหนด แต่ระบบรับงานแล้ว — จะไม่ส่งงานซ้ำ");
+      error.code = "FLOW_ACCEPTED_UNRESOLVED";
+      error.acceptedCheckpoint = true;
+      throw error;
+    }
+    await sleep(Math.max(250, Number(intervalMs) || IMAGE_POLL_INTERVAL_MS), signal);
+  }
+}
+
+/** Resolve the pending media name to its signed, downloadable clip URL. */
+async function resolveVideoUrl(cookieHeader, mediaName, signal) {
+  const url = await resolveMediaUrl(cookieHeader, mediaName, signal);
+  if (!url) throw new Error("วิดีโอสำเร็จแล้วแต่ URL ยังไม่พร้อม");
+  return url;
 }
 
 // ------------------------------------------------------------------ concat (multi-scene)
@@ -453,8 +574,10 @@ module.exports = {
   currentTrace,
   getAccessToken,
   createProject,
+  createScene,
   uploadReferenceImage,
   generateImage,
+  pollImageResult,
   submitR2V,
   startVideoFromImage,
   pollStatus,

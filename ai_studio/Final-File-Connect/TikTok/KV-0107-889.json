@@ -1,0 +1,35 @@
+{
+  "orderNumber": "KV-0107-889",
+  "productId": "1732091779661858007",
+  "productName": "ถุงมือล้างรถขนแกะนุ่มหนา สำหรับเช็ดรถและลงแว็กซ์",
+  "sourceUrl": "https://www.tiktok.com/view/product/1732091779661858007",
+  "videoModel": "veo_3_1_r2v_lite_low_priority",
+  "extendedVideoModel": "veo_3_1_extension_lite",
+  "sceneMode": "continuous",
+  "sceneCount": 3,
+  "textMode": "withText",
+  "scenes": [
+    {
+      "scene": 1,
+      "imageUrl": "https://flow-content.google/image/7392f5b7-4c42-4717-8cd8-19fcdee60e5e?Expires=1788970924&KeyName=labs-flow-prod-cdn-key&Signature=qxk6WsJqnWB9K0pL2Kny4j8DMio",
+      "mediaName": "afa46084-c84e-4139-a737-672e8c554104",
+      "url": "https://flow-content.google/video/06a77af3-5b2d-47a0-9b59-ee39b50fded6?Expires=1788971003&KeyName=labs-flow-prod-cdn-key&Signature=U6VZ4e2DXmr0Kk4BCNck7j_U6vU"
+    },
+    {
+      "scene": 2,
+      "imageUrl": "",
+      "mediaName": "ce5a2789-2235-44e0-8280-771697486cf1",
+      "url": "https://flow-content.google/video/ce5a2789-2235-44e0-8280-771697486cf1?Expires=1788971066&KeyName=labs-flow-prod-cdn-key&Signature=rGCoKykjjtjqVmeJwqrSwtydDrw"
+    },
+    {
+      "scene": 3,
+      "imageUrl": "",
+      "mediaName": "294d129f-e042-491a-9f79-b95b12d3653d",
+      "url": "https://flow-content.google/video/294d129f-e042-491a-9f79-b95b12d3653d?Expires=1788971490&KeyName=labs-flow-prod-cdn-key&Signature=HnjaHQZM6ntzylsWfHsHAKGQrP0"
+    }
+  ],
+  "finalVideo": "/library-file/1732091779661858007-%E0%B8%96%E0%B8%B8%E0%B8%87%E0%B8%A1%E0%B8%B7%E0%B8%AD%E0%B8%A5%E0%B9%89%E0%B8%B2%E0%B8%87%E0%B8%A3%E0%B8%96%E0%B8%82%E0%B8%99%E0%B9%81%E0%B8%81%E0%B8%B0%E0%B8%99%E0%B8%B8%E0%B9%88%E0%B8%A1%E0%B8%AB%E0%B8%99%E0%B8%B2%20%E0%B8%AA%E0%B8%B3%E0%B8%AB%E0%B8%A3%E0%B8%B1%E0%B8%9A%E0%B9%80%E0%B8%8A%E0%B9%87%E0%B8%94%E0%B8%A3%E0%B8%96%E0%B9%81%E0%B8%A5%E0%B8%B0%E0%B8%A5%E0%B8%87%E0%B9%81%E0%B8%A7%E0%B9%87%E0%B8%81%E0%B8%8B%E0%B9%8C.mp4",
+  "status": "done",
+  "createdAt": 1788948960726,
+  "finishedAt": 1788949950551
+}

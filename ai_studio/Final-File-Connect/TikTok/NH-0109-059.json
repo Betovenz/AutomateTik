@@ -1,0 +1,35 @@
+{
+  "orderNumber": "NH-0109-059",
+  "productId": "1731265375226989557",
+  "productName": "รองเท้ากีฬาซีรีส์ oxyflow แบรนด์ Steapex，รองเท้ากีฬาสำหรับผู้ชายและผู้หญิง，รองเท้าสำหรับการฝึกซ้อมแบบผสมผสาน，ใส่ได้ในฟิตเน， รองเท้าลำลองสำหรับออกกำลังกายและแฟชั่น，รองเท้าวิ่ง， เหมาะสำหรับการฝึกในร่ม， มีคุณสมบัติการระบายอากาศที่ยอดเยี่ยม",
+  "sourceUrl": "https://www.tiktok.com/view/product/1731265375226989557",
+  "videoModel": "veo_3_1_r2v_lite_low_priority",
+  "extendedVideoModel": "veo_3_1_extension_lite",
+  "sceneMode": "continuous",
+  "sceneCount": 3,
+  "textMode": "withText",
+  "scenes": [
+    {
+      "scene": 1,
+      "imageUrl": "https://flow-content.google/image/86f4ebf3-18d3-4a41-ad2c-78b390c8092a?Expires=1788973720&KeyName=labs-flow-prod-cdn-key&Signature=JG6HWjxbZtvpaCOGY4s8uS0zfp8",
+      "mediaName": "40a7a44a-fb99-479c-b9ff-c9f6fe4cac2b",
+      "url": "https://flow-content.google/video/016cecec-74fe-4c46-964d-3def9407182b?Expires=1788973799&KeyName=labs-flow-prod-cdn-key&Signature=sj7kSZIBjX4DkDcDyFeY0RqONnE"
+    },
+    {
+      "scene": 2,
+      "imageUrl": "",
+      "mediaName": "74eb3a22-c8c3-4142-ac22-434a6ea9524c",
+      "url": "https://flow-content.google/video/74eb3a22-c8c3-4142-ac22-434a6ea9524c?Expires=1788973864&KeyName=labs-flow-prod-cdn-key&Signature=bdQGHlqVh2rCrMSqyO2Z4f126wg"
+    },
+    {
+      "scene": 3,
+      "imageUrl": "",
+      "mediaName": "c2935afc-cb6b-43bb-9f21-f7a4dc16879a",
+      "url": "https://flow-content.google/video/c2935afc-cb6b-43bb-9f21-f7a4dc16879a?Expires=1788973921&KeyName=labs-flow-prod-cdn-key&Signature=vPqMG28nsanHk5oCGgMK9pXjHHk"
+    }
+  ],
+  "finalVideo": "/library-file/1731265375226989557-%E0%B8%A3%E0%B8%AD%E0%B8%87%E0%B9%80%E0%B8%97%E0%B9%89%E0%B8%B2%E0%B8%81%E0%B8%B5%E0%B8%AC%E0%B8%B2%E0%B8%8B%E0%B8%B5%E0%B8%A3%E0%B8%B5%E0%B8%AA%E0%B9%8C%20oxyflow%20%E0%B9%81%E0%B8%9A%E0%B8%A3%E0%B8%99%E0%B8%94%E0%B9%8C%20Steapex%EF%BC%8C%E0%B8%A3%E0%B8%AD%E0%B8%87%E0%B9%80%E0%B8%97%E0%B9%89%E0%B8%B2%E0%B8%81%E0%B8%B5%E0%B8%AC%E0%B8%B2%E0%B8%AA%E0%B8%B3%E0%B8%AB%E0%B8%A3%E0%B8%B1%E0%B8%9A%E0%B8%9C%E0%B8%B9%E0%B9%89%E0%B8%8A%E0%B8%B2%E0%B8%A2%E0%B9%81%E0%B8%A5%E0%B8%B0%E0%B8%9C%E0%B8%B9%E0%B9%89%E0%B8%AB%E0%B8%8D%E0%B8%B4%E0%B8%87%EF%BC%8C%E0%B8%A3%E0%B8%AD%E0%B8%87%E0%B9%80%E0%B8%97%20(2).mp4",
+  "status": "done",
+  "createdAt": 1788952111151,
+  "finishedAt": 1788952374871
+}

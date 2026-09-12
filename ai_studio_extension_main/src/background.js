@@ -5,6 +5,8 @@ import { ReconnectingWS } from "./lib/ws-client.js";
 import { MSG, ACTION, envelope, resolveWsUrl, discoverPort } from "./lib/protocol.js";
 
 const EXTENSION_ROLE = chrome.runtime.getManifest().name.includes("TikTok") ? "tiktok" : "main";
+const FLOW_URL = "https://flow.google.com/";
+const LABS_CONNECT_URL = "https://labs.google/fx/tools/flow";
 
 // ---- Site routing -----------------------------------------------------------
 // TODO: confirm exact tool URLs against the live sites; these are the entry
@@ -13,8 +15,8 @@ const SOURCE_URLS = {
   google_labs: {
     // ImageFX was merged into Flow — /fx/tools/image-fx now redirects to /fx/tools/flow.
     // Both modes use the Flow editor; the content script picks Image/Video there.
-    image: "https://labs.google/fx/tools/flow",
-    video: "https://labs.google/fx/tools/flow",
+    image: FLOW_URL,
+    video: FLOW_URL,
   },
   grok: {
     // /imagine is Grok's dedicated image/video tool (direct prompt + Image/Video
@@ -175,7 +177,7 @@ async function cleanupProfileBindTabs() {
 }
 
 async function getExtensionProfileInfo() {
-  const stored = await chrome.storage.local.get(["installId", "profileLabel", "installCreatedAt"]);
+  const stored = await chrome.storage.local.get(["installId", "profileLabel", "installCreatedAt", "flowAccountEmail"]);
   let installId = String(stored.installId || "").trim();
   if (!installId) {
     installId = crypto?.randomUUID ? crypto.randomUUID() : `ext-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -184,13 +186,18 @@ async function getExtensionProfileInfo() {
       installCreatedAt: new Date().toISOString(),
     });
   }
-  const profileLabel = String(stored.profileLabel || `Chrome ${installId.slice(-4)}`);
+  const storedProfileLabel = String(stored.profileLabel || "").trim();
+  const generatedLegacyLabel = `Chrome ${installId.slice(-4)}`;
+  const profileLabel = storedProfileLabel.toLowerCase() === generatedLegacyLabel.toLowerCase()
+    ? ""
+    : storedProfileLabel;
   const bindToken = await readProfileBindToken();
   return {
     installId,
     profileLabel,
     installCreatedAt: stored.installCreatedAt || "",
     bindToken,
+    flowAccountEmail: String(stored.flowAccountEmail || "").trim(),
   };
 }
 
@@ -271,9 +278,13 @@ async function handleAppMessage(msg) {
   if (action === ACTION.GENERATE) return runGenerate(jobId, data);
   if (action === ACTION.PUBLISH) return runPublish(jobId, data);
   if (action === ACTION.CAPTURE_LOGIN) return runCaptureLogin(data);
+  if (action === ACTION.ENSURE_FLOW_TAB) return runEnsureFlowTab(jobId, data);
+  if (action === ACTION.FLOW_ROOM_CREATE) return runFlowRoomCreate(jobId, data);
+  if (action === ACTION.FLOW_ROOM_CREATE_BATCH) return runFlowRoomCreateBatch(jobId, data);
+  if (action === ACTION.FLOW_EXTEND_SUBMIT) return runFlowExtendSubmit(jobId, data);
   if (action === ACTION.HARVEST_LABS) return runHarvestLabs(jobId);
   if (action === ACTION.MINT_CAPTCHA) return runMintCaptcha(jobId, data);
-  if (action === ACTION.REFRESH_CAPTCHA) return runRefreshCaptcha(jobId);
+  if (action === ACTION.REFRESH_CAPTCHA) return runRefreshCaptcha(jobId, data);
   if (action === ACTION.HUD) return runHud(jobId, data);
   if (action === ACTION.CHECK_TIKTOK) return runCheckTikTok(jobId);
   if (action === ACTION.CHECK_TIKTOK_LINKS) return runCheckTikTokLinks(jobId, data);
@@ -304,8 +315,23 @@ async function handleAppMessage(msg) {
 // Per provider: the cookie domain holding the session and the cookie-name fragment
 // that signals "signed in". google_labs = NextAuth (high confidence); grok is
 // best-effort until verified against the live site.
+const FLOW_COOKIE_DOMAINS = ["labs.google", "flow.google.com"];
+const FLOW_SESSION_COOKIE_NAMES = new Set([
+  "next-auth.session-token", "__Secure-next-auth.session-token",
+  "authjs.session-token", "__Secure-authjs.session-token",
+]);
+function isFlowSessionCookieName(name) {
+  const value = String(name || "");
+  return [...FLOW_SESSION_COOKIE_NAMES].some((base) => value === base || value.startsWith(`${base}.`));
+}
+const GOOGLE_SSO_COOKIE_NAMES = new Set([
+  "SID", "HSID", "SSID", "APISID", "SAPISID", "LSID", "NID", "AEC", "SOCS",
+  "ACCOUNT_CHOOSER", "__Host-GAPS", "__Secure-1PAPISID", "__Secure-3PAPISID",
+  "__Secure-1PSID", "__Secure-3PSID", "__Secure-1PSIDTS", "__Secure-3PSIDTS",
+  "__Secure-1PSIDCC", "__Secure-3PSIDCC",
+]);
 const CAPTURE = {
-  google_labs: { domain: "labs.google", signedIn: "session-token" },
+  google_labs: { domain: "labs.google", domains: FLOW_COOKIE_DOMAINS, signedIn: "session-token" },
   grok: { domain: "grok.com", signedIn: "sso" },
   tiktok: { domain: "tiktok.com", signedIn: "sessionid" },
 };
@@ -563,9 +589,24 @@ async function runLabsCapture(data, cfg) {
 // The provider's current cookies as a capture blob, or null if not signed in. Shared by the
 // providers that capture the session ALREADY present in this browser (grok, and google_labs
 // when used as the CDP-blocked fallback) — never the strict "wait for a NEW token" path.
+async function captureCookiesForConfig(cfg) {
+  const domains = Array.isArray(cfg?.domains) && cfg.domains.length ? cfg.domains : [cfg?.domain];
+  const perDomain = await Promise.all(
+    domains.filter(Boolean).map((domain) => chrome.cookies.getAll({ domain }).catch(() => [])),
+  );
+  const unique = new Map();
+  for (const cookie of perDomain.flat()) {
+    const key = `${cookie.domain}\t${cookie.path}\t${cookie.name}`;
+    if (!unique.has(key)) unique.set(key, cookie);
+  }
+  return [...unique.values()];
+}
+
 async function currentCookiesIfSignedIn(cfg) {
-  let all = [];
-  try { all = await chrome.cookies.getAll({ domain: cfg.domain }); } catch (_) {}
+  let all = await captureCookiesForConfig(cfg);
+  if (cfg === CAPTURE.google_labs) {
+    all = all.filter((cookie) => isFlowSessionCookieName(cookie.name));
+  }
   if (!all.some((c) => c.name.includes(cfg.signedIn) && c.value)) return null;
   return all.map((c) => ({
     name: c.name, value: c.value, domain: c.domain, path: c.path,
@@ -580,49 +621,81 @@ async function currentCookiesIfSignedIn(cfg) {
 //   ok=false                → the tab isn't signed into labs.google (app falls back to login)
 //   cookie       (labs-only)→ stored on the account row (keeps accounts.json minimal)
 //   cookieInject (labs+SSO) → seeded into the persist profile so a FUTURE reconnect is silent
-async function runHarvestLabs(jobId) {
-  let reply = { action: ACTION.HARVEST_LABS, ok: false, cookie: "", cookieInject: "" };
+async function readFlowAccountEmail(tabId) {
   try {
-    let labs = await currentCookiesIfSignedIn(CAPTURE.google_labs);
-    let labsTabOpened = false;
-
-    // A Flow job is often the first action after the app starts. Previously a
-    // missing labs.google cookie only produced an error telling the operator to
-    // open Flow manually, even though the Main Extension was already connected
-    // and able to open the correct profile itself. Wake one shared Flow tab,
-    // briefly wait for Google SSO/NextAuth to establish the labs session, and
-    // harvest again. If interactive sign-in is still required, surface that same
-    // tab so the operator can finish login and retry the job.
-    if (!labs) {
-      try {
-        const tabId = await ensureLabsTab();
-        labsTabOpened = true;
-        for (let attempt = 0; attempt < 8 && !labs; attempt++) {
-          await sleep(attempt === 0 ? 400 : 1000);
-          labs = await currentCookiesIfSignedIn(CAPTURE.google_labs);
-        }
-        if (!labs) {
-          try {
-            const tab = await chrome.tabs.get(tabId);
-            await chrome.tabs.update(tabId, { active: true });
-            if (tab?.windowId != null) await chrome.windows.update(tab.windowId, { focused: true });
-          } catch (_) {
-            /* tab disappeared while trying to surface sign-in */
+    const out = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: "MAIN",
+      func: () => {
+        const emailPattern = /[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?(?:\.[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?)+/ig;
+        const candidates = [];
+        const add = (value, score) => {
+          for (const match of String(value || "").match(emailPattern) || []) {
+            if (/^(?:support|noreply|no-reply|example)@/i.test(match)) continue;
+            candidates.push({ email: match.toLowerCase(), score });
           }
-          reply = {
-            ...reply,
-            labsTabOpened,
-            requiresLogin: true,
-            error: "Main Extension opened Google Flow; sign in there, then retry the job.",
-          };
+        };
+        for (const node of document.querySelectorAll("[data-email], [aria-label], [title]")) {
+          const label = `${node.getAttribute("aria-label") || ""} ${node.getAttribute("title") || ""}`;
+          const accountLabel = /google account|บัญชี\s*google|account/i.test(label);
+          add(node.getAttribute("data-email"), 100);
+          add(label, accountLabel ? 90 : 40);
         }
-      } catch (error) {
+        add(document.body?.innerText, 20);
+        try { add(JSON.stringify(window.WIZ_global_data || {}), 10); } catch (_) { /* no-op */ }
+        candidates.sort((a, b) => b.score - a.score);
+        return candidates[0]?.email || "";
+      },
+    });
+    return String(out?.[0]?.result || "").trim();
+  } catch (_) {
+    return "";
+  }
+}
+
+async function runHarvestLabs(jobId) {
+  let reply = { action: ACTION.HARVEST_LABS, ok: false, cookie: "", cookieInject: "", accountEmail: "" };
+  try {
+    let labs = null;
+    let labsTabOpened = false;
+    const stored = await chrome.storage.local.get("flowAccountEmail").catch(() => ({}));
+    let accountEmail = String(stored.flowAccountEmail || "").trim();
+
+    // Connection/session capture must visit labs.google first. Generation is
+    // kept on flow.google.com by the normal project-tab path below.
+    try {
+      const tabId = await ensureLabsTab({ connectLabs: true });
+      labsTabOpened = true;
+      for (let attempt = 0; attempt < 8 && !labs; attempt++) {
+        await sleep(attempt === 0 ? 400 : 1000);
+        labs = await currentCookiesIfSignedIn(CAPTURE.google_labs);
+      }
+      const detectedEmail = await readFlowAccountEmail(tabId);
+      if (detectedEmail) {
+        accountEmail = detectedEmail;
+        await chrome.storage.local.set({ flowAccountEmail: detectedEmail });
+      }
+      if (!labs) {
+        try {
+          const tab = await chrome.tabs.get(tabId);
+          await chrome.tabs.update(tabId, { active: true });
+          if (tab?.windowId != null) await chrome.windows.update(tab.windowId, { focused: true });
+        } catch (_) {
+          /* tab disappeared while trying to surface sign-in */
+        }
         reply = {
           ...reply,
           labsTabOpened,
-          error: `Main Extension could not open Google Flow: ${error?.message || error}`,
+          requiresLogin: true,
+          error: "Main Extension opened labs.google; sign in there, then retry the job.",
         };
       }
+    } catch (error) {
+      reply = {
+        ...reply,
+        labsTabOpened,
+        error: `Main Extension could not open labs.google: ${error?.message || error}`,
+      };
     }
 
     if (labs) {
@@ -631,7 +704,8 @@ async function runHarvestLabs(jobId) {
         // domain:"google.com" domain-matches *.google.com — the full SSO jar (SID /
         // __Secure-1PSID / accounts.google.com …). labs.google is a separate TLD, harvested
         // above; together they reproduce a real login so the seeded profile re-auths silently.
-        const raw = await chrome.cookies.getAll({ domain: "google.com" });
+        const raw = (await chrome.cookies.getAll({ domain: "google.com" }))
+          .filter((cookie) => GOOGLE_SSO_COOKIE_NAMES.has(cookie.name));
         google = raw.map((c) => ({
           name: c.name, value: c.value, domain: c.domain, path: c.path,
           secure: c.secure, httpOnly: c.httpOnly, expirationDate: c.expirationDate ?? null,
@@ -645,6 +719,7 @@ async function runHarvestLabs(jobId) {
         cookie: JSON.stringify(labs),
         cookieInject: JSON.stringify(labs.concat(google)),
         labsTabOpened,
+        accountEmail,
       };
     }
   } catch (error) {
@@ -667,24 +742,14 @@ function sendCaptured(provider, ok, error, cookie, name) {
 
 // Current session-token cookie values for the provider (the "known" baseline).
 async function sessionTokenValues(cfg) {
-  let all = [];
-  try {
-    all = await chrome.cookies.getAll({ domain: cfg.domain });
-  } catch (_) {
-    /* none readable */
-  }
+  const all = await captureCookiesForConfig(cfg);
   return new Set(all.filter((c) => c.name.includes(cfg.signedIn) && c.value).map((c) => c.value));
 }
 
 async function waitForLoginCookies(cfg, known) {
   const deadline = Date.now() + CAPTURE_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    let all = [];
-    try {
-      all = await chrome.cookies.getAll({ domain: cfg.domain });
-    } catch (_) {
-      /* cookies briefly unavailable */
-    }
+    const all = await captureCookiesForConfig(cfg);
     // Accept only a session-token the user just minted (value not in the baseline),
     // so an already-signed-in session can't be captured as this account.
     const fresh = all.some((c) => c.name.includes(cfg.signedIn) && c.value && !known.has(c.value));
@@ -3027,22 +3092,97 @@ async function sendToTabWithRetry(tabId, msg, tries = 10) {
 
 // ---- reCAPTCHA Enterprise token minting (API generation path) --------------
 // Flow's generation API needs a FRESH reCAPTCHA Enterprise token per call, and it
-// can only be produced inside a real labs.google page. The app asks us to mint
+// can only be produced inside a real Google Flow app page. The app asks us to mint
 // one (grecaptcha.enterprise.execute in the page's MAIN world) and relays it back
-// over the WS bridge — this is what replaces DOM automation for labs.google.
-const LABS_FLOW_URL = "https://labs.google/fx/tools/flow";
+// over the WS bridge — this is what replaces DOM automation for Google Flow.
+const FLOW_TAB_WARMUP_PROFILES = { blueviral: 0, bkode: 15_000 };
+const FLOW_TAB_WARMUP_PROFILE = "bkode";
+const FLOW_TAB_WARMUP_MS = FLOW_TAB_WARMUP_PROFILES[FLOW_TAB_WARMUP_PROFILE];
+
+function isFlowTabUrl(url) {
+  const value = String(url || "");
+  if (value.includes("accounts.google.com")) return false;
+  return value.includes("labs.google/fx") || value.startsWith(FLOW_URL);
+}
+
+function isFlowMarketingUrl(url) {
+  try {
+    const parsed = new URL(String(url || ""));
+    return parsed.hostname === "flow.google.com" && parsed.pathname.startsWith("/about");
+  } catch (_) {
+    return false;
+  }
+}
+
+const FLOW_PROJECT_URL_PREFIX = "https://flow.google.com/project/";
+const FLOW_PROJECT_ID = /^[A-Za-z0-9-]{8,64}$/;
+
+function flowProjectUrl(projectId) {
+  const value = String(projectId || "").trim();
+  return FLOW_PROJECT_ID.test(value) ? `${FLOW_PROJECT_URL_PREFIX}${value}` : "";
+}
+
+function isOnAnyFlowProject(url) {
+  return String(url || "").startsWith(FLOW_PROJECT_URL_PREFIX);
+}
+
+function isOnLabsConnectPage(url) {
+  try {
+    const parsed = new URL(String(url || ""));
+    return parsed.hostname === "labs.google" && parsed.pathname.startsWith("/fx/tools/flow");
+  } catch (_) {
+    return false;
+  }
+}
+
+async function parkFlowTabOnProject(tabId, projectId) {
+  const wanted = flowProjectUrl(projectId);
+  if (!wanted) return false;
+  const current = await chrome.tabs.get(tabId).catch(() => null);
+  if (isOnAnyFlowProject(current?.url)) return false; // any live room can mint for every job
+  await chrome.tabs.update(tabId, { url: wanted });
+  await waitForTabComplete(tabId, 45000);
+  await sleep(FLOW_TAB_WARMUP_MS);
+  return true;
+}
+
+async function parkFlowTabOnLabsConnect(tabId) {
+  const current = await chrome.tabs.get(tabId).catch(() => null);
+  if (isOnLabsConnectPage(current?.url)) {
+    await waitForTabComplete(tabId, 45000);
+    return false;
+  }
+  await chrome.tabs.update(tabId, { url: LABS_CONNECT_URL });
+  await waitForTabComplete(tabId, 45000);
+  await sleep(1200);
+  return true;
+}
+
+async function returnFlowTabToApp(tabId) {
+  await chrome.tabs.update(tabId, { url: FLOW_URL });
+  try {
+    await waitForTabComplete(tabId, 30000);
+  } catch (_) {
+    // The in-page grecaptcha wait below still gets a chance on a slow load.
+  }
+}
 
 async function runMintCaptcha(jobId, data) {
   const reply = (extra) =>
     bus.send(envelope(MSG.EXT_RESULT, jobId, { action: ACTION.MINT_CAPTCHA, ...extra }));
+  const siteKey = data?.siteKey || "";
+  const captchaAction = data?.captchaAction || data?.action || "";
+  const projectId = String(data?.projectId || "").trim();
+  if (!siteKey || !captchaAction) {
+    return reply({ ok: false, error: "siteKey and captchaAction are required" });
+  }
   let tabId;
   try {
-    tabId = await ensureLabsTab();
+    if (!flowProjectUrl(projectId)) throw new Error("valid projectId is required to mint captcha");
+    tabId = await ensureLabsTab({ projectId });
   } catch (e) {
     return reply({ ok: false, error: `no labs tab: ${e?.message || e}` });
   }
-  const siteKey = data?.siteKey || "";
-  const captchaAction = data?.captchaAction || data?.action || "";
   // grecaptcha may still be initialising on a freshly opened tab — one retry.
   for (let attempt = 0; attempt < 2; attempt++) {
     let result;
@@ -3057,12 +3197,110 @@ async function runMintCaptcha(jobId, data) {
     } catch (e) {
       result = { token: null, error: String(e?.message || e) };
     }
-    if (result && result.token) return reply({ ok: true, token: result.token });
+    if (result && result.token) return reply({ ok: true, token: result.token, tabId, projectId });
     if (attempt === 0) {
       await sleep(2000);
       continue;
     }
     return reply({ ok: false, error: (result && result.error) || "no token" });
+  }
+}
+
+async function runEnsureFlowTab(jobId, data) {
+  const reply = (extra) =>
+    bus.send(envelope(MSG.EXT_RESULT, jobId, { action: ACTION.ENSURE_FLOW_TAB, ...extra }));
+  try {
+    const tabId = await ensureLabsTab({
+      projectId: data?.projectId || "",
+      connectLabs: data?.connectLabs === true,
+    });
+    const tab = await chrome.tabs.get(tabId);
+    reply({ ok: true, tabId, url: tab.url || "" });
+  } catch (error) {
+    reply({ ok: false, error: String(error?.message || error) });
+  }
+}
+
+async function runFlowRoomCreate(jobId, data) {
+  const reply = (extra) =>
+    bus.send(envelope(MSG.EXT_RESULT, jobId, { action: ACTION.FLOW_ROOM_CREATE, ...extra }));
+  try {
+    const tabId = await ensureLabsTab();
+    const out = await chrome.scripting.executeScript({
+      target: { tabId }, world: "MAIN", func: createFlowRoomsInPage,
+      args: [[String(data?.title || "AutoTik AI Studio")]],
+    });
+    const result = out?.[0]?.result;
+    const room = result?.rooms?.[0];
+    if (!room?.ok || !room.projectId) throw new Error(room?.error || result?.error || "room create failed");
+    reply({ ok: true, tabId, projectId: room.projectId, title: room.title || "" });
+  } catch (error) {
+    reply({ ok: false, error: String(error?.message || error) });
+  }
+}
+
+async function runFlowRoomCreateBatch(jobId, data) {
+  const reply = (extra) =>
+    bus.send(envelope(MSG.EXT_RESULT, jobId, { action: ACTION.FLOW_ROOM_CREATE_BATCH, ...extra }));
+  const titles = (Array.isArray(data?.titles) ? data.titles : [])
+    .slice(0, 50)
+    .map((title, index) => String(title || `AutoTik Room ${index + 1}`).slice(0, 200));
+  if (!titles.length) return reply({ ok: false, error: "titles are required", rooms: [] });
+  try {
+    const tabId = await ensureLabsTab();
+    // One injection owns the page snapshot (WIZ tokens) while every room request
+    // is started together. This avoids 20 independent commands racing tab lookup,
+    // tab cleanup, and service-worker message delivery.
+    const out = await chrome.scripting.executeScript({
+      target: { tabId }, world: "MAIN", func: createFlowRoomsInPage, args: [titles],
+    });
+    const result = out?.[0]?.result;
+    const rooms = Array.isArray(result?.rooms) ? result.rooms : [];
+    if (rooms.length !== titles.length) throw new Error(result?.error || "room batch returned an incomplete result");
+    reply({ ok: rooms.every((room) => room?.ok && room.projectId), tabId, rooms });
+  } catch (error) {
+    reply({ ok: false, error: String(error?.message || error), rooms: [] });
+  }
+}
+
+async function runFlowExtendSubmit(jobId, data) {
+  const reply = (extra) =>
+    bus.send(envelope(MSG.EXT_RESULT, jobId, { action: ACTION.FLOW_EXTEND_SUBMIT, ...extra }));
+  try {
+    const projectId = String(data?.projectId || "").trim();
+    const sourceMediaId = String(data?.sourceMediaId || "").trim();
+    const sceneId = String(data?.sceneId || "").trim();
+    const prompt = String(data?.prompt || "").trim();
+    const captchaToken = String(data?.captchaToken || "").trim();
+    const videoModel = String(data?.videoModel || "").trim();
+    if (!projectId || !sourceMediaId || !sceneId || !prompt || !captchaToken || !videoModel) {
+      throw new Error("projectId, sourceMediaId, sceneId, prompt, captchaToken and videoModel are required");
+    }
+    if (!/^[A-Za-z0-9_.:-]{2,100}$/.test(videoModel)) {
+      throw new Error("videoModel contains unsupported characters");
+    }
+    const tabId = await ensureLabsTab({ projectId });
+    const out = await chrome.scripting.executeScript({
+      target: { tabId }, world: "MAIN", func: submitFlowExtendInPage,
+      args: [{
+        projectId,
+        sourceMediaId,
+        sceneId,
+        prompt,
+        captchaToken,
+        videoModel,
+        position: Math.max(1, Math.min(2, Number(data?.position) || 1)),
+        aspect: data?.aspect === "landscape" ? "landscape" : "portrait",
+      }],
+    });
+    const result = out?.[0]?.result;
+    if (!result?.ok || !result.mediaId) {
+      const detail = String(result?.body || "").replace(/\s+/g, " ").slice(0, 240);
+      throw new Error(`${result?.error || "Flow Extended submit failed"}${detail ? ` — ${detail}` : ""}`);
+    }
+    reply({ ok: true, tabId, ...result });
+  } catch (error) {
+    reply({ ok: false, error: String(error?.message || error) });
   }
 }
 
@@ -3074,76 +3312,117 @@ let _labsTabId = null;
 let _labsTabCreating = null;
 let _labsTabRefreshing = null; // in-flight refresh; coalesces concurrent callers
 
-/** Pick the user's REAL, most-recently-used Flow tab — a signed-in, interacted
- *  tab mints a high-score reCAPTCHA token; a cold background tab scores low and
- *  triggers "unusual activity". Prefer /tools/flow, then any labs.google/fx.
- *  Returns a tab id or null. */
+/** Pick the user's real, most-recently-used Flow tab across both the legacy and
+ *  current domains. Returns a tab object or null. */
 async function findLabsTab() {
   const tabs = await chrome.tabs.query({});
-  const ok = (t) => t.url && !t.url.includes("accounts.google.com");
-  const byRecent = (a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0);
-  const flow = tabs
-    .filter((t) => ok(t) && t.url.includes("labs.google") && t.url.includes("/tools/flow"))
-    .sort(byRecent);
-  if (flow.length) return flow[0].id;
-  const labs = tabs.filter((t) => ok(t) && t.url.includes("labs.google/fx")).sort(byRecent);
-  return labs.length ? labs[0].id : null;
+  return tabs
+    .filter((tab) => Number.isInteger(tab.id) && isFlowTabUrl(tab.url))
+    .sort((left, right) => Number(right.lastAccessed || 0) - Number(left.lastAccessed || 0))[0] || null;
+}
+
+async function closeOtherLabsTabs(keepTabId = null) {
+  const tabs = await chrome.tabs.query({});
+  const staleTabIds = tabs
+    .filter((tab) => Number.isInteger(tab.id) && tab.id !== keepTabId && isFlowTabUrl(tab.url))
+    .map((tab) => tab.id)
+    .filter(Number.isInteger);
+  await Promise.allSettled(staleTabIds.map((tabId) => chrome.tabs.remove(tabId)));
+}
+
+async function reviveFlowTabIfNeeded(tabId) {
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  if (!tab) return false;
+  let dead = tab.discarded === true || tab.frozen === true;
+  if (!dead) {
+    try {
+      const out = await chrome.scripting.executeScript({
+        target: { tabId }, world: "MAIN", func: () => document.readyState,
+      });
+      const readyState = out?.[0]?.result;
+      dead = readyState !== "interactive" && readyState !== "complete";
+    } catch (_) {
+      dead = true;
+    }
+  }
+  if (!dead) return false;
+  await chrome.tabs.reload(tabId, { bypassCache: true }).catch(() => {});
+  await waitForTabComplete(tabId, 45000);
+  await sleep(FLOW_TAB_WARMUP_MS);
+  return true;
 }
 
 /** Find a live labs.google tab (don't reload it — that resets grecaptcha), or
  *  open ONE in the background, shared across concurrent callers. */
-async function ensureLabsTab() {
-  // 1) the tab we opened earlier, if it's still alive and on Flow
-  if (_labsTabId != null) {
-    try {
-      const t = await chrome.tabs.get(_labsTabId);
-      if (t && t.url && t.url.includes("labs.google/fx")) return _labsTabId;
-    } catch (_) {
-      /* tab was closed */
-    }
-    _labsTabId = null;
-  }
-  // 2) the user's real, most-recently-used Flow tab (best reCAPTCHA score)
+async function ensureLabsTab({ projectId = "", connectLabs = false } = {}) {
+  // Always select the latest real Flow tab, then close every older duplicate.
   const existing = await findLabsTab();
-  if (existing != null) {
-    _labsTabId = existing;
-    return existing;
+  if (existing) {
+    if (connectLabs) {
+      if (!(await reviveFlowTabIfNeeded(existing.id))) await waitForTabComplete(existing.id);
+      await parkFlowTabOnLabsConnect(existing.id);
+    } else {
+      if (isFlowMarketingUrl(existing.url) || isOnLabsConnectPage(existing.url)) {
+        await returnFlowTabToApp(existing.id);
+      } else if (!(await reviveFlowTabIfNeeded(existing.id))) {
+        await waitForTabComplete(existing.id);
+      }
+      await parkFlowTabOnProject(existing.id, projectId);
+    }
+    await closeOtherLabsTabs(existing.id);
+    _labsTabId = existing.id;
+    return existing.id;
   }
-  // 3) create one — concurrent callers await the SAME create (no tab-per-job storm)
-  if (!_labsTabCreating) {
-    _labsTabCreating = (async () => {
-      const tab = await chrome.tabs.create({ url: LABS_FLOW_URL, active: false });
-      await waitForTabComplete(tab.id);
+  // Create one only after stale Flow tabs are closed. Concurrent callers await
+  // the same promise, so a batch can never open one tab per job.
+  let creating = _labsTabCreating;
+  if (!creating) {
+    creating = (async () => {
+      await closeOtherLabsTabs();
+      const tab = await chrome.tabs.create({
+        url: connectLabs ? LABS_CONNECT_URL : (flowProjectUrl(projectId) || FLOW_URL),
+        active: false,
+      });
+      if (!Number.isInteger(tab?.id)) throw new Error("Flow tab could not be opened");
+      await waitForTabComplete(tab.id, 45000);
+      await sleep(FLOW_TAB_WARMUP_MS);
+      await closeOtherLabsTabs(tab.id);
       _labsTabId = tab.id;
       return tab.id;
-    })();
-    _labsTabCreating.finally(() => {
+    })().finally(() => {
       _labsTabCreating = null;
     });
+    _labsTabCreating = creating;
   }
-  return _labsTabCreating;
+  const tabId = await creating;
+  if (connectLabs) await parkFlowTabOnLabsConnect(tabId);
+  else await parkFlowTabOnProject(tabId, projectId);
+  return tabId;
 }
 
 /** Refresh the Flow tab's grecaptcha context after an "unusual activity" reject.
- *  Always bounce /fx → /fx/tools/flow to force a fresh grecaptcha init (the G-Labs
- *  recovery trick), so the next mint scores cleanly.
+ *  Bounce through a cache-busting URL on the current Flow domain, then return to
+ *  the canonical app URL so its lazy reCAPTCHA loader runs again.
  *
  *  N parallel jobs can all be flagged at once and call this together — without a
  *  lock they'd issue overlapping navigations on the SAME shared tab and corrupt
  *  its state. So concurrent callers coalesce onto a single in-flight refresh. */
-async function runRefreshCaptcha(jobId) {
+async function runRefreshCaptcha(jobId, data) {
   const reply = (extra) =>
     bus.send(envelope(MSG.EXT_RESULT, jobId, { action: ACTION.REFRESH_CAPTCHA, ...extra }));
   try {
     if (!_labsTabRefreshing) {
       _labsTabRefreshing = (async () => {
-        const tabId = await ensureLabsTab();
-        await chrome.tabs.update(tabId, { url: "https://labs.google/fx" });
-        await waitForTabComplete(tabId);
-        await chrome.tabs.update(tabId, { url: LABS_FLOW_URL });
-        await waitForTabComplete(tabId);
-      })();
-      _labsTabRefreshing.finally(() => {
+        const projectUrl = flowProjectUrl(data?.projectId);
+        if (!projectUrl) throw new Error("valid projectId is required to refresh captcha");
+        const tabId = await ensureLabsTab({ projectId: data.projectId });
+        await chrome.tabs.update(tabId, { url: `${FLOW_URL}?reload=${Date.now()}` });
+        await waitForTabComplete(tabId, 45000);
+        await chrome.tabs.update(tabId, { url: projectUrl });
+        await waitForTabComplete(tabId, 45000);
+        await sleep(FLOW_TAB_WARMUP_MS);
+        _labsTabId = tabId;
+      })().finally(() => {
         _labsTabRefreshing = null;
       });
     }
@@ -3151,6 +3430,210 @@ async function runRefreshCaptcha(jobId) {
     reply({ ok: true });
   } catch (e) {
     reply({ ok: false, error: String(e?.message || e) });
+  }
+}
+
+// Create a Flow room through the same-origin Boq RPC used by the web app. This
+// call needs page-only WIZ tokens but no captcha, so parallel callers can create
+// independent rooms without serialising the captcha mint path.
+async function createFlowRoomsInPage(inputTitles) {
+  const data = (typeof window !== "undefined" && window.WIZ_global_data) || {};
+  const at = String(data.SNlM0e || "");
+  const sid = String(data.FdrFJe || "");
+  const bl = String(data.cfb2h || "");
+  const titles = (Array.isArray(inputTitles) ? inputTitles : [inputTitles])
+    .slice(0, 50)
+    .map((title, index) => String(title || `AutoTik Room ${index + 1}`).slice(0, 200));
+  if (!titles.length) return { ok: false, error: "titles are required", rooms: [] };
+  if (!at || !bl) {
+    const error = `page tokens missing at=${Boolean(at)} bl=${Boolean(bl)} url=${location.href}`;
+    return { ok: false, error, rooms: titles.map((title) => ({ ok: false, title, error })) };
+  }
+
+  // Boq responses are length-prefixed JSON chunks. Parsing those chunks is more
+  // reliable than a regex over escaped payload text, especially when 20 replies
+  // arrive with different escaping or an additional diagnostic frame.
+  function rpcPayload(text, rpcId) {
+    let found;
+    const visit = (value) => {
+      if (found !== undefined) return;
+      if (Array.isArray(value)) {
+        if (value[0] === "wrb.fr" && value[1] === rpcId) {
+          found = typeof value[2] === "string" ? JSON.parse(value[2]) : value[2];
+          return;
+        }
+        for (const child of value) visit(child);
+      }
+    };
+    for (const rawLine of String(text || "").replace(/^\)\]\}'\s*/, "").split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line.startsWith("[")) continue;
+      try { visit(JSON.parse(line)); } catch (_) { /* length or partial chunk */ }
+      if (found !== undefined) break;
+    }
+    return found;
+  }
+
+  function findProjectId(value) {
+    if (typeof value === "string" && /^[A-Za-z0-9-]{8,64}$/.test(value)) return value;
+    if (Array.isArray(value)) {
+      for (const child of value) {
+        const found = findProjectId(child);
+        if (found) return found;
+      }
+    }
+    return "";
+  }
+
+  const createOne = async (roomTitle, index) => {
+    const inner = JSON.stringify(["projects/*", [null, [roomTitle]], [null, 22]]);
+    const freq = JSON.stringify([[["jHPbke", inner, null, "generic"]]]);
+    const params = new URLSearchParams({
+      rpcids: "jHPbke",
+      "source-path": "/",
+      bl,
+      hl: document.documentElement.lang || "en",
+      _reqid: String((Date.now() % 9_000_000) + index),
+      rt: "c",
+    });
+    if (sid) params.set("f.sid", sid);
+    let text = "";
+    try {
+      const response = await fetch(`/_/AiSandboxAngularFrontend/data/batchexecute?${params}`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+          "X-Same-Domain": "1",
+        },
+        body: `f.req=${encodeURIComponent(freq)}&at=${encodeURIComponent(at)}&`,
+      });
+      text = await response.text();
+      if (!response.ok) return { ok: false, title: roomTitle, error: `HTTP ${response.status}`, body: text.slice(0, 240) };
+      const payload = rpcPayload(text, "jHPbke");
+      if (payload === undefined) return { ok: false, title: roomTitle, error: "jHPbke response frame missing", body: text.slice(0, 240) };
+      const projectId = findProjectId(payload);
+      if (!projectId) return { ok: false, title: roomTitle, error: "jHPbke returned no projectId", body: text.slice(0, 240) };
+      return { ok: true, title: roomTitle, projectId };
+    } catch (error) {
+      return { ok: false, title: roomTitle, error: String(error?.message || error), body: text.slice(0, 240) };
+    }
+  };
+
+  const rooms = await Promise.all(titles.map(createOne));
+  return { ok: rooms.every((room) => room.ok), rooms };
+}
+
+// Submit the same fZytfe Boq RPC captured from Flow's Extended button. Running
+// inside the page is intentional: WIZ tokens and the signed-in Google session
+// are page-only, while the captcha token is minted immediately beforehand.
+async function submitFlowExtendInPage(input) {
+  const page = (typeof window !== "undefined" && window.WIZ_global_data) || {};
+  const at = String(page.SNlM0e || "");
+  const sid = String(page.FdrFJe || "");
+  const bl = String(page.cfb2h || "");
+  if (!at || !bl) return { ok: false, error: `page tokens missing at=${Boolean(at)} bl=${Boolean(bl)} url=${location.href}` };
+
+  const projectId = String(input?.projectId || "").trim();
+  const sourceMediaId = String(input?.sourceMediaId || "").trim();
+  const sceneId = String(input?.sceneId || "").trim();
+  const prompt = String(input?.prompt || "").trim();
+  const captchaToken = String(input?.captchaToken || "").trim();
+  const videoModel = String(input?.videoModel || "").trim();
+  const position = Math.max(1, Math.min(2, Number(input?.position) || 1));
+  if (!projectId || !sourceMediaId || !sceneId || !prompt || !captchaToken || !videoModel) {
+    return { ok: false, error: "Extended request fields are incomplete" };
+  }
+  if (!/^[A-Za-z0-9_.:-]{2,100}$/.test(videoModel)) return { ok: false, error: "invalid videoModel" };
+  const width = input?.aspect === "landscape" ? 192 : 169;
+  const height = input?.aspect === "landscape" ? 108 : 192;
+  const uuid = () => crypto.randomUUID().toUpperCase();
+  const request = [
+    [[
+      [null, sourceMediaId, width, height],
+      [null, null, [[[prompt]]]],
+      videoModel,
+      1,
+      null,
+      [sceneId, null, null, null, uuid(), uuid()],
+    ]],
+    [null, 22, null, null, null, projectId, null, null, null, null, [captchaToken, 1]],
+    [uuid(), 1, null, [sceneId, position]],
+  ];
+  const freq = JSON.stringify([[['fZytfe', JSON.stringify(request), null, 'generic']]]);
+  const params = new URLSearchParams({
+    rpcids: "fZytfe",
+    "source-path": `/project/${encodeURIComponent(projectId)}/scene/${encodeURIComponent(sceneId)}`,
+    bl,
+    hl: document.documentElement.lang || "en",
+    _reqid: String(Math.floor(Math.random() * 900000) + 100000),
+    rt: "c",
+  });
+  if (sid) params.set("f.sid", sid);
+
+  let text;
+  try {
+    const response = await fetch(`/_/AiSandboxAngularFrontend/data/batchexecute?${params}`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        "X-Same-Domain": "1",
+      },
+      body: `f.req=${encodeURIComponent(freq)}&at=${encodeURIComponent(at)}&`,
+    });
+    text = await response.text();
+    if (!response.ok) return { ok: false, error: `HTTP ${response.status}`, body: text.slice(0, 300) };
+  } catch (error) {
+    return { ok: false, error: String(error?.message || error) };
+  }
+
+  try {
+    let payload;
+    const visit = (value) => {
+      if (payload !== undefined || !Array.isArray(value)) return;
+      if (value[0] === "wrb.fr" && value[1] === "fZytfe") {
+        payload = typeof value[2] === "string" ? JSON.parse(value[2]) : value[2];
+        return;
+      }
+      for (const child of value) visit(child);
+    };
+    for (const rawLine of String(text || "").replace(/^\)\]\}'\s*/, "").split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line.startsWith("[")) continue;
+      try { visit(JSON.parse(line)); } catch (_) { /* length or partial chunk */ }
+      if (payload !== undefined) break;
+    }
+    if (payload === undefined) {
+      const responsePreview = text.replace(/\s+/g, " ").slice(0, 240);
+      return { ok: false, error: `fZytfe response frame missing${responsePreview ? ` — ${responsePreview}` : ""}` };
+    }
+    const responseRecord = payload?.[3]?.[0];
+    const record = Array.isArray(responseRecord?.[0]) ? responseRecord[0] : responseRecord;
+    const mediaId = Array.isArray(record) ? String(record[0] || "") : "";
+    const payloadText = JSON.stringify(payload);
+    const creditWarning = /PUBLIC_ERROR_USER_QUOTA_REACHED|USER_QUOTA_REACHED/i.test(payloadText);
+    // Flow can include its generic low-credit warning alongside an accepted
+    // free-tier job. A real mediaId always wins; it is safe to poll normally.
+    if (!mediaId && creditWarning) {
+      if (videoModel === "veo_3_1_r2v_lite_low_priority") {
+        return { ok: false, error: "FLOW_FREE_MODEL_CREDIT_WARNING: retry free model without pausing queue" };
+      }
+      return { ok: false, error: "FLOW_USER_QUOTA_REACHED: Google Flow quota exhausted" };
+    }
+    if (!mediaId) return { ok: false, error: "no mediaId in fZytfe response", body: text.slice(0, 300) };
+    return {
+      ok: true,
+      mediaId,
+      mediaName: mediaId,
+      pendingMediaName: mediaId,
+      projectId: String(record[1] || projectId),
+      workflowId: String(record[2] || ""),
+      sceneId: String(record[record.length - 1] || sceneId),
+      model: videoModel,
+    };
+  } catch (error) {
+    return { ok: false, error: `parse failed: ${error?.message || error}`, body: text.slice(0, 300) };
   }
 }
 
@@ -3246,27 +3729,39 @@ async function hudTargetTab(source) {
   return t ? t.id : null;
 }
 
-function waitForTabComplete(tabId, timeoutMs = 15000) {
-  return new Promise((resolve) => {
-    const finish = () => {
+async function waitForTabComplete(tabId, timeoutMs = 20000) {
+  try {
+    const current = await chrome.tabs.get(tabId);
+    if (current.status === "complete") return current;
+  } catch (_) {
+    throw new Error("Flow tab was closed");
+  }
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
       chrome.tabs.onUpdated.removeListener(listener);
-      resolve();
-    };
-    const listener = (id, info) => {
-      if (id === tabId && info.status === "complete") finish();
+      reject(new Error("Flow tab did not finish loading"));
+    }, timeoutMs);
+    const listener = (id, info, tab) => {
+      if (id !== tabId || info.status !== "complete") return;
+      clearTimeout(timeout);
+      chrome.tabs.onUpdated.removeListener(listener);
+      resolve(tab);
     };
     chrome.tabs.onUpdated.addListener(listener);
-    setTimeout(finish, timeoutMs);
   });
 }
 
-// Injected into the labs.google page (MAIN world) — mints a reCAPTCHA Enterprise
+// Injected into the Google Flow page (MAIN world) — mints a reCAPTCHA Enterprise
 // token. If no siteKey is supplied, it's discovered from the page's grecaptcha
 // config. Self-contained: references only page globals (never runs in the SW).
 async function mintRecaptchaInPage(siteKey, captchaAction) {
   try {
+    const deadline = Date.now() + 20000;
+    while ((typeof grecaptcha === "undefined" || !grecaptcha.enterprise) && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
     if (typeof grecaptcha === "undefined" || !grecaptcha.enterprise) {
-      return { token: null, error: "grecaptcha.enterprise not ready" };
+      return { token: null, error: `grecaptcha.enterprise not ready at ${location.href}` };
     }
     let key = siteKey;
     if (!key) {

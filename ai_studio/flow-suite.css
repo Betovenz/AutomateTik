@@ -85,6 +85,58 @@
   min-width: 0;
 }
 .flow-page-prompt textarea { resize: vertical; font-size: 13px; }
+.flow-page-prompt .fs-scene-prompt-help { margin: 0; line-height: 1.55; }
+.flow-page-prompt .fs-scene-prompt-grid { display: grid; gap: 12px; }
+.flow-page-prompt .fs-scene-prompt-field {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #dce4ef;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.flow-page-prompt .fs-scene-prompt-field label { font-weight: 700; color: #1f2937; }
+.flow-page-prompt .fs-scene-prompt-field textarea { min-height: 82px; background: #fff; }
+.flow-page-prompt .fs-scene-prompt-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.flow-page-prompt .fs-mandatory-prompt-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.flow-page-prompt .fs-mandatory-prompt-head strong { margin-right: auto; }
+.flow-page-prompt .fs-scene-prompt-head label { margin-right: auto; }
+.flow-page-prompt .fs-scene-prompt-state {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #047857;
+  background: #d1fae5;
+}
+.flow-page-prompt .fs-scene-prompt-state[data-state="custom"] {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+.flow-page-prompt .fs-scene-prompt-reset {
+  padding: 5px 9px;
+  min-height: 30px;
+  font-size: 12px;
+}
+.flow-page-prompt .fs-scene-prompt-save-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 2px;
+}
+.flow-page-prompt .fs-scene-prompt-save-row .fs-btn { min-height: 38px; }
+.flow-page-prompt #fsApplyScenePromptsStatus { font-size: 12px; }
 .flow-page-prompt input:focus, .flow-page-prompt select:focus, .flow-page-prompt textarea:focus,
 .flow-page-queue input:focus, .flow-page-queue select:focus,
 .flow-page-history input:focus, .flow-page-history select:focus {
@@ -155,9 +207,11 @@
   border-radius: var(--fs-radius);
   padding: 10px 13px;
 }
-.flow-page-queue .fs-job img, .flow-page-history .fs-job img {
+.flow-page-queue .fs-job img, .flow-page-history .fs-job img,
+.flow-page-queue .fs-job-thumb-placeholder, .flow-page-history .fs-job-thumb-placeholder {
   width: 54px; height: 54px; object-fit: cover; border-radius: 6px; background: var(--fs-panel-2);
 }
+.flow-page-queue .fs-job-thumb-placeholder, .flow-page-history .fs-job-thumb-placeholder { display: block; }
 .flow-page-queue .fs-job h3, .flow-page-history .fs-job h3 {
   margin: 0 0 4px; font-size: 13.5px; font-weight: 600; line-height: 1.35;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -245,6 +299,28 @@
 }
 
 .flow-page-prompt .fs-sample-box { display: flex; flex-direction: column; gap: 12px; }
+.flow-page-prompt .fs-preview-actions { gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.flow-page-prompt .fs-scene-preview-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 4px 0 6px;
+}
+.flow-page-prompt .fs-scene-preview-tab {
+  min-width: 58px;
+  padding: 5px 10px;
+  border: 1px solid var(--fs-line);
+  border-radius: 999px;
+  background: var(--fs-panel);
+  color: var(--fs-ink-dim);
+  font: 700 11.5px/1.2 inherit;
+  cursor: pointer;
+}
+.flow-page-prompt .fs-scene-preview-tab.on {
+  border-color: var(--fs-blue);
+  background: var(--fs-blue);
+  color: #fff;
+}
 .flow-page-prompt .fs-sample-card {
   border: 1px solid var(--fs-line); border-radius: 8px; padding: 10px;
   display: flex; flex-direction: column; gap: 5px; background: var(--fs-panel-2);
@@ -299,27 +375,112 @@
 
 /* ───────────────────────────────────────────────────────────── video preview popup */
 .flow-page-queue .fs-video-backdrop, .flow-page-history .fs-video-backdrop {
-  position: fixed; inset: 0; z-index: 50;
+  position: fixed; inset: 0; z-index: 1200;
   background: rgb(0 0 0 / .45);
   display: flex; align-items: center; justify-content: center; padding: 24px;
 }
 .flow-page-queue .fs-video-backdrop[hidden], .flow-page-history .fs-video-backdrop[hidden] { display: none; }
 .flow-page-queue .fs-video-modal, .flow-page-history .fs-video-modal {
   width: min(420px, 100%); max-height: min(760px, calc(100vh - 48px));
-  display: flex; flex-direction: column;
+  position: relative; display: flex; flex-direction: column;
   border: 1px solid var(--fs-line); border-radius: var(--fs-radius);
   background: var(--fs-panel); box-shadow: 0 20px 60px rgb(0 0 0 / .35);
   overflow: hidden; font-size: 12px;
 }
-.flow-page-queue .fs-video-modal-head, .flow-page-history .fs-video-modal-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 14px; border-bottom: 1px solid var(--fs-line); font-size: 13.5px;
+.flow-page-queue .fs-video-close, .flow-page-history .fs-video-close {
+  position: absolute; top: 10px; right: 10px; z-index: 2;
+  width: 40px; height: 40px; padding: 0;
+  border: 1px solid rgb(255 255 255 / .7); border-radius: 10px;
+  background: rgb(255 255 255 / .92); color: #1f2937;
+  box-shadow: 0 3px 12px rgb(0 0 0 / .25);
+  font: 20px/1 sans-serif; cursor: pointer;
 }
 .flow-page-queue .fs-video-stage, .flow-page-history .fs-video-stage {
   background: #000; display: flex; align-items: center; justify-content: center;
 }
 .flow-page-queue .fs-video-stage video, .flow-page-history .fs-video-stage video {
-  width: 100%; max-height: min(700px, calc(100vh - 110px)); display: block;
+  width: 100%; max-height: min(758px, calc(100vh - 50px)); display: block;
+}
+
+/* ───────────────────────────────────────────────────────── Settings save */
+.flow-page-prompt .fs-save-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(15 23 42 / .42);
+  backdrop-filter: blur(5px);
+  animation: fs-save-fade-in .18s ease-out;
+}
+.flow-page-prompt .fs-save-dialog-backdrop[hidden] { display: none; }
+.flow-page-prompt .fs-save-dialog {
+  width: min(430px, 100%);
+  box-sizing: border-box;
+  padding: 30px 28px 24px;
+  border: 1px solid rgb(255 255 255 / .8);
+  border-radius: 22px;
+  background: linear-gradient(145deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 28px 80px rgb(15 23 42 / .28);
+  text-align: center;
+  animation: fs-save-pop-in .22s cubic-bezier(.2, .85, .35, 1.15);
+}
+.flow-page-prompt .fs-save-dialog-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  font: 700 36px/1 "Segoe UI", sans-serif;
+}
+.flow-page-prompt .fs-save-dialog-backdrop[data-state="saving"] .fs-save-dialog-icon {
+  box-sizing: border-box;
+  border: 6px solid #dbeafe;
+  border-top-color: var(--fs-brand);
+  background: transparent;
+  animation: fs-save-spin .8s linear infinite;
+}
+.flow-page-prompt .fs-save-dialog-backdrop[data-state="success"] .fs-save-dialog-icon {
+  background: linear-gradient(135deg, #34d399, #059669);
+  box-shadow: 0 12px 28px rgb(16 185 129 / .3);
+}
+.flow-page-prompt .fs-save-dialog-backdrop[data-state="success"] .fs-save-dialog-icon::before { content: "✓"; }
+.flow-page-prompt .fs-save-dialog-backdrop[data-state="error"] .fs-save-dialog-icon {
+  background: linear-gradient(135deg, #fb7185, #dc2626);
+  box-shadow: 0 12px 28px rgb(239 68 68 / .28);
+}
+.flow-page-prompt .fs-save-dialog-backdrop[data-state="error"] .fs-save-dialog-icon::before { content: "!"; }
+.flow-page-prompt .fs-save-dialog h2 {
+  margin: 0;
+  color: var(--fs-ink);
+  font-size: 21px;
+  line-height: 1.35;
+}
+.flow-page-prompt .fs-save-dialog p {
+  margin: 9px 0 0;
+  color: var(--fs-ink-dim);
+  font-size: 13.5px;
+}
+.flow-page-prompt .fs-save-dialog-summary {
+  margin: 18px 0 0;
+  padding: 11px 14px;
+  border: 1px solid #dbeafe;
+  border-radius: 11px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.flow-page-prompt .fs-save-dialog .fs-btn { min-width: 120px; margin-top: 20px; }
+@keyframes fs-save-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fs-save-pop-in { from { opacity: 0; transform: translateY(12px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes fs-save-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .flow-page-prompt .fs-save-dialog-backdrop,
+  .flow-page-prompt .fs-save-dialog { animation: none; }
 }
 
 /* Queue pagination — 100 jobs per page, up to the 3000-job maximum (30 pages).

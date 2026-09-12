@@ -23,6 +23,7 @@ ADB_SERIAL = os.environ.get("ADB_SERIAL", "").strip()
 AUTOPOST_CAPTION = os.environ.get("AUTOPOST_CAPTION", "")
 AUTOPOST_PRODUCT_NAME = os.environ.get("AUTOPOST_PRODUCT_NAME", "")
 AUTOPOST_VIDEO_NAME = os.environ.get("AUTOPOST_VIDEO_NAME", "")
+AUTOPOST_PRODUCT_ID = os.environ.get("AUTOPOST_PRODUCT_ID", "").strip()
 AUTOPOST_SPEED = os.environ.get("AUTOPOST_SPEED", "normal").strip().lower()
 CAPTION_FILE = os.environ.get("AUTOPOST_CAPTION_FILE", os.path.join(BASE_DIR, "caption", "caption.txt"))
 ADD_TEXT = "\u0e40\u0e1e\u0e34\u0e48\u0e21"
@@ -1526,6 +1527,8 @@ def resolve_template(value):
     return (
         value
         .replace("{{product_name}}", AUTOPOST_PRODUCT_NAME)
+        .replace("{{product_id}}", AUTOPOST_PRODUCT_ID)
+        .replace("{{รหัสสินค้า}}", AUTOPOST_PRODUCT_ID)
         .replace("{{caption}}", AUTOPOST_CAPTION)
         .replace("{{video_name}}", AUTOPOST_VIDEO_NAME or AUTOPOST_PRODUCT_NAME)
         .replace("{{ชื่อวิดีโอ}}", AUTOPOST_VIDEO_NAME or AUTOPOST_PRODUCT_NAME)
@@ -1556,7 +1559,7 @@ def execute_task(driver, task):
     elif action == "tap_marketplace_option":
         tap_marketplace_option(driver)
     elif action == "tap_product_viewpager_image":
-        tap_product_viewpager_image(driver, resolve_template(task.get("keyword", "{{product_name}}")))
+        tap_product_viewpager_image(driver, resolve_template(task.get("keyword", "{{product_id}}")))
     elif action == "search_product_keyword":
         search_product_keyword(driver, resolve_template(task["keyword"]))
     elif action == "tap_first_add_product_button":
@@ -1582,6 +1585,12 @@ def execute_task(driver, task):
 
 
 def run_flow():
+    if not AUTOPOST_PRODUCT_ID:
+        raise RuntimeError("ไม่มี Product ID สำหรับค้นหาสินค้าใน ADB")
+    log(
+        f"ADB Showcase-first: จะเพิ่มและค้นหาด้วย Product ID {AUTOPOST_PRODUCT_ID} เท่านั้น "
+        "(ไม่ใช้ชื่อสินค้า)"
+    )
     driver = start_driver()
     tasks = load_tasks()
     app_package = next(
@@ -1593,7 +1602,9 @@ def run_flow():
     try:
         index = 0
         app_restarts = 0
-        product_flow_mode = "old"
+        # Go straight through เพิ่มสินค้า -> ตลาดสินค้า. The old path searched
+        # the existing Showcase first and only added after three failed retries.
+        product_flow_mode = "new"
         old_product_actions = {"search_product_keyword", "tap_first_add_product_button"}
         new_product_actions = {
             "tap_add_product_entry_before_search",

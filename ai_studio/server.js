@@ -15,6 +15,7 @@ const CAPTURE_FILE = path.join(RUNTIME_DIR, "browser-capture-latest.json");
 const CAPTURE_INDEX_FILE = path.join(RUNTIME_DIR, "browser-captures.json");
 const SHOPEE_AFFILIATE_CAPTURE_FILE = path.join(RUNTIME_DIR, "shopee-affiliate-api-captures.json");
 const EXTENSION_PROFILE_FILE = path.join(RUNTIME_DIR, "extension-profiles.json");
+const FLOW_ACCOUNT_FILE = path.join(RUNTIME_DIR, "flow-account.json");
 const TIKTOK_ACCOUNT_PROFILE_FILE = path.join(RUNTIME_DIR, "tiktok-account-profiles.json");
 // POST WEB AI settings (provider + API keys used to write captions/hashtags).
 // Kept server-side so the keys never round-trip to the browser in full.
@@ -39,6 +40,9 @@ const UPLOADS_DIR = path.join(ROOT, "uploads");
 const clients = new Set();
 const extensionSockets = new Set();
 const extensionSocketMeta = new Map();
+const EXPECTED_MAIN_EXTENSION_VERSION = "0.1.19";
+const SUPPORTED_MAIN_EXTENSION_VERSIONS = new Set([EXPECTED_MAIN_EXTENSION_VERSION, "0.1.18"]);
+const FLOW_EXTENDED_ENABLED = true;
 const chromeProfileHintsBySocketId = new Map();
 const pendingChromeProfileBindings = new Map();
 const pendingExtensionJobs = new Map();
@@ -55,6 +59,7 @@ const extensionState = {
   lastSeen: null,
   version: null,
   lastMessage: null,
+  flowAccountEmail: loadRememberedFlowAccountEmail(),
 };
 const latestProgress = {
   shopee: null,
@@ -208,6 +213,16 @@ function writeExtensionProfiles(profiles) {
   fs.writeFileSync(EXTENSION_PROFILE_FILE, JSON.stringify(profiles || {}, null, 2), "utf8");
 }
 
+function realExtensionProfileLabel(value, installId = "") {
+  const label = String(value || "").trim();
+  const suffix = String(installId || "").trim().slice(-4);
+  // Older builds invented labels such as "Chrome f45b" from installId. It is
+  // not a Chrome profile name and must never be shown or used as identity.
+  if (/^Chrome\s+[0-9a-f]{4}$/i.test(label) && (!suffix || label.toLowerCase() === `chrome ${suffix}`.toLowerCase())) return "";
+  if (/^Chrome\s+#\d+$/i.test(label)) return "";
+  return label;
+}
+
 function upsertExtensionProfile(meta = {}, patch = {}) {
   const installId = String(meta.installId || patch.installId || "").trim();
   if (!installId) return null;
@@ -217,7 +232,7 @@ function upsertExtensionProfile(meta = {}, patch = {}) {
     ...current,
     installId,
     extensionRole: patch.extensionRole || meta.extensionRole || current.extensionRole || EXTENSION_ROLE_MAIN,
-    profileLabel: patch.profileLabel || meta.profileLabel || current.profileLabel || `Chrome ${installId.slice(-4)}`,
+    profileLabel: realExtensionProfileLabel(patch.profileLabel || meta.profileLabel || current.profileLabel, installId),
     version: patch.version || meta.version || current.version || "",
     userDataDir: patch.userDataDir || meta.userDataDir || current.userDataDir || "",
     profileDirectory: patch.profileDirectory || meta.profileDirectory || current.profileDirectory || "",
@@ -250,7 +265,7 @@ function extensionProfilesSnapshot() {
       ...profile,
       socketId: live.id,
       version: live.version || profile.version || "",
-      profileLabel: live.profileLabel || profile.profileLabel || `Chrome ${String(profile.installId || "").slice(-4)}`,
+      profileLabel: realExtensionProfileLabel(live.profileLabel || profile.profileLabel, profile.installId),
       status: "online",
       connected: true,
       lastSeen: live.lastSeen || profile.lastSeen,
@@ -260,13 +275,21 @@ function extensionProfilesSnapshot() {
 
 function readTikTokAccountProfileCache() {
   try {
-    const parsed = JSON.parse(fs.readFileSync(TIKTOK_ACCOUNT_PROFILE_FILE, "utf8"));
+    let parsed = JSON.parse(fs.readFileSync(TIKTOK_ACCOUNT_PROFILE_FILE, "utf8"));
+    const rawAccounts = Array.isArray(parsed.accounts) ? parsed.accounts : [];
+    const accounts = dedupeTikTokAccountsByIdentity(rawAccounts);
+    // One TikTok login can be captured by more than one historical extension
+    // install/profile. Migrate those rows so duplicates stay gone after restart.
+    if (accounts.length !== rawAccounts.length) {
+      parsed = { ...parsed, accounts, updatedAt: new Date().toISOString() };
+      fs.writeFileSync(TIKTOK_ACCOUNT_PROFILE_FILE, JSON.stringify(parsed, null, 2), "utf8");
+    }
     return {
       ok: true,
       cached: true,
       scannedAt: parsed.scannedAt || parsed.updatedAt || "",
       updatedAt: parsed.updatedAt || parsed.scannedAt || "",
-      accounts: Array.isArray(parsed.accounts) ? parsed.accounts : [],
+      accounts,
       profiles: Array.isArray(parsed.profiles) ? parsed.profiles : [],
       profileCount: Number(parsed.profileCount || parsed.profiles?.length || 0) || 0,
     };
@@ -329,6 +352,25 @@ function tiktokAccountCacheKey(account = {}) {
   const identity = secUid || uniqueId || id;
   if (identity) return `account:${identity}`;
   return "profile:unknown";
+}
+
+function tiktokAccountIdentityKey(account = {}) {
+  const secUid = String(account.secUid || account.sec_uid || "").trim();
+  if (secUid) return `sec:${secUid}`;
+  const uniqueId = String(account.uniqueId || account.username || "").replace(/^@/, "").trim().toLowerCase();
+  if (uniqueId) return `user:${uniqueId}`;
+  const id = String(account.id || account.userId || account.uid || "").trim();
+  return id ? `id:${id}` : "";
+}
+
+function dedupeTikTokAccountsByIdentity(accounts = []) {
+  const unique = new Map();
+  for (const account of Array.isArray(accounts) ? accounts : []) {
+    const key = tiktokAccountIdentityKey(account) || tiktokAccountCacheKey(account);
+    if (!key) continue;
+    unique.set(key, mergeTikTokAccountRecord(unique.get(key) || {}, account));
+  }
+  return [...unique.values()];
 }
 
 function tiktokAccountProfileScore(account = {}) {
@@ -1331,7 +1373,7 @@ function refreshTikTokAccountCacheRecords(currentAccounts = [], nextAccounts = [
     if (!key) continue;
     merged.set(key, mergeTikTokAccountRecord(merged.get(key) || {}, account));
   }
-  return [...merged.values()];
+  return dedupeTikTokAccountsByIdentity([...merged.values()]);
 }
 
 function tiktokProfileCacheKey(profile = {}) {
@@ -1487,7 +1529,7 @@ function buildTikTokAccountProfilePayload(profileResults = []) {
       accountMap.set(key, mergeTikTokAccountRecord(accountMap.get(key) || {}, account));
     }
   }
-  const accounts = [...accountMap.values()];
+  const accounts = dedupeTikTokAccountsByIdentity([...accountMap.values()]);
   const liveInstallIds = new Set(profileResults.map((profile) => profile.installId).filter(Boolean));
   const offlineProfiles = knownProfiles.filter((profile) =>
     !profile.connected && profile.installId && !liveInstallIds.has(profile.installId)
@@ -2454,6 +2496,9 @@ function getFlowSuiteRunner() {
       // only the cookie harvest and the captcha mint still need the extension.
       harvestFlowCookies,
       mintFlowCaptcha,
+      refreshFlowCaptcha,
+      createFlowRoom,
+      submitExtendedVideo,
     });
   }
   return flowSuiteRunnerInstance;
@@ -2462,6 +2507,7 @@ function getFlowSuiteRunner() {
 async function getFlowSuiteState() {
   const shared = await loadFlowSuiteShared();
   return {
+    flowAccountEmail: extensionState.flowAccountEmail || "",
     settings: flowSuiteStore.settings(),
     jobs: flowSuiteStore.jobs(),
     history: flowSuiteStore.history(),
@@ -2716,13 +2762,15 @@ const server = http.createServer((req, res) => {
     const mainSocket = activeExtensionSocket(EXTENSION_ROLE_MAIN);
     const mainMeta = mainSocket ? extensionSocketMeta.get(mainSocket) : null;
     const mainHint = mainMeta?.id ? (chromeProfileHintsBySocketId.get(Number(mainMeta.id)) || {}) : {};
+    const mainProfileLabel = realExtensionProfileLabel(mainHint.profileLabel || mainMeta?.profileLabel, mainMeta?.installId);
     const mainExtension = mainMeta ? {
       socketId: mainMeta.id || null,
       installId: mainMeta.installId || "",
-      profileLabel: mainHint.profileLabel || mainMeta.profileLabel || (mainMeta.id ? `Chrome #${mainMeta.id}` : "Main Extension"),
+      profileLabel: mainProfileLabel,
       profileDirectory: mainHint.profileDirectory || mainMeta.profileDirectory || "",
       profileStableId: mainHint.profileStableId || mainHint.chromeProfileStableId || "",
       version: mainMeta.version || extensionState.version || "",
+      accountEmail: mainMeta.flowAccountEmail || extensionState.flowAccountEmail || "",
       connected: true,
     } : null;
     res.writeHead(200, noCacheHeaders(types[".json"]));
@@ -2735,6 +2783,7 @@ const server = http.createServer((req, res) => {
       lastMessage: extensionState.lastMessage,
       extensionProfiles: extensionProfilesSnapshot(),
       mainExtension,
+      flowAccountEmail: mainMeta?.flowAccountEmail || extensionState.flowAccountEmail || "",
       captures,
       tiktokReady: !!captures.tiktok?.hasCookies,
       shopeeReady: !!captures.shopee?.hasCookies,
@@ -3223,6 +3272,37 @@ const server = http.createServer((req, res) => {
   // DELETE below). The underlying functions stay for that in-process use.
 
   // ---- flow-suite: BlueSPite-ported Prompt/Queue/History engine ----
+  if (requestUrl.pathname === "/api/flow/account" && req.method === "GET") {
+    harvestGoogleLabsSession()
+      .then(({ accountEmail }) => {
+        res.writeHead(200, noCacheHeaders(types[".json"]));
+        res.end(JSON.stringify({ ok: true, accountEmail: accountEmail || extensionState.flowAccountEmail || "" }));
+        broadcastFlowSuiteState();
+      })
+      .catch((error) => {
+        res.writeHead(503, noCacheHeaders(types[".json"]));
+        res.end(JSON.stringify({ ok: false, accountEmail: extensionState.flowAccountEmail || "", error: String(error.message || error) }));
+      });
+    return;
+  }
+
+  if (requestUrl.pathname === "/api/flow/account" && req.method === "POST") {
+    readJsonBody(req, 8 * 1024)
+      .then((payload) => {
+        const accountEmail = String(payload?.accountEmail || "").trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(accountEmail)) throw new Error("accountEmail is invalid");
+        rememberFlowAccountEmail(accountEmail);
+        res.writeHead(200, noCacheHeaders(types[".json"]));
+        res.end(JSON.stringify({ ok: true, accountEmail }));
+        broadcastFlowSuiteState();
+      })
+      .catch((error) => {
+        res.writeHead(400, noCacheHeaders(types[".json"]));
+        res.end(JSON.stringify({ ok: false, error: String(error.message || error) }));
+      });
+    return;
+  }
+
   if (requestUrl.pathname === "/api/flow/state" && req.method === "GET") {
     getFlowSuiteState()
       .then((state) => {
@@ -3277,6 +3357,38 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (requestUrl.pathname === "/api/flow/test-rooms" && req.method === "POST") {
+    addBackendLog("info", "api:flow-suite", "POST /api/flow/test-rooms");
+    readJsonBody(req, 64 * 1024)
+      .then(async (payload) => {
+        const count = Math.max(1, Math.min(50, Number(payload?.count) || 20));
+        const marker = String(payload?.marker || `AutoTik Concurrent ${Date.now()}`).slice(0, 120);
+        const startedAt = Date.now();
+        const settled = await Promise.allSettled(
+          Array.from({ length: count }, (_, index) => createFlowRoom(`${marker} ${String(index + 1).padStart(2, "0")}`)),
+        );
+        const rooms = settled.map((item, index) => item.status === "fulfilled"
+          ? { ok: true, index: index + 1, projectId: item.value }
+          : { ok: false, index: index + 1, error: String(item.reason?.message || item.reason || "room create failed") });
+        const succeeded = rooms.filter((room) => room.ok).length;
+        const result = { ok: succeeded === count, count, succeeded, failed: count - succeeded, durationMs: Date.now() - startedAt, rooms };
+        addBackendLog(result.ok ? "info" : "error", "flow", `Concurrent room test ${succeeded}/${count}`, {
+          durationMs: result.durationMs,
+          errors: rooms.filter((room) => !room.ok).map((room) => room.error).slice(0, 5),
+        });
+        return result;
+      })
+      .then((result) => {
+        res.writeHead(result.ok ? 200 : 503, noCacheHeaders(types[".json"]));
+        res.end(JSON.stringify(result));
+      })
+      .catch((error) => {
+        res.writeHead(503, noCacheHeaders(types[".json"]));
+        res.end(JSON.stringify({ ok: false, error: String(error.message || error) }));
+      });
+    return;
+  }
+
   if (requestUrl.pathname === "/api/flow/test-image" && req.method === "POST") {
     addBackendLog("info", "api:flow-suite", "POST /api/flow/test-image");
     readJsonBody(req, 1024 * 1024)
@@ -3302,12 +3414,20 @@ const server = http.createServer((req, res) => {
           title: item.title || "",
           product: item.product || {},
           direction: item.direction || {},
+          characterMode: item.characterMode === "consistent" ? "consistent" : "random",
           videoModel: item.videoModel || "",
           imageModel: item.imageModel || "",
           aspect: item.aspect || "portrait",
-          sceneCount: item.sceneCount || 1,
+          sceneMode: FLOW_EXTENDED_ENABLED && item.sceneMode === "continuous" ? "continuous" : "independent",
+          sceneCount: Math.max(1, Math.min(
+            FLOW_EXTENDED_ENABLED && item.sceneMode === "continuous" ? 3 : 10,
+            Number(item.sceneCount) || 1,
+          )),
           textMode: item.textMode === "noText" ? "noText" : "withText",
           extraPrompt: item.extraPrompt || "",
+          sceneVideoPrompts: Array.isArray(item.sceneVideoPrompts)
+            ? item.sceneVideoPrompts.slice(0, 10).map((prompt) => String(prompt || "").slice(0, 5000))
+            : [],
           productImage: item.productImage || (item.product?.images || [])[0] || "",
           sourceUrl: item.sourceUrl || "",
           status: "queued",
@@ -3374,13 +3494,9 @@ const server = http.createServer((req, res) => {
     readJsonBody(req, 8 * 1024)
       .then((payload) => {
         const id = String(payload.id || "");
-        const targets = id ? [id] : flowSuiteStore.jobs().filter((j) => j.status === "failed").map((j) => j.id);
-        for (const jobId of targets) {
-          flowSuiteStore.updateJob(jobId, { status: "queued", error: "", cancelRequested: false });
-        }
-        broadcastFlowSuiteState();
+        const result = getFlowSuiteRunner().retryFailedJobs(id ? [id] : null, broadcastFlowSuiteState);
         res.writeHead(200, noCacheHeaders(types[".json"]));
-        res.end(JSON.stringify({ ok: true, retried: targets }));
+        res.end(JSON.stringify({ ok: true, ...result }));
       })
       .catch((error) => {
         res.writeHead(400, noCacheHeaders(types[".json"]));
@@ -3390,14 +3506,15 @@ const server = http.createServer((req, res) => {
   }
 
   if (requestUrl.pathname === "/api/flow/queue/run" && req.method === "POST") {
-    const started = getFlowSuiteRunner().startQueue(broadcastFlowSuiteState);
+    const result = getFlowSuiteRunner().startQueueWithFailedFallback(broadcastFlowSuiteState);
     res.writeHead(200, noCacheHeaders(types[".json"]));
-    res.end(JSON.stringify({ ok: true, started }));
+    res.end(JSON.stringify({ ok: true, ...result }));
     return;
   }
 
   if (requestUrl.pathname === "/api/flow/queue/stop" && req.method === "POST") {
     const stopped = getFlowSuiteRunner().requestStop();
+    broadcastFlowSuiteState();
     res.writeHead(200, noCacheHeaders(types[".json"]));
     res.end(JSON.stringify({ ok: true, stopped }));
     return;
@@ -3611,16 +3728,127 @@ async function runFlowGenerate(payload, signal = null) {
 }
 
 const FLOW_RECAPTCHA_SITE_KEY = "6LdsFiUsAAAAAIjVDZcuLhaHiDn5nnHVXVRQGeMV";
+let legacyCaptchaProjectId = "";
+const FLOW_ROOM_BATCH_WINDOW_MS = 35;
+const FLOW_ROOM_BATCH_MAX = 50;
+let pendingFlowRoomCreates = [];
+let pendingFlowRoomTimer = null;
+
+function scheduleFlowRoomBatch() {
+  if (pendingFlowRoomTimer) return;
+  pendingFlowRoomTimer = setTimeout(flushFlowRoomBatch, FLOW_ROOM_BATCH_WINDOW_MS);
+}
+
+async function flushFlowRoomBatch() {
+  pendingFlowRoomTimer = null;
+  const batch = pendingFlowRoomCreates.splice(0, FLOW_ROOM_BATCH_MAX);
+  if (pendingFlowRoomCreates.length) scheduleFlowRoomBatch();
+  if (!batch.length) return;
+  const active = batch.filter((entry) => !entry.signal?.aborted);
+  for (const entry of batch) {
+    if (entry.signal?.aborted) entry.reject(new Error("ยกเลิกโดยผู้ใช้"));
+  }
+  if (!active.length) return;
+  let result;
+  try {
+    result = await sendExtensionCommand(
+      "flowRoomCreateBatch",
+      { titles: active.map((entry) => entry.title) },
+      120000,
+      null,
+      EXTENSION_ROLE_MAIN,
+    );
+  } catch (error) {
+    result = { ok: false, error: String(error?.message || error), rooms: [] };
+  }
+  let rooms = Array.isArray(result?.rooms) ? result.rooms : [];
+  // Backward-compatible bridge while Chrome is still running extension 0.1.18:
+  // keep requests parallel instead of falling all the way back to the runner's
+  // deliberately throttled REST room creator. Once 0.1.19 is reloaded, the
+  // single batch command above is used and this branch stays cold.
+  if (rooms.length !== active.length) {
+    const legacy = await Promise.allSettled(active.map((entry) =>
+      sendExtensionCommand("flowRoomCreate", { title: entry.title }, 90000, null, EXTENSION_ROLE_MAIN)));
+    rooms = legacy.map((item) => {
+      if (item.status === "rejected") return { ok: false, error: String(item.reason?.message || item.reason) };
+      const projectId = String(item.value?.projectId || "").trim();
+      return projectId
+        ? { ok: true, projectId }
+        : { ok: false, error: item.value?.error || result?.error || "Main Extension did not return a Flow projectId" };
+    });
+  }
+  active.forEach((entry, index) => {
+    if (entry.signal?.aborted) return entry.reject(new Error("ยกเลิกโดยผู้ใช้"));
+    const room = rooms[index];
+    const projectId = String(room?.projectId || "").trim();
+    if (room?.ok && projectId) entry.resolve(projectId);
+    else {
+      const detail = String(room?.body || "").replace(/\s+/g, " ").slice(0, 240);
+      entry.reject(new Error(`${room?.error || result?.error || "Main Extension did not return a Flow projectId"}${detail ? ` — ${detail}` : ""}`));
+    }
+  });
+}
+
+function createFlowRoom(title = "AutoTik AI Studio", signal = null) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new Error("ยกเลิกโดยผู้ใช้"));
+    pendingFlowRoomCreates.push({ title: String(title || "AutoTik AI Studio").slice(0, 200), signal, resolve, reject });
+    scheduleFlowRoomBatch();
+  });
+}
+
+async function submitExtendedVideo(payload, signal = null) {
+  const result = await sendExtensionCommand(
+    "flowExtendSubmit",
+    payload,
+    180000,
+    null,
+    EXTENSION_ROLE_MAIN,
+    signal,
+  );
+  const mediaId = String(result?.mediaId || result?.pendingMediaName || result?.mediaName || "").trim();
+  if (!mediaId) throw new Error(result?.error || "Main Extension did not return an Extended mediaId");
+  return { ...result, mediaId, mediaName: mediaId, pendingMediaName: mediaId };
+}
 
 /** Mint one reCAPTCHA token through the Main Extension. Shared by the Python
  *  bridge path below and by the flow-suite runner, which now calls Flow directly
  *  and mints its own token per attempt. */
-async function mintFlowCaptcha(captchaAction, signal = null) {
+async function mintFlowCaptcha(captchaAction, projectId = "", signal = null) {
+  // Backward-compatible overload for the older single-media bridge path, whose
+  // callers used mintFlowCaptcha(action, signal). Any project page can mint a
+  // token for any room, so keep one harmless room for those legacy calls.
+  if (projectId && typeof projectId === "object") {
+    signal = projectId;
+    projectId = "";
+  }
+  let roomId = String(projectId || "").trim();
+  if (!roomId) {
+    if (!legacyCaptchaProjectId) legacyCaptchaProjectId = await createFlowRoom("AutoTik Captcha", signal);
+    roomId = legacyCaptchaProjectId;
+  }
   const minted = await sendExtensionCommand("mintCaptcha", {
     siteKey: FLOW_RECAPTCHA_SITE_KEY,
     captchaAction,
-  }, 90000, null, EXTENSION_ROLE_MAIN, signal);
-  return minted.token || "";
+    projectId: roomId,
+  }, 150000, null, EXTENSION_ROLE_MAIN, signal);
+  if (!minted?.token) throw new Error(`Main Extension did not mint ${captchaAction} reCAPTCHA`);
+  return minted.token;
+}
+
+async function refreshFlowCaptcha(projectId = "", signal = null) {
+  if (projectId && typeof projectId === "object") {
+    signal = projectId;
+    projectId = "";
+  }
+  const roomId = String(projectId || legacyCaptchaProjectId || "").trim();
+  if (!roomId) throw new Error("Flow projectId is required to refresh reCAPTCHA");
+  const refreshed = await sendExtensionCommand("refreshCaptcha", {
+    provider: "google_flow",
+    projectId: roomId,
+  }, 150000, null, EXTENSION_ROLE_MAIN, signal);
+  if (refreshed?.ok === false) throw new Error(refreshed.error || "Main Extension could not refresh reCAPTCHA");
+  return refreshed;
 }
 
 /** Harvest the labs.google cookies through the Main Extension, waking the Flow tab
@@ -3628,12 +3856,11 @@ async function mintFlowCaptcha(captchaAction, signal = null) {
  *  order the Python bridge tried them — the combined labs+google-sso cookie can be
  *  present yet rejected, in which case the labs-only cookie still works. */
 async function harvestFlowCookies(signal = null) {
-  // BlueSPite's FLOW_ENSURE_TAB step: make sure the shared labs.google tab is
-  // open in the right Chrome profile BEFORE reading cookies, so a profile that
-  // has not opened Flow yet — or whose session has gone cold — refreshes first.
-  // Harvesting is cached per session, so this runs rarely, not per job.
+  // Ensure the one shared Flow app tab exists before reading the allowlisted
+  // session cookies. Do not mint a fake SESSION_WARMUP captcha: grecaptcha is
+  // intentionally absent from the Flow home page.
   try {
-    await mintFlowCaptcha("SESSION_WARMUP", signal);
+    await sendExtensionCommand("ensureFlowTab", { connectLabs: true }, 90000, null, EXTENSION_ROLE_MAIN, signal);
   } catch (error) {
     addBackendLog("warn", "flow", "Flow tab warm-up failed; harvesting cookies anyway", {
       error: String(error?.message || error),
@@ -3662,6 +3889,57 @@ function toCookieHeader(value) {
     .join("; ");
 }
 
+function loadRememberedFlowAccountEmail() {
+  try {
+    const saved = JSON.parse(fs.readFileSync(FLOW_ACCOUNT_FILE, "utf8"));
+    return String(saved?.accountEmail || "").trim().toLowerCase();
+  } catch (_) {
+    return "";
+  }
+}
+
+function rememberFlowAccountEmail(value) {
+  const accountEmail = String(value || "").trim().toLowerCase();
+  if (!accountEmail) return "";
+  extensionState.flowAccountEmail = accountEmail;
+  const socket = activeExtensionSocket(EXTENSION_ROLE_MAIN);
+  if (socket) touchExtensionSocket(socket, { flowAccountEmail: accountEmail });
+  try {
+    fs.mkdirSync(RUNTIME_DIR, { recursive: true });
+    fs.writeFileSync(FLOW_ACCOUNT_FILE, JSON.stringify({ accountEmail, updatedAt: new Date().toISOString() }, null, 2), "utf8");
+  } catch (error) {
+    addBackendLog("warn", "flow", "Could not persist Flow account email", { error: String(error.message || error) });
+  }
+  return accountEmail;
+}
+
+async function detectFlowAccountEmail(cookieHeader, signal = null) {
+  if (!cookieHeader) return "";
+  try {
+    const response = await fetch("https://flow.google.com/", {
+      redirect: "follow",
+      signal,
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "th-TH,th;q=0.9,en;q=0.8",
+        Cookie: cookieHeader,
+        "User-Agent": "Mozilla/5.0 Chrome/140 Safari/537.36",
+      },
+    });
+    if (!response.ok) return "";
+    const html = (await response.text())
+      .replace(/\\u0040|\\x40|&#64;|&#x40;|&commat;/gi, "@");
+    const matches = html.match(/[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9.-]+\.[A-Z]{2,}/ig) || [];
+    const candidates = [...new Set(matches.map((email) => email.toLowerCase()))]
+      .filter((email) => !/^(?:support|noreply|no-reply|example)@/i.test(email))
+      .filter((email) => !/@(?:google\.com|gstatic\.com|googleapis\.com)$/i.test(email));
+    candidates.sort((a, b) => Number(b.endsWith("@gmail.com")) - Number(a.endsWith("@gmail.com")));
+    return candidates[0] || "";
+  } catch (_) {
+    return "";
+  }
+}
+
 async function harvestGoogleLabsSession(signal = null) {
   addBackendLog("info", "flow", "Harvesting Google Labs session from extension");
   let harvest = await sendExtensionCommand("harvestLabs", {}, 45000, null, EXTENSION_ROLE_MAIN, signal);
@@ -3669,16 +3947,13 @@ async function harvestGoogleLabsSession(signal = null) {
   let labsCookie = harvest.cookie || "";
   let cookie = cookieInject || labsCookie;
 
-  // Compatibility path for Main Extension <= 0.1.8. Its harvest action only
-  // read cookies and told the operator to open Flow manually. mintCaptcha uses
-  // the same extension but also guarantees that the shared labs.google tab is
-  // opened in the correct Chrome profile. We only need the wake side effect
-  // here; after the page/SSO settles, harvest again before failing the job.
+  // Compatibility/recovery path: explicitly wake the Flow app tab, let SSO
+  // settle, then harvest once more before surfacing a login requirement.
   if (!cookie) {
     addBackendLog("warn", "flow", "Google Labs session missing; waking Flow through Main Extension");
     let flowTabWarmed = false;
     try {
-      await mintFlowCaptcha("SESSION_WARMUP", signal);
+      await sendExtensionCommand("ensureFlowTab", { connectLabs: true }, 90000, null, EXTENSION_ROLE_MAIN, signal);
       flowTabWarmed = true;
       await sleep(1200);
       const retryHarvest = await sendExtensionCommand("harvestLabs", {}, 45000, null, EXTENSION_ROLE_MAIN, signal);
@@ -3711,13 +3986,16 @@ async function harvestGoogleLabsSession(signal = null) {
     }
     throw new Error(`Main Extension could not read Google Labs cookies.${harvest.error ? ` ${harvest.error}` : ""}`);
   }
+  let accountEmail = rememberFlowAccountEmail(harvest.accountEmail);
+  if (!accountEmail) accountEmail = rememberFlowAccountEmail(await detectFlowAccountEmail(cookie, signal));
   addBackendLog("info", "flow", "Google Labs session harvested", {
     cookieLength: cookie.length,
     hasCookieInject: !!harvest.cookieInject,
     labsCookieLength: String(harvest.cookie || "").length,
     cookieMode: harvest.cookieInject ? "labs+google-sso" : "labs-only",
+    accountEmail: accountEmail || "unknown",
   });
-  return { cookie: labsCookie, cookieInject };
+  return { cookie: labsCookie, cookieInject, accountEmail };
 }
 
 async function runGoogleFlowBackend(command, payload, signal = null) {
@@ -3732,14 +4010,14 @@ async function runGoogleFlowBackend(command, payload, signal = null) {
 
   if (command.mediaType === "image" || (command.mediaType === "video" && !bridgePayload.options.startImageMediaId)) {
     addBackendLog("info", "flow", "Minting image reCAPTCHA token");
-    const imageCaptcha = await mintFlowCaptcha("IMAGE_GENERATION", signal);
+    const imageCaptcha = await mintFlowCaptcha("IMAGE_GENERATION", bridgePayload.options.projectId || "", signal);
     addBackendLog("info", "flow", "Image reCAPTCHA token received", { hasToken: !!imageCaptcha });
     bridgePayload.imageCaptcha = imageCaptcha;
   }
 
   if (command.mediaType === "video" || command.mediaType === "extend") {
     addBackendLog("info", "flow", "Minting video reCAPTCHA token");
-    const videoCaptcha = await mintFlowCaptcha("VIDEO_GENERATION", signal);
+    const videoCaptcha = await mintFlowCaptcha("VIDEO_GENERATION", bridgePayload.options.projectId || "", signal);
     addBackendLog("info", "flow", "Video reCAPTCHA token received", { hasToken: !!videoCaptcha });
     bridgePayload.videoCaptcha = videoCaptcha;
   }
@@ -3942,6 +4220,27 @@ function safeFinalFilePart(value) {
     .replace(/^[\s.-]+|[\s.-]+$/g, "")
     .slice(0, 80)
     .trim();
+}
+
+// A product can be rendered more than once. Keep the requested Product ID +
+// title format without silently overwriting an earlier finished clip.
+function uniqueFinalFileBaseName(videoDir, preferredBaseName, extension = ".mp4") {
+  const desired = String(preferredBaseName || "").trim() || "video";
+  let candidate = desired;
+  let copy = 2;
+  while (fs.existsSync(path.join(videoDir, `${candidate}${extension}`))) {
+    candidate = `${desired} (${copy})`;
+    copy += 1;
+  }
+  return candidate;
+}
+
+function buildFinalFileBaseName(videoDir, productId, productName, jobId) {
+  const safeProductId = safeFinalFilePart(productId);
+  const safeProductName = safeFinalFilePart(productName);
+  const preferred = [safeProductId, safeProductName].filter(Boolean).join("-")
+    || safeFlowJobName(jobId);
+  return uniqueFinalFileBaseName(videoDir, preferred);
 }
 
 // The desktop app's Video Library folder, as chosen with its Browse button and
@@ -5297,12 +5596,9 @@ async function finalizeFlowScenes(payload) {
   });
 
   if (scenes.length === 1) {
-    const safeJob = safeFlowJobName(jobId);
-    // Name by product TITLE first: the POST WEB queue matches a clip to its
-    // Showcase product by comparing these two strings, so the id is only a
-    // fallback for clips generated without a product name.
-    const safeProduct = safeFinalFilePart(productName || productId);
-    const baseName = `${Date.now()}-${safeJob}${safeProduct ? `-${safeProduct}` : ""}-final`;
+    // Product ID is the stable key POST WEB uses for an exact Showcase match;
+    // the readable title remains beside it for operators browsing the library.
+    const baseName = buildFinalFileBaseName(finalDirs.videoDir, productId, productName, jobId);
     const outputName = `${baseName}.mp4`;
     const outputFile = path.join(finalDirs.videoDir, outputName);
     fs.mkdirSync(finalDirs.videoDir, { recursive: true });
@@ -5331,6 +5627,7 @@ async function finalizeFlowScenes(payload) {
       videoFileName: outputName,
       createdAt: new Date().toISOString(),
       clips: storedClips,
+      promptLog: payload.promptLog || {},
     };
     const jsMeta = writeFinalFileJsMeta(baseName, metadata, platform, sourceUrl);
     const result = {
@@ -5366,13 +5663,8 @@ async function finalizeFlowScenes(payload) {
 
   return withMediaCoreLock(async () => {
     const core = await loadMediaCore();
-    const safeJob = safeFlowJobName(jobId);
-    // Name by product TITLE first: the POST WEB queue matches a clip to its
-    // Showcase product by comparing these two strings, so the id is only a
-    // fallback for clips generated without a product name.
-    const safeProduct = safeFinalFilePart(productName || productId);
     const workDir = `/final-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const baseName = `${Date.now()}-${safeJob}${safeProduct ? `-${safeProduct}` : ""}-final`;
+    const baseName = buildFinalFileBaseName(finalDirs.videoDir, productId, productName, jobId);
     const outputName = `${baseName}.mp4`;
     const outputFile = path.join(finalDirs.videoDir, outputName);
     const inputs = [];
@@ -5501,6 +5793,7 @@ async function finalizeFlowScenes(payload) {
         videoFileName: outputName,
         createdAt: new Date().toISOString(),
         clips: storedClips,
+        promptLog: payload.promptLog || {},
       };
       const jsMeta = writeFinalFileJsMeta(baseName, metadata, platform, sourceUrl);
       const result = {
@@ -5605,7 +5898,7 @@ function extensionWakeTargetUrl(action, data = {}, role = EXTENSION_ROLE_MAIN) {
   if (command === "fetchShopeeReviewVideos") {
     return productUrl || "https://shopee.co.th/";
   }
-  if (["harvestLabs", "mintCaptcha", "refreshCaptcha", "hud"].includes(command) || command === "generate") {
+  if (["ensureFlowTab", "flowRoomCreate", "flowRoomCreateBatch", "flowExtendSubmit", "harvestLabs", "mintCaptcha", "refreshCaptcha", "hud"].includes(command) || command === "generate") {
     return "https://labs.google/fx/tools/flow";
   }
   if (["checkTikTok", "checkTikTokLinks", "getTikTokProfiles", "pullProducts", "addToShowcase"].includes(command)) {
@@ -6459,7 +6752,19 @@ function extensionSocketByInstallId(installId, role = null) {
 }
 
 function extensionSocketCandidates(role = null, options = {}) {
-  const sockets = [...extensionSockets].filter((socket) => !socket.destroyed && socket.writable !== false);
+  const sockets = [...extensionSockets].filter((socket) => {
+    if (socket.destroyed || socket.writable === false) return false;
+    const meta = extensionSocketMeta.get(socket) || {};
+    const socketRole = String(meta.extensionRole || EXTENSION_ROLE_MAIN);
+    // A different app's lifecycle/soak harness can connect to the same local
+    // port and used to become the "latest" Main Extension. Never dispatch real
+    // account/cookie commands to a client that does not match this app's loaded
+    // Main Extension build.
+    if (socketRole === EXTENSION_ROLE_MAIN) {
+      return SUPPORTED_MAIN_EXTENSION_VERSIONS.has(String(meta.version || ""));
+    }
+    return true;
+  });
   let filtered = sockets;
   if (role) {
     filtered = sockets.filter((socket) => String(extensionSocketMeta.get(socket)?.extensionRole || EXTENSION_ROLE_MAIN) === role);
@@ -6481,6 +6786,7 @@ function refreshExtensionStateFromMain() {
   extensionState.lastSeen = meta.lastSeen || (latest ? new Date().toISOString() : extensionState.lastSeen);
   extensionState.version = meta.version || null;
   extensionState.lastMessage = latest ? (meta.lastMessage || "connected") : "disconnected";
+  extensionState.flowAccountEmail = meta.flowAccountEmail || extensionState.flowAccountEmail || "";
   return { socket: latest, meta };
 }
 
@@ -6492,7 +6798,10 @@ function markExtensionMessage(raw, socket = null) {
     const meta = touchExtensionSocket(socket, {
       version: helloData?.version ? helloData.version : extensionSocketMeta.get(socket)?.version,
       installId: helloData?.installId ? helloData.installId : extensionSocketMeta.get(socket)?.installId,
-      profileLabel: helloData?.profileLabel ? helloData.profileLabel : extensionSocketMeta.get(socket)?.profileLabel,
+      profileLabel: helloData
+        ? realExtensionProfileLabel(helloData.profileLabel, helloData.installId)
+        : extensionSocketMeta.get(socket)?.profileLabel,
+      flowAccountEmail: helloData?.flowAccountEmail ? helloData.flowAccountEmail : extensionSocketMeta.get(socket)?.flowAccountEmail,
       bindToken: helloData?.bindToken ? helloData.bindToken : extensionSocketMeta.get(socket)?.bindToken,
       extensionRole: helloData ? helloRole : (extensionSocketMeta.get(socket)?.extensionRole || EXTENSION_ROLE_MAIN),
       lastMessage: msg.type || "message",

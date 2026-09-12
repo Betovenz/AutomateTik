@@ -7,7 +7,7 @@
 // (e.g. "ULTRA x20") is shown in the dropdown. TikTok is a publishing login with
 // no tier, so its dropdown lists handles only.
 const PROVIDERS = [
-  { label: "Flow", host: "labs.google", domains: ["labs.google"], cookies: ["session-token"], provider: "google_labs", showType: true },
+  { label: "Flow", host: "flow.google.com", domains: ["labs.google", "flow.google.com"], cookies: ["session-token"], provider: "google_labs", showType: true },
   { label: "TikTok", host: "tiktok.com", domains: ["tiktok.com"], cookies: ["sessionid", "sid_tt"], provider: "tiktok", showType: false },
 ];
 

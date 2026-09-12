@@ -26,14 +26,17 @@ function emptyDb() {
     version: 1,
     settings: {
       flowTier: "x20",
-      videoModel: "veo_3_1_i2v_lite",
+      videoModel: "veo_3_1_r2v_lite",
       imageModel: "NARWHAL",
       aspect: "portrait",
+      characterMode: "random",
+      sceneMode: "independent",
       sceneCount: 1,
       concurrency: 1,
       textMode: "withText",
       direction: {},
       extraPrompt: "",
+      sceneVideoPrompts: [],
     },
     jobs: [],
     history: [],
@@ -53,6 +56,13 @@ function load() {
       const parsed = JSON.parse(fs.readFileSync(DB_PATH, "utf8"));
       db = { ...emptyDb(), ...parsed };
       db.settings = { ...emptyDb().settings, ...(parsed.settings || {}) };
+      const legacyModelMap = {
+        veo_3_1_i2v_lite_low_priority: "veo_3_1_r2v_lite_low_priority",
+        veo_3_1_i2v_lite: "veo_3_1_r2v_lite",
+        veo_3_1_i2v_s_fast_portrait_ultra: "veo_3_1_r2v_lite",
+      };
+      if (legacyModelMap[db.settings.videoModel]) db.settings.videoModel = legacyModelMap[db.settings.videoModel];
+      db.settings.sceneVideoPrompts = normalizeSceneVideoPrompts(db.settings.sceneVideoPrompts);
     } catch (err) {
       const backup = `${DB_PATH}.corrupt-${Date.now()}`;
       try { fs.renameSync(DB_PATH, backup); } catch { /* best effort */ }
@@ -97,15 +107,31 @@ function flushNow() {
 
 // ------------------------------------------------------------------ settings
 function settings() {
-  return load().settings;
+  const current = load().settings;
+  return {
+    ...current,
+    sceneMode: current.sceneMode === "continuous" ? "continuous" : "independent",
+  };
+}
+
+function normalizeSceneVideoPrompts(value) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 10).map((prompt) => String(prompt || "").slice(0, 5000));
 }
 
 function updateSettings(patch = {}) {
   const s = load();
   s.settings = { ...s.settings, ...patch };
   if (patch.direction) s.settings.direction = { ...s.settings.direction, ...patch.direction };
-  persist();
-  return s.settings;
+  s.settings.characterMode = s.settings.characterMode === "consistent" ? "consistent" : "random";
+  s.settings.sceneMode = s.settings.sceneMode === "continuous" ? "continuous" : "independent";
+  const maxScenes = s.settings.sceneMode === "continuous" ? 3 : 10;
+  s.settings.sceneCount = Math.max(1, Math.min(maxScenes, Number(s.settings.sceneCount) || 1));
+  s.settings.sceneVideoPrompts = normalizeSceneVideoPrompts(s.settings.sceneVideoPrompts);
+  // A successful Save response must mean the setting is already durable on
+  // disk, not merely waiting in the debounce timer.
+  flushNow();
+  return { ...s.settings };
 }
 
 // ------------------------------------------------------------------ logging
@@ -168,7 +194,13 @@ function newJobId() {
 
 function addJob(job) {
   const s = load();
-  const record = { ...job, id: job.id || newJobId(), createdAt: Date.now(), updatedAt: Date.now() };
+  const record = {
+    ...job,
+    sceneVideoPrompts: normalizeSceneVideoPrompts(job.sceneVideoPrompts),
+    id: job.id || newJobId(),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
   s.jobs.unshift(record);
   persist();
   return record;
@@ -237,7 +269,32 @@ function recordHistory(entry) {
 }
 
 function history() {
-  return load().history;
+  const s = load();
+  let changed = false;
+  for (const row of s.history) {
+    const sourceJob = s.jobs.find((jobRow) => (
+      jobRow.id === row.jobId ||
+      (row.productId && jobRow.productId === row.productId) ||
+      (!row.productId && row.title && jobRow.title === row.title)
+    ));
+    if (!sourceJob) continue;
+    const productImage = row.productImage || row.thumb || sourceJob.productImage || sourceJob.product?.images?.find(Boolean) || "";
+    if (productImage && (!row.productImage || !row.thumb)) {
+      row.productImage = productImage;
+      row.thumb = productImage;
+      changed = true;
+    }
+    if (!row.productId && sourceJob.productId) {
+      row.productId = sourceJob.productId;
+      changed = true;
+    }
+    if (!row.id && sourceJob.id) {
+      row.id = sourceJob.id;
+      changed = true;
+    }
+  }
+  if (changed) persist();
+  return s.history;
 }
 
 // No "clear all" on purpose — History deletion is per-status only.

@@ -1,0 +1,28 @@
+{
+  "orderNumber": "CB-0102-728",
+  "productId": "1732091779661858007",
+  "productName": "ถุงมือล้างรถขนแกะแท้100%(นำเข้าUSA)ขนนุ่มหนาพิเศษ ไม่เป็นขุย เช็ดเบาะ แว็กซ์รถยนต์ เช็ดรถ ผลิตภัณฑ์ดูแลรถ ฟองน้ำล้างรถ",
+  "sourceUrl": "https://www.tiktok.com/view/product/1732091779661858007",
+  "videoModel": "veo_3_1_r2v_lite_low_priority",
+  "sceneMode": "independent",
+  "sceneCount": 2,
+  "textMode": "withText",
+  "scenes": [
+    {
+      "scene": 1,
+      "imageUrl": "https://flow-content.google/image/ad73892e-3466-4d74-aa5a-dc4209d1e15d?Expires=1788835708&KeyName=labs-flow-prod-cdn-key&Signature=rvh1sDWv4rW9VGvoiDV1Vh8Po4s",
+      "mediaName": "2503aa32-2f22-47a6-ab1e-73ce30737fbd",
+      "url": "https://flow-content.google/video/2503aa32-2f22-47a6-ab1e-73ce30737fbd?Expires=1788835941&KeyName=labs-flow-prod-cdn-key&Signature=JKWz_ZKXkfVauQi9K8e3RmU5nEQ"
+    },
+    {
+      "scene": 2,
+      "imageUrl": "https://flow-content.google/image/84e52d7d-e32d-46ff-819a-de1a54e9992d?Expires=1788835942&KeyName=labs-flow-prod-cdn-key&Signature=1xz3A7tl9S48CXZoaLQn3PjNWxk",
+      "mediaName": "444bdc91-4e41-43ee-ad91-de1d5d75fb5a",
+      "url": "https://flow-content.google/video/444bdc91-4e41-43ee-ad91-de1d5d75fb5a?Expires=1788836173&KeyName=labs-flow-prod-cdn-key&Signature=_fUzhFmv_dMIp2J_rY3fMVxuaT4"
+    }
+  ],
+  "finalVideo": "/library-file/1732091779661858007-%E0%B8%96%E0%B8%B8%E0%B8%87%E0%B8%A1%E0%B8%B7%E0%B8%AD%E0%B8%A5%E0%B9%89%E0%B8%B2%E0%B8%87%E0%B8%A3%E0%B8%96%E0%B8%82%E0%B8%99%E0%B9%81%E0%B8%81%E0%B8%B0%E0%B9%81%E0%B8%97%E0%B9%89100%25(%E0%B8%99%E0%B8%B3%E0%B9%80%E0%B8%82%E0%B9%89%E0%B8%B2USA)%E0%B8%82%E0%B8%99%E0%B8%99%E0%B8%B8%E0%B9%88%E0%B8%A1%E0%B8%AB%E0%B8%99%E0%B8%B2%E0%B8%9E%E0%B8%B4%E0%B9%80%E0%B8%A8%E0%B8%A9%20%E0%B9%84%E0%B8%A1%E0%B9%88%E0%B9%80%E0%B8%9B%E0%B9%87%E0%B8%99%E0%B8%82%E0%B8%B8%E0%B8%A2%20%E0%B9%80%E0%B8%8A%E0%B9%87%E0%B8%94%E0%B9%80%E0%B8%9A%E0%B8%B2%E0%B8%B0%20%E0%B9%81%E0%B8%A7%E0%B9%87%E0%B8%81%E0%B8%8B%E0%B9%8C%E0%B8%A3%E0%B8%96%E0%B8%A2%E0%B8%99.mp4",
+  "status": "done",
+  "createdAt": 1788813702815,
+  "finishedAt": 1788815123996
+}

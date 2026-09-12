@@ -1,0 +1,28 @@
+{
+  "orderNumber": "VR-0101-091",
+  "productId": "1731922362976536303",
+  "productName": "กางเกงยีนส์สีฟ้าวินเทจ กางเกงยีนส์เอวสูง กางเกงขากระบอก สไตล์เกาหลีแนววินเทจ Jeans FOR WOMEN กางเกงขากว้างทรงตรง ทรงหลวม ดีไซน์สีน้ำเงินเข้ม S‑2XL",
+  "sourceUrl": "https://www.tiktok.com/view/product/1731922362976536303",
+  "videoModel": "veo_3_1_r2v_lite_low_priority",
+  "sceneMode": "independent",
+  "sceneCount": 2,
+  "textMode": "withText",
+  "scenes": [
+    {
+      "scene": 1,
+      "imageUrl": "https://flow-content.google/image/6c4e4d04-5ffa-42c1-adf3-229262beb97d?Expires=1788833585&KeyName=labs-flow-prod-cdn-key&Signature=aCG17r2EQoAs-rgJ60SUgRWElI0",
+      "mediaName": "b2295f55-1fcb-4bfb-bd49-619af782e8dd",
+      "url": "https://flow-content.google/video/b2295f55-1fcb-4bfb-bd49-619af782e8dd?Expires=1788833651&KeyName=labs-flow-prod-cdn-key&Signature=wRO4v3tJd6rp9twMy_UMqosJSls"
+    },
+    {
+      "scene": 2,
+      "imageUrl": "https://flow-content.google/image/230babfd-7559-4701-8233-f937db3c172e?Expires=1788833652&KeyName=labs-flow-prod-cdn-key&Signature=TvMdoH2GfIk90N2NmhjrCKlmV1Q",
+      "mediaName": "f51af0c3-4d6f-498d-869c-90c761e433fb",
+      "url": "https://flow-content.google/video/f51af0c3-4d6f-498d-869c-90c761e433fb?Expires=1788833724&KeyName=labs-flow-prod-cdn-key&Signature=HL5FeSBniCm5qcvq9TEOpPvsZK4"
+    }
+  ],
+  "finalVideo": "/library-file/1731922362976536303-%E0%B8%81%E0%B8%B2%E0%B8%87%E0%B9%80%E0%B8%81%E0%B8%87%E0%B8%A2%E0%B8%B5%E0%B8%99%E0%B8%AA%E0%B9%8C%E0%B8%AA%E0%B8%B5%E0%B8%9F%E0%B9%89%E0%B8%B2%E0%B8%A7%E0%B8%B4%E0%B8%99%E0%B9%80%E0%B8%97%E0%B8%88%20%E0%B8%81%E0%B8%B2%E0%B8%87%E0%B9%80%E0%B8%81%E0%B8%87%E0%B8%A2%E0%B8%B5%E0%B8%99%E0%B8%AA%E0%B9%8C%E0%B9%80%E0%B8%AD%E0%B8%A7%E0%B8%AA%E0%B8%B9%E0%B8%87%20%E0%B8%81%E0%B8%B2%E0%B8%87%E0%B9%80%E0%B8%81%E0%B8%87%E0%B8%82%E0%B8%B2%E0%B8%81%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%AD%E0%B8%81%20%E0%B8%AA%E0%B9%84%E0%B8%95%E0%B8%A5%E0%B9%8C%E0%B9%80%E0%B8%81%E0%B8%B2%E0%B8%AB%E0%B8%A5%E0%B8%B5%E0%B9%81%E0%B8%99%E0%B8%A7%E0%B8%A7%E0%B8%B4%E0%B8%99%E0%B9%80%E0%B8%97%E0%B8%88%20Jea.mp4",
+  "status": "done",
+  "createdAt": 1788811976184,
+  "finishedAt": 1788812212792
+}

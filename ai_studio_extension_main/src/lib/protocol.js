@@ -73,8 +73,12 @@ export const ACTION = {
   // {action, ok, cookie (labs-only, stored), cookieInject (labs + google.com SSO, seeded
   // into the persist profile)}. Mirror: app/triple_bot_app/protocol.py.
   HARVEST_LABS: "harvestLabs",
-  MINT_CAPTCHA: "mintCaptcha", // app -> ext: mint a reCAPTCHA Enterprise token in a labs.google tab
-  REFRESH_CAPTCHA: "refreshCaptcha", // app -> ext: reload/navigate the Flow tab to refresh grecaptcha
+  ENSURE_FLOW_TAB: "ensureFlowTab", // app -> ext: keep one live Flow tab; optional projectId parks it on a room
+  FLOW_ROOM_CREATE: "flowRoomCreate", // app -> ext: create one Flow room through in-page jHPbke
+  FLOW_ROOM_CREATE_BATCH: "flowRoomCreateBatch", // app -> ext: create many independent rooms in one concurrent in-page batch
+  FLOW_EXTEND_SUBMIT: "flowExtendSubmit", // app -> ext: submit Flow's fZytfe Extended scene RPC
+  MINT_CAPTCHA: "mintCaptcha", // app -> ext: mint in a flow.google.com/project/<id> page
+  REFRESH_CAPTCHA: "refreshCaptcha", // app -> ext: bounce home then return to the project page
   HUD: "hud", // app -> ext: drive the on-page "managed tab" HUD (start/stage/done/hide)
   CHECK_TIKTOK: "checkTikTok", // app -> ext: is the TikTok product-showcase page open?
   CHECK_TIKTOK_LINKS: "checkTikTokLinks", // app -> ext: check TikTok product URLs via product_link/check

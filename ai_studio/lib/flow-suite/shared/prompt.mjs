@@ -54,6 +54,8 @@ export const SAFETY_RULES = [
   "ห้ามใส่โลโก้ ข้อความ หรือลายน้ำของแพลตฟอร์มอื่นในภาพ",
 ];
 
+export const DEFAULT_MANDATORY_PROMPT = `ข้อห้าม: ${SAFETY_RULES.join(" | ")}`;
+
 function clean(v) {
   return String(v ?? "").replace(/\s+/g, " ").trim();
 }
@@ -66,6 +68,246 @@ function directionText(field, value) {
   if (isCustomValue(v)) return customValueText(v);
   if (field === "videoStyle" && v === "default") return "";
   return styleLabel(field, v);
+}
+
+/** Build the one-time identity reference used when the operator explicitly
+ * chooses a character. It intentionally contains no product: the next image
+ * step combines this identity image with the real product reference. */
+export function buildCharacterPrompt(input = {}) {
+  const direction = input.direction || {};
+  const characterText = directionText("character", direction.character) || "adult UGC presenter";
+  return [
+    `Create one photorealistic identity reference image of this character: ${characterText}.`,
+    "The character must clearly be an adult age 20 or older. If the description uses words such as girl, boy, or teen, interpret the visual style only and still depict an adult age 20–25.",
+    "Single person, natural face, realistic skin texture, clean neutral studio background, soft even lighting, waist-up framing, looking toward camera.",
+    "Keep the face, hairstyle, apparent age, body proportions, and clothing clearly visible so the same identity can be reproduced in later storyboard scenes.",
+    "Do not show any product, package, brand, logo, advertising text, caption, watermark, collage, or additional person.",
+    ...SAFETY_RULES,
+  ].join("\n");
+}
+
+const TRIPLEBOT_EXTENDED_NEGATIVE_PROMPT = [
+  "English speech", "voice change", "wrong gender voice", "text overlay", "headline",
+  "title text", "on-screen text", "any visible text", "text distortions", "morphing text",
+  "subtitles", "captions", "watermarks", "logos", "graphical elements", "blurry text",
+  "UI elements", "any written characters", "labels", "numbers on screen",
+  "text from previous clip", "carried over text", "inherited text overlay", "transition",
+  "fade in", "fade out", "dissolve", "crossfade", "wipe", "slide transition",
+  "cut to black", "face change", "face morph", "product redesign", "product change",
+  "rushed speech", "fast talking", "price tag", "discount text", "percentage number",
+  "before after comparison", "medical symbol", "promotional graphic",
+  "exaggerated transformation", "third hand", "extra hand", "extra arm", "extra limb",
+  "extra fingers", "six fingers", "deformed hands", "mutated hands",
+  "malformed fingers", "fused fingers", "distorted anatomy",
+].join(", ");
+
+const TRIPLEBOT_EXTENDED_AUDIO_NEGATIVE_PROMPT = [
+  "voice change", "different voice", "music", "background music", "instrumental",
+  "melody", "wrong gender voice", "robotic voice", "scripted reading", "rushed speech",
+  "fast talking", "unnatural pace", "speech cut off", "incomplete dialogue",
+  "truncated speech", "delayed speech start", "silence at beginning", "improvised speech",
+  "ad-lib dialogue", "extra words beyond script",
+].join(", ");
+
+function tripleBotVoiceSettings(direction = {}) {
+  const raw = clean(direction.voiceType);
+  const voiceGender = raw.startsWith("male-")
+    ? "male"
+    : raw.startsWith("female-") ? "female" : "same as previous clip";
+  const voiceType = directionText("voiceType", raw) || "same voice type as previous clip";
+  return { voiceGender, voiceType };
+}
+
+function tripleBotProductSubject(product = {}) {
+  const brand = clean(product.brand);
+  const category = clean(product.category);
+  const name = clean(product.name);
+  const source = [brand, category].filter((value) => value && value !== "-").join(" ")
+    || (name && name !== "-" ? name : "สินค้าชิ้นนี้");
+  if (source.length <= 64) return source;
+  const clipped = source.slice(0, 64);
+  const lastSpace = clipped.lastIndexOf(" ");
+  return (lastSpace >= 24 ? clipped.slice(0, lastSpace) : clipped).trim();
+}
+
+function tripleBotDefaultDialogue(product, isFinal) {
+  const subject = tripleBotProductSubject(product);
+  return isFinal
+    ? `${subject} เป็นอีกตัวเลือกที่น่าสนใจ ใครกำลังมองหาสินค้าแบบนี้อยู่ กดดูรายละเอียดและตัวเลือกเพิ่มเติมที่ตะกร้าได้เลยนะ`
+    : `มาดูรายละเอียดของ ${subject} กันต่อเลย เดี๋ยวหมุนให้เห็นรูปทรงและดีไซน์รอบ ๆ ชัดขึ้น เลือกดูให้ตรงกับแบบที่คุณชอบได้เลยนะ`;
+}
+
+function tripleBotDefaultAction(sceneIndex, sceneCount) {
+  const isFinal = sceneIndex === sceneCount - 1;
+  return isFinal
+    ? "Final closing clip. The character delivers a strong call-to-action — pointing directly at the camera, giving a thumbs up, or making an inviting gesture (beckoning with hand). The energy should peak here with the most enthusiastic and persuasive delivery. End with a warm, confident smile and a final product showcase holding it up toward the camera."
+    : "Character continues naturally, showing different product angles.";
+}
+
+export function buildBaseSceneInstruction(videoModel) {
+  const seconds = modelSeconds(videoModel);
+  return [
+    `คลิปวิดีโอแนวตั้ง 9:16 ความยาว ${seconds} วินาที สำหรับโปรโมทสินค้าบน TikTok/Shopee`,
+    "กล้องเคลื่อนนุ่มนวลต่อเนื่องไม่กระตุก โฟกัสที่สินค้าเป็นหลัก ไม่ตัดสลับฉากหลายครั้ง",
+    "สินค้าต้องคงรูปร่าง สี บรรจุภัณฑ์ โลโก้ และข้อความเดิมตลอดคลิป",
+  ].join("\n");
+}
+
+/** The editable/default block shown in each scene field. An empty saved value
+ * means this current default is used, so a future default update is picked up
+ * automatically instead of freezing an old copy in settings. */
+export function defaultSceneVideoInstruction(input = {}) {
+  const sceneIndex = Math.max(0, Number(input.sceneIndex) || 0);
+  const continuous = input.sceneMode === "continuous";
+  const parts = [];
+  if (continuous) {
+    parts.push(sceneIndex === 0
+      ? "เปิดเรื่องให้ชัดเจน และล็อกตัวละคร ใบหน้า เสียง สินค้า เสื้อผ้า ฉาก แสง และมุมกล้องนี้ไว้สำหรับฉากถัดไป"
+      : "ต่อเนื่องจากเฟรมสุดท้ายของคลิปก่อนหน้าทันที โดยคงตัวละคร ใบหน้า เสียง สินค้า เสื้อผ้า ฉาก แสง และมุมกล้องเดิม");
+  }
+  parts.push(buildBaseSceneInstruction(input.videoModel));
+  return parts.join("\n");
+}
+
+function resolveSceneInstructionTemplate(value, input = {}) {
+  const seconds = modelSeconds(input.videoModel);
+  const productName = clean(input.product?.name) || "สินค้าชิ้นนี้";
+  return String(value || "")
+    .trim()
+    .slice(0, 5000)
+    .replace(/\{\{\s*สินค้า\s*\}\}|\{\s*สินค้า\s*\}/g, () => productName)
+    .replace(/\{\{\s*จำนวนวินาที\s*\}\}|\{\s*จำนวนวินาที\s*\}/g, () => String(seconds));
+}
+
+/** Compose an Original/independent prompt by replacing only its leading scene
+ * instruction block. Product facts, speech rules and safety rails remain owned
+ * by buildPrompt and are always retained. */
+export function resolveSceneVideoPrompt(input = {}) {
+  const sceneIndex = Math.max(0, Number(input.sceneIndex) || 0);
+  const sceneCount = Math.max(sceneIndex + 1, Number(input.sceneCount) || 1);
+  const continuous = input.sceneMode === "continuous";
+  const basePrompt = String(input.basePrompt || "").trim();
+  const baseInstruction = String(input.baseInstruction || buildBaseSceneInstruction(input.videoModel)).trim();
+  const defaultInstruction = defaultSceneVideoInstruction({
+    sceneIndex, sceneCount, sceneMode: continuous ? "continuous" : "independent", videoModel: input.videoModel,
+  });
+  const customInstruction = resolveSceneInstructionTemplate(input.sceneInstruction, input);
+  const instruction = customInstruction || defaultInstruction;
+  const body = basePrompt.startsWith(baseInstruction)
+    ? basePrompt.slice(baseInstruction.length).replace(/^\s+/, "")
+    : basePrompt;
+  return [
+    continuous
+      ? `Scene ${sceneIndex + 1}/${sceneCount} — ${sceneIndex === 0 ? "BASE SCENE" : "CONTINUOUS EXTENDED SCENE"}`
+      : "",
+    instruction,
+    body,
+  ].filter(Boolean).join("\n");
+}
+
+/**
+ * Build one Flow Extend Video prompt using TripleBot's continuation contract.
+ * Scene indexes are zero-based: 1 is Extended #1 and 2 is Extended #2.
+ * TripleBot always maps the final clip to its dedicated closing/CTA template.
+ */
+export function buildTripleBotExtendedPrompt(input = {}) {
+  const sceneIndex = Math.max(1, Number(input.sceneIndex) || 1);
+  const sceneCount = Math.max(sceneIndex + 1, Number(input.sceneCount) || sceneIndex + 1);
+  const isFinal = sceneIndex === sceneCount - 1;
+  const product = input.product || {};
+  const productSubject = tripleBotProductSubject(product);
+  const dialogue = String(input.dialogueScript || "").trim().slice(0, 5000)
+    || tripleBotDefaultDialogue(product, isFinal);
+  const sceneInstruction = resolveSceneInstructionTemplate(input.sceneInstruction, input)
+    .replace(/สินค้าชิ้นนี้/g, () => productSubject);
+  const productFacts = productBlock(product);
+  const { voiceGender, voiceType } = tripleBotVoiceSettings(input.direction || {});
+  const action = sceneInstruction || tripleBotDefaultAction(sceneIndex, sceneCount);
+  const visualContinuity = isFinal
+    ? "Same character, same setting"
+    : "Same character position and camera angle";
+  const promptText = [
+    "⚠️ ABSOLUTE RULES:",
+    "1. ZERO TEXT ON SCREEN — no text, no titles, no headlines, no labels, no numbers, no letters, no captions, no watermarks. The screen must show ONLY the character and product. If the previous clip had text/headlines on screen, they must be COMPLETELY REMOVED in this clip. DO NOT carry over or continue any text from the previous clip.",
+    "2. ZERO TRANSITIONS — no fade, no dissolve, no crossfade, no wipe, no cut to black. Continue seamlessly from the exact last frame without any transition effect.",
+    "",
+    "CRITICAL AUDIO RULE: DO NOT repeat or echo ANY words from the previous clip. The audio must start FRESH with the new dialogue below — no overlap, no repetition of the last sentence.",
+    "",
+    "AUDIO (MOST IMPORTANT):",
+    "- The previous clip's audio has ALREADY ENDED",
+    "- This clip's audio must be 100% NEW content",
+    "- Start speaking the dialogue_script below from the FIRST WORD immediately",
+    "- ZERO audio overlap with previous clip",
+    "- DO NOT fade in or repeat previous audio",
+    "",
+    "VISUAL CONTINUITY:",
+    "- Continue seamlessly from the exact last frame — no transition effects",
+    `- ${visualContinuity}`,
+    "- NO TEXT on screen",
+    "",
+    "SPEECH SETTINGS:",
+    "- LANGUAGE: Thai (English brand names and product codes allowed, pronounce naturally)",
+    `- VOICE GENDER: ${voiceGender}`,
+    `- VOICE TYPE: ${voiceType}`,
+    "- Same voice tone and speed as previous clip",
+    "- SPEECH TIMING (CRITICAL — MUST OBEY):",
+    "  * The ENTIRE dialogue_script MUST be spoken completely — every word, no skipping, no truncation",
+    "  * Start speaking from the VERY FIRST FRAME — zero delay, zero silence at the start",
+    "  * Finish ALL speech by 8 seconds — use the full clip duration, no wasted silence",
+    "  * Pace: natural conversational Thai (~3 words per second) — relaxed, not rushed",
+    "  * MUST spread speech evenly across the FULL 8 seconds — do NOT finish early and leave silence",
+    "  * Add natural pauses and breathing between phrases to fill the full duration",
+    "  * Do NOT add extra words beyond the dialogue_script — speak ONLY what is written",
+    "  * Do NOT cut off the last sentence — the final word must be clearly audible",
+    "- Speaking must sound completely natural — not scripted, not robotic",
+    "",
+    "TIKTOK CONTENT SAFETY (CRITICAL):",
+    "- Speak ONLY the exact dialogue_script — do NOT improvise, ad-lib, or add ANY extra words",
+    "- Do NOT mention medical claims, healing, curing, killing germs/bacteria in speech or visuals",
+    "- Do NOT show or speak about guaranteed results, percentages, or specific timeframes",
+    "- Do NOT display price tags, discount numbers, or promotional text on screen",
+    "- Do NOT show before/after comparisons or exaggerated transformations",
+    "- Do NOT create pressure (last chance, limited stock) in speech or visuals",
+    "- Keep the tone natural and honest — like a friend sharing, not a hard sell",
+    "",
+    "FACE & PRODUCT LOCK (CRITICAL — DO NOT VIOLATE):",
+    "- The person's face MUST remain 100% identical to the previous clip and reference image — same face shape, eyes, nose, mouth, skin tone, hairstyle.",
+    "- The product MUST remain 100% identical — same design, color, shape, label, packaging.",
+    "- DO NOT modify, morph, age, beautify, or alter the face in any way.",
+    "- DO NOT modify, redesign, recolor, or stylize the product in any way.",
+    "",
+    "PRODUCT FOCUS:",
+    "- Keep the character's attention, hand actions, camera framing, and spoken message focused on the reference product.",
+    "- Show the real product clearly and naturally; do not turn the clip into an explanation of filming instructions.",
+    ...productFacts.map((fact) => `- ${fact}`),
+    "",
+    `ACTION (VISUAL PERFORMANCE ONLY — DO NOT SPEAK): ${action}`,
+    "Treat ACTION only as acting/camera direction. NEVER read it aloud and NEVER copy it into dialogue.",
+    "",
+    "HUMAN ANATOMY (CRITICAL — DO NOT VIOLATE):",
+    "- Every human MUST have EXACTLY two hands and two arms — never more, never fewer.",
+    "- ABSOLUTELY NO third hand, NO extra hand, NO extra arm, NO extra limb growing from the body.",
+    "- Hands and fingers must be anatomically correct and natural — exactly five fingers per hand, no fused, melted, or deformed fingers.",
+  ].join("\n");
+
+  return JSON.stringify({
+    step: isFinal ? 10 : sceneIndex + 2,
+    action: "Extend_Video",
+    tool: "VEO 3.1",
+    prompt_text: promptText,
+    dialogue_script: dialogue,
+    technical_settings: {
+      seed: 4294967295,
+      reference_mode: "extend_previous_clip",
+      voice_consistency: "match_previous_clip_tone",
+      face_lock: "absolute",
+      product_lock: "absolute",
+      camera_movement: "static_with_handheld_shake",
+      negative_prompt: TRIPLEBOT_EXTENDED_NEGATIVE_PROMPT,
+      audio_mode: "speech_only",
+      audio_negative_prompt: TRIPLEBOT_EXTENDED_AUDIO_NEGATIVE_PROMPT,
+    },
+  }, null, 2);
 }
 
 // The product half of the prompt. Only facts that were actually available go
@@ -97,12 +339,10 @@ function productBlock(product) {
  * @param {object} input.product   product record {name, brand, category, sellingPoints[], variations[], images[]}
  * @param {object} input.direction { videoStyle, character, background, speakingStyle, voiceType, speechContentStyle }
  * @param {string} input.videoModel model id — decides the clip length the speech must fit
- * @param {string} input.extraPrompt operator's free-text addition, appended last
- * @param {string} input.textMode "withText" (default, AI-composed header banner, text
- *   stays on screen the whole clip) or "noText" (skip image-generation entirely — the
- *   video call gets the product's own photo as its start frame — and forbid on-screen
- *   text outright)
- * @returns {{ imagePrompt: string|null, videoPrompt: string, seconds: number, silent: boolean, textMode: string }}
+ * @param {string} input.extraPrompt mandatory prompt override; blank uses DEFAULT_MANDATORY_PROMPT
+ * @param {string} input.textMode "withText" (default, AI-composed header banner) or
+ *   "noText" (still generate a storyboard frame, but forbid added on-screen text)
+ * @returns {{ imagePrompt: string, videoPrompt: string, seconds: number, silent: boolean, textMode: string }}
  */
 export function buildPrompt(input = {}) {
   const product = input.product || {};
@@ -123,14 +363,10 @@ export function buildPrompt(input = {}) {
   }
 
   const facts = productBlock(product);
-  const extra = clean(input.extraPrompt);
+  const mandatoryPrompt = String(input.extraPrompt || "").trim().slice(0, 5000)
+    || DEFAULT_MANDATORY_PROMPT;
 
-  // ---- image prompt: WithText — H1/H2 header banner ----
-  // Only built in "withText" mode. In "noText" mode the runner skips the
-  // whole image-generation step (product photo goes straight into the video
-  // call), so there is nothing to build a prompt for.
-  let imagePrompt = null;
-  if (textMode === "withText") {
+  // ---- image prompt: every scene gets a storyboard frame ----
   const characterText = directionText("character", direction.character) || "The person";
   const backgroundText = directionText("background", direction.background)
     || `${pickRandom(TIME_VARIATIONS)}, ${pickRandom(MOOD_VARIATIONS)}`;
@@ -155,48 +391,40 @@ export function buildPrompt(input = {}) {
     "",
     "High quality, 4k, sharp focus on the product.",
     "",
-    "Add a professional graphic design text overlay positioned strictly at the top center of the "
-      + "frame (Header/Banner style).",
-    "Compose the header text yourself: write a short, punchy Thai advertising headline (large, bold, "
-      + "max ~8 words) that highlights the product's single strongest selling point — based only on "
-      + "the product details given below (name, brand, selling points). Write it like real ad copy, "
-      + "not a plain repeat of the product name.",
-    "Below the headline, add a smaller subtitle line: a short supporting phrase, or the price if one "
-      + "is given in the product details below.",
-    "Only use facts present in the product details — do not invent features, claims, prices, or "
-      + "discounts that are not listed there. If no product details are given, write a generic but "
-      + "appealing one-line headline suitable for the product shown in the reference image.",
-    "",
-    "The header text should be rendered in a typography style and color palette that automatically "
-      + "matches the product's packaging. The text must be placed at the very top edge, clear of the "
-      + "character's face, using a layout that looks like a video title or headline.",
-    "",
     `Background style hint: ${backgroundText} — ${pickRandom(CAMERA_VARIATIONS)}.`,
-    "",
-    "⚠️ CRITICAL: Do NOT include any prefix labels, codes, brackets, or template markers in the "
-      + "rendered text — render only the finished headline and subtitle. The text overlay must be "
-      + "clean Thai text only, and no other text, caption, watermark, or logo may appear anywhere "
-      + "else in the image.",
   ];
+  if (textMode === "withText") {
+    imageParts.push(
+      "",
+      "Add a professional graphic design text overlay positioned strictly at the top center of the frame (Header/Banner style).",
+      "Compose a short, punchy Thai advertising headline (large, bold, max ~8 words) from supplied facts only. Write real ad copy, not a plain repeat of the product name.",
+      "Below it, add one smaller supporting subtitle. Do not invent features, claims, prices, or discounts.",
+      "The typography and color palette must match the product packaging. Keep it at the very top, clear of the character's face.",
+      "⚠️ CRITICAL: Render only the finished Thai headline and subtitle. Do not include prefix labels, codes, brackets, template markers, captions, watermarks, or unrelated logos.",
+    );
+  } else {
+    imageParts.push(
+      "",
+      "NO AD OVERLAY: Do not add any headline, subtitle, caption, price tag, promotional badge, watermark, or extra logo anywhere in the image. Text already printed on the physical reference product must remain unchanged and legible.",
+    );
+  }
   if (facts.length) imageParts.push("", `Product details: ${facts.join(" / ")}`);
-  if (extra) imageParts.push("", `Additional instruction from operator: ${extra}`);
+  imageParts.push("", `Mandatory instruction for every scene: ${mandatoryPrompt}`);
 
   // NOT filter(Boolean) — imageParts intentionally includes "" entries as
   // blank-line paragraph separators; filtering them out would collapse every
   // section onto one dense block.
-  imagePrompt = imageParts.join("\n");
-  }
+  const imagePrompt = imageParts.join("\n");
 
   // ---- video prompt: how that frame moves, plus the speech spec ----
+  const videoScenePrompt = buildBaseSceneInstruction(input.videoModel);
   const videoParts = [
-    `คลิปวิดีโอแนวตั้ง 9:16 ความยาว ${seconds} วินาที สำหรับโปรโมทสินค้าบน TikTok/Shopee`,
-    "กล้องเคลื่อนนุ่มนวลต่อเนื่องไม่กระตุก โฟกัสที่สินค้าเป็นหลัก ไม่ตัดสลับฉากหลายครั้ง",
-    "สินค้าต้องคงรูปเดิมตลอดคลิป — ห้ามให้สินค้าบิดเบี้ยว ละลาย หรือเปลี่ยนรูปทรง",
+    videoScenePrompt,
     textMode === "withText"
       ? "ถ้าในภาพมีข้อความปรากฏอยู่ (เช่น หัวข้อโปรโมชั่นหรือป้ายราคา) ข้อความนั้นต้องอยู่นิ่ง ชัดเจน อ่านออก "
         + "และคงอยู่ตลอดทั้งคลิปจนจบวิดีโอ ห้ามข้อความเลือนหาย บิดเบี้ยว หรือหายไปกลางคลิปเด็ดขาด"
-      : "ห้ามมีข้อความ ตัวอักษร คำ หรือตัวเลขปรากฏบนหน้าจอเด็ดขาดตลอดทั้งคลิป ไม่ว่ากรณีใดก็ตาม "
-        + "ห้ามมี caption หัวข้อโฆษณา ป้ายราคา หรือลายน้ำใดๆ บนจอ",
+      : "ห้ามเพิ่ม caption หัวข้อโฆษณา ป้ายราคา คำ ตัวเลข หรือลายน้ำใดๆ บนจอ "
+        + "ยกเว้นข้อความและโลโก้ที่พิมพ์อยู่บนบรรจุภัณฑ์สินค้าต้นฉบับ ซึ่งต้องคงเดิมและอ่านได้",
     ...facts,
     ...picks,
   ];
@@ -215,12 +443,12 @@ export function buildPrompt(input = {}) {
       "ห้ามพูดตัวเลขราคาหรือส่วนลด",
     );
   }
-  if (extra) videoParts.push(`เพิ่มเติมจากผู้ใช้: ${extra}`);
-  videoParts.push(`ข้อห้าม: ${SAFETY_RULES.join(" | ")}`);
+  videoParts.push(mandatoryPrompt);
 
   return {
     imagePrompt,
     videoPrompt: videoParts.filter(Boolean).join("\n"),
+    videoScenePrompt,
     seconds,
     silent,
     textMode,

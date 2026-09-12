@@ -167,6 +167,16 @@
   cursor: pointer;
 }
 .pw-check input { width: 16px; height: 16px; accent-color: var(--primary); }
+.pw-cart-status {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--selection);
+  color: var(--teal-dark);
+  font-size: 12px;
+  font-weight: 600;
+}
+.pw-cart-status.is-error { background: var(--danger-soft); color: #b91c1c; }
 
 /* API settings dialog, opened from the sidebar. Reuses .modal / .modal-backdrop
    / .modal-head from style.css. */

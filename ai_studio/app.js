@@ -62,6 +62,9 @@ const PLATFORM_UNIT_MODES = {
   "shopee-remix-review": { title: "Remix\u0e27\u0e34\u0e14\u0e35\u0e42\u0e2d\u0e23\u0e35\u0e27\u0e34\u0e27", eyebrow: "Shopee / Remix", desc: "Shopee remix queue" },
   "shopee-post-mobile": { title: "Post Shopee(\u0e21\u0e37\u0e2d\u0e16\u0e37\u0e2d)", eyebrow: "Shopee / Mobile Post", desc: "Shopee mobile post" }
 };
+
+// Extended is available in Settings as the continuous-scene mode.
+const FLOW_EXTENDED_ENABLED = true;
 Object.assign(modes, PLATFORM_UNIT_MODES);
 
 // Derived from `modes` (post-merge) rather than a separately hand-maintained
@@ -164,7 +167,8 @@ const tiktokWarning = document.querySelector("[data-tiktok-warning]");
 const tiktokWarningTitle = document.querySelector("[data-tiktok-warning-title]");
 const tiktokWarningText = document.querySelector("[data-tiktok-warning-text]");
 const openTikTokButton = document.querySelector("[data-open-tiktok]");
-const EXPECTED_EXTENSION_VERSION = "0.0.1";
+const EXPECTED_EXTENSION_VERSION = "0.1.19";
+let flowGoogleAccountEmail = "";
 
 function setOptionLabels(selectId, labels) {
   const select = document.getElementById(selectId);
@@ -409,9 +413,12 @@ async function refreshExtensionStatus() {
     const status = await response.json();
     const staleExtension = !!status.connected && status.version && status.version !== EXPECTED_EXTENSION_VERSION;
     const connected = !!status.connected && !staleExtension;
-    const mainProfileLabel = String(status.mainExtension?.profileLabel || status.mainExtension?.profileDirectory || "").trim();
-    const connectedLabel = mainProfileLabel
-      ? `AutoTik v0.1.0 beta · ${mainProfileLabel}`
+    const rawProfileLabel = String(status.mainExtension?.profileLabel || status.mainExtension?.profileDirectory || "").trim();
+    const mainProfileLabel = /^(?:Chrome\s+[0-9a-f]{4}|Chrome\s+#\d+)$/i.test(rawProfileLabel) ? "" : rawProfileLabel;
+    flowGoogleAccountEmail = String(status.mainExtension?.accountEmail || status.flowAccountEmail || "").trim();
+    const connectedIdentity = flowGoogleAccountEmail || mainProfileLabel;
+    const connectedLabel = connectedIdentity
+      ? `AutoTik v0.1.0 beta · ${connectedIdentity}`
       : "AutoTik Extension v0.1.0 beta connected";
     const tiktokReady = hasUsableTikTokChannelCache() || !!status.tiktokReady || hasTikTokCookies(status.captures?.tiktok);
     extensionPills.forEach((pill) => {
@@ -422,7 +429,7 @@ async function refreshExtensionStatus() {
       pill.title = staleExtension
         ? `Chrome is still running AutoTik Extension v${status.version}. Reload the unpacked extension to v${EXPECTED_EXTENSION_VERSION}.`
         : (connected && status.version
-          ? `AutoTik Extension v${status.version}${mainProfileLabel ? ` · ${mainProfileLabel}` : ""}`
+          ? `AutoTik Extension v${status.version}${connectedIdentity ? ` · ${connectedIdentity}` : ""}`
           : "AutoTik Extension v0.1.0 beta offline");
     });
     updateTikTokCookieState({ connected, tiktokReady: tiktokReady || await readTikTokCaptureReady() });
@@ -2815,12 +2822,17 @@ async function queueProductsForFlow(products, platform, statusSetter) {
       title: mapped.name,
       product: mapped,
       direction: settings.direction || {},
+      characterMode: settings.characterMode === "consistent" ? "consistent" : "random",
       videoModel: settings.videoModel || "",
       imageModel: settings.imageModel || "",
       aspect: settings.aspect || "portrait",
+      sceneMode: FLOW_EXTENDED_ENABLED && settings.sceneMode === "continuous" ? "continuous" : "independent",
       sceneCount: settings.sceneCount || 1,
       textMode: settings.textMode || "withText",
       extraPrompt: settings.extraPrompt || "",
+      sceneVideoPrompts: Array.isArray(settings.sceneVideoPrompts)
+        ? settings.sceneVideoPrompts.slice(0, Math.max(1, Number(settings.sceneCount) || 1))
+        : [],
       sourceUrl: url,
     };
   });
@@ -2853,6 +2865,8 @@ const flowSuiteState = { settings: {}, jobs: [], history: [], runner: { draining
 let flowSuiteSettingsLoaded = false;
 let flowSuiteEventSource = null;
 let flowSuiteSamplePicks = [];
+let flowSuiteSampleSceneIndex = 0;
+let flowSuiteLastEditedSceneIndex = 0;
 
 // Test images cost ~1 minute each, so keep them across a page reload. Pending
 // entries are dropped on load — that request died with the old page, and a
@@ -2882,6 +2896,8 @@ function flowSuiteSetTestImage(key, value) {
   }
 }
 let flowSuiteSettingsSaveTimer = null;
+let flowSuiteSaveDialogTimer = null;
+let flowSuiteScenePromptDrafts = Array.from({ length: 10 }, () => "");
 let flowSuiteHistoryFilter = "all";
 // The queue renders one page at a time: 3000 jobs as a single innerHTML was both
 // unreadable and slow to re-render, and the queue re-renders on every state event.
@@ -2920,6 +2936,7 @@ function connectFlowSuiteEvents() {
 }
 
 function applyFlowSuiteState(state) {
+  flowGoogleAccountEmail = String(state.flowAccountEmail || flowGoogleAccountEmail || "").trim();
   flowSuiteState.settings = state.settings || {};
   flowSuiteState.jobs = Array.isArray(state.jobs) ? state.jobs : [];
   flowSuiteState.history = Array.isArray(state.history) ? state.history : [];
@@ -3023,23 +3040,262 @@ function wireFlowSuitePromptEvents() {
     persistFlowSuiteSettings();
     refreshFlowSuiteSampleBox();
   }, 350);
-  ["fsVideoModel", "fsImageModel", "fsAspect", "fsTextMode"].forEach((id) => {
+  ["fsVideoModel", "fsImageModel", "fsAspect", "fsTextMode", "fsSceneMode", "fsCharacterMode"].forEach((id) => {
     document.getElementById(id)?.addEventListener("change", () => {
+      applyFlowSuiteSceneModeRestriction();
       applyFlowSuiteConcurrencyRestriction();
       persistFlowSuiteSettings();
       refreshFlowSuiteSampleBox();
     });
   });
-  document.getElementById("fsSceneCount")?.addEventListener("input", debouncedPersist);
+  document.getElementById("fsSceneCount")?.addEventListener("input", () => {
+    applyFlowSuiteSceneModeRestriction();
+    debouncedPersist();
+  });
   document.getElementById("fsConcurrency")?.addEventListener("input", () => {
     applyFlowSuiteConcurrencyRestriction();
     debouncedPersist();
   });
-  document.getElementById("fsExtraPrompt")?.addEventListener("input", debouncedPersist);
-  document.getElementById("fsSaveSettingsBtn")?.addEventListener("click", () => {
-    persistFlowSuiteSettings(true);
+  document.getElementById("fsExtraPrompt")?.addEventListener("input", (event) => {
+    event.currentTarget.dataset.usesDefault = "false";
+    const badge = document.getElementById("fsMandatoryPromptState");
+    if (badge) {
+      badge.textContent = "กำหนดเอง";
+      badge.dataset.state = "custom";
+    }
+    debouncedPersist();
+  });
+  document.getElementById("fsResetMandatoryPrompt")?.addEventListener("click", () => {
+    const input = document.getElementById("fsExtraPrompt");
+    if (!input) return;
+    input.value = input.dataset.defaultPrompt || flowSuiteDefaultMandatoryPrompt();
+    input.dataset.usesDefault = "true";
+    const badge = document.getElementById("fsMandatoryPromptState");
+    if (badge) {
+      badge.textContent = "Default ปัจจุบัน";
+      badge.dataset.state = "default";
+    }
+    debouncedPersist();
+  });
+  document.getElementById("fsSceneVideoPrompts")?.addEventListener("input", (event) => {
+    const input = event.target.closest("[data-scene-video-prompt]");
+    if (!input) return;
+    const index = Math.max(0, Math.min(9, Number(input.dataset.sceneIndex) || 0));
+    input.dataset.usesDefault = "false";
+    flowSuiteScenePromptDrafts[index] = input.value;
+    flowSuiteLastEditedSceneIndex = index;
+    const badge = input.closest(".fs-scene-prompt-field")?.querySelector("[data-scene-prompt-state]");
+    if (badge) {
+      badge.textContent = "กำหนดเอง";
+      badge.dataset.state = "custom";
+    }
+    debouncedPersist();
+  });
+  document.getElementById("fsSceneVideoPrompts")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-reset-scene-prompt]");
+    if (!button) return;
+    const field = button.closest(".fs-scene-prompt-field");
+    const input = field?.querySelector("[data-scene-video-prompt]");
+    if (!input) return;
+    const index = Math.max(0, Math.min(9, Number(input.dataset.sceneIndex) || 0));
+    input.value = input.dataset.defaultPrompt || "";
+    input.dataset.usesDefault = "true";
+    flowSuiteScenePromptDrafts[index] = "";
+    flowSuiteLastEditedSceneIndex = index;
+    const badge = field.querySelector("[data-scene-prompt-state]");
+    if (badge) {
+      badge.textContent = "Default ปัจจุบัน";
+      badge.dataset.state = "default";
+    }
+    const status = document.getElementById("fsApplyScenePromptsStatus");
+    if (status) {
+      status.textContent = `คืนค่า Default ของฉาก ${index + 1} แล้ว`;
+      status.style.color = "var(--fs-ok)";
+    }
+    debouncedPersist();
+  });
+  document.getElementById("fsApplyScenePromptsBtn")?.addEventListener("click", (event) => {
+    saveScenePromptsAndShowPreview(event.currentTarget);
+  });
+  document.getElementById("fsSaveSettingsBtn")?.addEventListener("click", (event) => {
+    saveFlowSuiteSettingsWithFeedback(event.currentTarget);
   });
   document.getElementById("fsSampleBtn")?.addEventListener("click", () => sampleFlowSuiteProducts(1));
+  document.getElementById("fsTemplateBtn")?.addEventListener("click", () => {
+    flowSuiteSamplePicks = [];
+    flowSuiteSampleSceneIndex = 0;
+    renderFlowSuiteSampleBox();
+  });
+}
+
+async function saveScenePromptsAndShowPreview(button) {
+  const status = document.getElementById("fsApplyScenePromptsStatus");
+  const originalText = button?.textContent || "💾 บันทึก Prompt และดู Preview";
+  captureFlowSuiteScenePromptDrafts();
+  if (button) {
+    button.disabled = true;
+    button.textContent = "กำลังบันทึก…";
+  }
+  if (status) {
+    status.textContent = "กำลังบันทึก Prompt รายฉาก…";
+    status.style.color = "";
+  }
+  try {
+    await persistFlowSuiteSettings(true);
+    flowSuiteSamplePicks = [];
+    const values = getFlowSuiteFormValues();
+    flowSuiteSampleSceneIndex = Math.max(0, Math.min(values.sceneCount - 1, flowSuiteLastEditedSceneIndex));
+    renderFlowSuiteSampleBox();
+    const preview = document.querySelector("#fsSampleBox .fs-preview");
+    if (preview) preview.scrollTop = 0;
+    if (button) button.textContent = "✓ บันทึกแล้ว · Preview อัปเดต";
+    if (status) {
+      status.textContent = `กำลังแสดง Prompt ที่ใช้จริงของ${flowSuitePreviewSceneLabel(flowSuiteSampleSceneIndex, values.sceneMode)}`;
+      status.style.color = "var(--fs-ok)";
+    }
+    setTimeout(() => {
+      if (button) button.textContent = originalText;
+    }, 2400);
+  } catch (error) {
+    if (button) button.textContent = "บันทึกไม่สำเร็จ · ลองอีกครั้ง";
+    if (status) {
+      status.textContent = String(error?.message || error || "บันทึก Prompt ไม่สำเร็จ");
+      status.style.color = "var(--fs-err)";
+    }
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function normalizeFlowSuiteSceneVideoPrompts(value) {
+  const source = Array.isArray(value) ? value : [];
+  return Array.from({ length: 10 }, (_, index) => String(source[index] || "").slice(0, 5000));
+}
+
+function captureFlowSuiteScenePromptDrafts() {
+  document.querySelectorAll("#fsSceneVideoPrompts [data-scene-video-prompt]").forEach((input) => {
+    const index = Math.max(0, Math.min(9, Number(input.dataset.sceneIndex) || 0));
+    flowSuiteScenePromptDrafts[index] = input.dataset.usesDefault === "true" ? "" : input.value;
+  });
+}
+
+function flowSuiteDefaultScenePrompt(sceneIndex, sceneCount, sceneMode, videoModel) {
+  return flowSuiteShared()?.defaultSceneVideoInstruction?.({
+    sceneIndex,
+    sceneCount,
+    sceneMode,
+    videoModel,
+  }) || "";
+}
+
+function flowSuiteDefaultMandatoryPrompt() {
+  const shared = flowSuiteShared();
+  if (shared?.DEFAULT_MANDATORY_PROMPT) return shared.DEFAULT_MANDATORY_PROMPT;
+  return "ข้อห้าม: ตัวละครต้องเป็นผู้ใหญ่ (อายุ 18 ปีขึ้นไป) เท่านั้น — ห้ามมีเด็ก ทารก หรือผู้เยาว์ในภาพและวิดีโอเด็ดขาด | ห้ามอ้างสรรพคุณทางการแพทย์ หรือการันตีผลลัพธ์ | ห้ามสร้างราคา ส่วนลด หรือโปรโมชันที่ไม่มีจริง และห้ามพูดตัวเลขราคา | ห้ามอ้างข้อมูลที่ยืนยันไม่ได้ (อันดับ 1, ขายดีที่สุด, ของแท้ 100%, ส่งฟรี) | ห้ามใส่โลโก้ ข้อความ หรือลายน้ำของแพลตฟอร์มอื่นในภาพ";
+}
+
+function applyFlowSuiteMandatoryPromptToForm(savedPrompt) {
+  const input = document.getElementById("fsExtraPrompt");
+  if (!input) return;
+  const saved = String(savedPrompt || "");
+  const usesDefault = !saved.trim();
+  const defaultPrompt = flowSuiteDefaultMandatoryPrompt();
+  input.dataset.defaultPrompt = defaultPrompt;
+  input.dataset.usesDefault = usesDefault ? "true" : "false";
+  input.value = usesDefault ? defaultPrompt : saved;
+  const badge = document.getElementById("fsMandatoryPromptState");
+  if (badge) {
+    badge.textContent = usesDefault ? "Default ปัจจุบัน" : "กำหนดเอง";
+    badge.dataset.state = usesDefault ? "default" : "custom";
+  }
+}
+
+function renderFlowSuiteScenePromptInputs(savedPrompts = null) {
+  const container = document.getElementById("fsSceneVideoPrompts");
+  if (!container) return;
+  if (savedPrompts !== null) flowSuiteScenePromptDrafts = normalizeFlowSuiteSceneVideoPrompts(savedPrompts);
+  else captureFlowSuiteScenePromptDrafts();
+
+  const mode = FLOW_EXTENDED_ENABLED && document.getElementById("fsSceneMode")?.value === "continuous"
+    ? "continuous"
+    : "independent";
+  const maxScenes = mode === "continuous" ? 3 : 10;
+  const sceneCount = Math.max(1, Math.min(maxScenes, Number(document.getElementById("fsSceneCount")?.value) || 1));
+  const videoModel = document.getElementById("fsVideoModel")?.value || "";
+  container.innerHTML = "";
+  for (let index = 0; index < sceneCount; index += 1) {
+    const field = document.createElement("div");
+    field.className = "fs-scene-prompt-field";
+    const head = document.createElement("div");
+    head.className = "fs-scene-prompt-head";
+    const label = document.createElement("label");
+    const suffix = mode === "continuous"
+      ? (index === 0 ? " · Original" : index === 1 ? " · Extended ครั้งแรก" : " · Extended ครั้งที่สอง")
+      : "";
+    label.textContent = `Prompt วิดีโอฉาก ${index + 1}${suffix}`;
+    const textarea = document.createElement("textarea");
+    const defaultPrompt = flowSuiteDefaultScenePrompt(index, sceneCount, mode, videoModel);
+    const savedPrompt = String(flowSuiteScenePromptDrafts[index] || "");
+    const usesDefault = !savedPrompt.trim();
+    textarea.rows = mode === "continuous" && index > 0 ? 4 : 5;
+    textarea.maxLength = 5000;
+    textarea.dataset.sceneIndex = String(index);
+    textarea.dataset.sceneVideoPrompt = "";
+    textarea.dataset.defaultPrompt = defaultPrompt;
+    textarea.dataset.usesDefault = usesDefault ? "true" : "false";
+    textarea.value = usesDefault ? defaultPrompt : savedPrompt;
+    const state = document.createElement("span");
+    state.className = "fs-scene-prompt-state";
+    state.dataset.scenePromptState = "";
+    state.dataset.state = usesDefault ? "default" : "custom";
+    state.textContent = usesDefault ? "Default ปัจจุบัน" : "กำหนดเอง";
+    const reset = document.createElement("button");
+    reset.type = "button";
+    reset.className = "fs-btn fs-ghost fs-scene-prompt-reset";
+    reset.dataset.resetScenePrompt = String(index);
+    reset.textContent = "↶ กลับ Default";
+    reset.title = "คืนคำสั่งของฉากนี้เป็น Prompt ปัจจุบันของระบบ";
+    if (mode === "continuous" && index > 0) {
+      textarea.placeholder = "ตั้งคำสั่งหลักของฉาก Extended นี้";
+      textarea.title = "ฉาก Extended ใช้โครง Prompt แบบเดียวกับฉาก 1 และข้อความนี้จะแทนส่วนคำสั่งฉาก";
+    } else {
+      textarea.placeholder = "ตั้งคำสั่งหลักของฉากนี้";
+    }
+    head.append(label, state, reset);
+    field.append(head, textarea);
+    container.appendChild(field);
+  }
+}
+
+function applyFlowSuiteSceneModeRestriction() {
+  const sceneModeControl = document.querySelector("[data-flow-extended-control]");
+  const sceneModeSelect = document.getElementById("fsSceneMode");
+  if (sceneModeControl) sceneModeControl.hidden = !FLOW_EXTENDED_ENABLED;
+  if (!FLOW_EXTENDED_ENABLED && sceneModeSelect) sceneModeSelect.value = "independent";
+  const mode = FLOW_EXTENDED_ENABLED && sceneModeSelect?.value === "continuous" ? "continuous" : "independent";
+  const sceneCount = document.getElementById("fsSceneCount");
+  const videoModel = document.getElementById("fsVideoModel");
+  const modeNote = document.getElementById("fsSceneModeNote");
+  const modelNote = document.getElementById("fsVideoModelNote");
+  if (sceneCount) {
+    sceneCount.max = mode === "continuous" ? "3" : "10";
+    const max = Number(sceneCount.max);
+    if ((Number(sceneCount.value) || 1) > max) sceneCount.value = String(max);
+  }
+  if (videoModel) {
+    videoModel.disabled = false;
+  }
+  if (modeNote) {
+    modeNote.textContent = mode === "continuous"
+      ? "ฉาก 1 = Original, ฉาก 2 = Extended ครั้งแรก, ฉาก 3 = Extended ครั้งที่สอง (สูงสุด 3 ฉาก)"
+      : "แต่ละฉากสร้างแยกกัน แล้วรวมเป็นไฟล์เดียวแบบปัจจุบัน (สูงสุด 10 ฉาก)";
+  }
+  if (modelNote) {
+    modelNote.textContent = mode === "continuous"
+      ? "Original ใช้โมเดลที่เลือก · Extended ใช้โมเดล Extended ของ Flow"
+      : "";
+  }
+  renderFlowSuiteScenePromptInputs();
 }
 
 function applyFlowSuiteConcurrencyRestriction() {
@@ -3078,29 +3334,121 @@ function getFlowSuiteDirectionValues() {
 }
 
 function getFlowSuiteFormValues() {
+  captureFlowSuiteScenePromptDrafts();
   return {
     videoModel: document.getElementById("fsVideoModel")?.value || "",
     imageModel: document.getElementById("fsImageModel")?.value || "",
     aspect: document.getElementById("fsAspect")?.value || "portrait",
-    sceneCount: Math.max(1, Math.min(10, Number(document.getElementById("fsSceneCount")?.value) || 1)),
+    characterMode: document.getElementById("fsCharacterMode")?.value === "consistent" ? "consistent" : "random",
+    sceneMode: FLOW_EXTENDED_ENABLED && document.getElementById("fsSceneMode")?.value === "continuous" ? "continuous" : "independent",
+    sceneCount: Math.max(1, Math.min(
+      FLOW_EXTENDED_ENABLED && document.getElementById("fsSceneMode")?.value === "continuous" ? 3 : 10,
+      Number(document.getElementById("fsSceneCount")?.value) || 1,
+    )),
     textMode: document.getElementById("fsTextMode")?.value || "withText",
     concurrency: Math.max(1, Math.min(150, Number(document.getElementById("fsConcurrency")?.value) || 1)),
-    extraPrompt: document.getElementById("fsExtraPrompt")?.value || "",
+    extraPrompt: document.getElementById("fsExtraPrompt")?.dataset.usesDefault === "true"
+      ? ""
+      : (document.getElementById("fsExtraPrompt")?.value || ""),
+    sceneVideoPrompts: flowSuiteScenePromptDrafts.slice(0, 10),
     direction: getFlowSuiteDirectionValues(),
   };
 }
 
+function ensureFlowSuiteSaveDialog() {
+  let backdrop = document.getElementById("fsSaveDialogBackdrop");
+  if (backdrop) return backdrop;
+  backdrop = document.createElement("div");
+  backdrop.id = "fsSaveDialogBackdrop";
+  backdrop.className = "fs-save-dialog-backdrop";
+  backdrop.hidden = true;
+  backdrop.innerHTML = `
+    <section class="fs-save-dialog" role="dialog" aria-modal="true" aria-labelledby="fsSaveDialogTitle" aria-live="polite">
+      <div class="fs-save-dialog-icon" data-save-dialog-icon aria-hidden="true"></div>
+      <h2 id="fsSaveDialogTitle">กำลังบันทึกการตั้งค่า</h2>
+      <p data-save-dialog-message>โปรดรอสักครู่…</p>
+      <div class="fs-save-dialog-summary" data-save-dialog-summary hidden></div>
+      <button type="button" class="fs-btn fs-primary" data-save-dialog-close hidden>เรียบร้อย</button>
+    </section>
+  `;
+  backdrop.addEventListener("click", (event) => {
+    if (backdrop.dataset.state === "saving") return;
+    if (event.target === backdrop || event.target.closest("[data-save-dialog-close]")) backdrop.hidden = true;
+  });
+  const host = document.querySelector(".flow-page-prompt") || document.body;
+  host.appendChild(backdrop);
+  return backdrop;
+}
+
+function showFlowSuiteSaveDialog(state, message, summary = "") {
+  clearTimeout(flowSuiteSaveDialogTimer);
+  const backdrop = ensureFlowSuiteSaveDialog();
+  backdrop.dataset.state = state;
+  backdrop.hidden = false;
+  const title = backdrop.querySelector("#fsSaveDialogTitle");
+  const messageEl = backdrop.querySelector("[data-save-dialog-message]");
+  const summaryEl = backdrop.querySelector("[data-save-dialog-summary]");
+  const closeButton = backdrop.querySelector("[data-save-dialog-close]");
+  if (title) title.textContent = state === "success"
+    ? "บันทึกการตั้งค่าเรียบร้อย"
+    : state === "error" ? "บันทึกไม่สำเร็จ" : "กำลังบันทึกการตั้งค่า";
+  if (messageEl) messageEl.textContent = message;
+  if (summaryEl) {
+    summaryEl.textContent = summary;
+    summaryEl.hidden = !summary;
+  }
+  if (closeButton) closeButton.hidden = state === "saving";
+  // Keep the confirmation visible until the operator clicks "เรียบร้อย".
+  // This also makes it obvious that the saved prompt values remain active.
+}
+
+async function saveFlowSuiteSettingsWithFeedback(button) {
+  const originalText = button?.textContent || "💾 บันทึกการตั้งค่า";
+  if (button) {
+    button.disabled = true;
+    button.textContent = "กำลังบันทึก…";
+  }
+  showFlowSuiteSaveDialog("saving", "กำลังตรวจสอบและบันทึกค่าลงโปรแกรม…");
+  try {
+    const settings = await persistFlowSuiteSettings(true);
+    const modelLabel = flowSuiteVideoModelLabel(settings.videoModel);
+    const modeLabel = flowSuiteSceneModeLabel(settings.sceneMode);
+    showFlowSuiteSaveDialog(
+      "success",
+      "ค่าที่เลือกถูกบันทึกและพร้อมใช้กับงานใหม่แล้ว",
+      `${modelLabel} · ${modeLabel} · ${settings.sceneCount} ฉาก`,
+    );
+  } catch (error) {
+    showFlowSuiteSaveDialog("error", String(error?.message || error || "ไม่สามารถบันทึกการตั้งค่าได้"));
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
+}
+
 function persistFlowSuiteSettings(immediate = false) {
   clearTimeout(flowSuiteSettingsSaveTimer);
-  const run = () => {
-    fetch("/api/flow/settings", {
+  const run = async () => {
+    const response = await fetch("/api/flow/settings", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(getFlowSuiteFormValues()),
-    }).catch(() => {});
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.ok === false) {
+      throw new Error(result.error || `บันทึกการตั้งค่าไม่สำเร็จ (HTTP ${response.status})`);
+    }
+    if (!result.settings) throw new Error("เซิร์ฟเวอร์ไม่ได้ส่งค่าที่บันทึกกลับมา");
+    flowSuiteState.settings = result.settings;
+    return result.settings;
   };
-  if (immediate) run();
-  else flowSuiteSettingsSaveTimer = setTimeout(run, 400);
+  if (immediate) return run();
+  flowSuiteSettingsSaveTimer = setTimeout(() => {
+    run().catch((error) => console.error("[flow-suite] auto-save failed", error));
+  }, 400);
+  return null;
 }
 
 function applyFlowSuiteSettingsToForm() {
@@ -3113,12 +3461,14 @@ function applyFlowSuiteSettingsToForm() {
   setSelect("fsImageModel", settings.imageModel);
   setSelect("fsAspect", settings.aspect);
   setSelect("fsTextMode", settings.textMode);
+  setSelect("fsCharacterMode", settings.characterMode === "consistent" ? "consistent" : "random");
+  setSelect("fsSceneMode", FLOW_EXTENDED_ENABLED ? (settings.sceneMode || "independent") : "independent");
   const sceneCount = document.getElementById("fsSceneCount");
   if (sceneCount && settings.sceneCount) sceneCount.value = settings.sceneCount;
   const concurrency = document.getElementById("fsConcurrency");
   if (concurrency && settings.concurrency) concurrency.value = settings.concurrency;
-  const extraPrompt = document.getElementById("fsExtraPrompt");
-  if (extraPrompt && settings.extraPrompt) extraPrompt.value = settings.extraPrompt;
+  applyFlowSuiteMandatoryPromptToForm(settings.extraPrompt);
+  flowSuiteScenePromptDrafts = normalizeFlowSuiteSceneVideoPrompts(settings.sceneVideoPrompts);
 
   const direction = settings.direction || {};
   document.querySelectorAll("#fsDirectionGrid [data-direction-field]").forEach((wrap) => {
@@ -3134,6 +3484,7 @@ function applyFlowSuiteSettingsToForm() {
       select.value = value;
     }
   });
+  applyFlowSuiteSceneModeRestriction();
   applyFlowSuiteConcurrencyRestriction();
 }
 
@@ -3162,40 +3513,68 @@ function sampleFlowSuiteProducts(n = 3) {
 }
 
 function refreshFlowSuiteSampleBox() {
-  if (!flowSuiteSamplePicks.length && document.getElementById("fsSampleBox") && !document.getElementById("fsSampleBox").childElementCount) {
-    sampleFlowSuiteProducts(3);
-    return;
-  }
   renderFlowSuiteSampleBox();
+}
+
+function flowSuitePreviewSceneLabel(sceneIndex, sceneMode) {
+  if (sceneMode !== "continuous") return `ฉาก ${sceneIndex + 1}`;
+  if (sceneIndex === 0) return "ฉาก 1 · Original";
+  return sceneIndex === 1 ? "ฉาก 2 · Extended ครั้งแรก" : "ฉาก 3 · Extended ครั้งที่สอง";
+}
+
+function flowSuitePreviewVideoPrompt(prompts, values, sceneIndex, product = {}) {
+  const shared = flowSuiteShared();
+  return shared?.resolveSceneVideoPrompt?.({
+    basePrompt: prompts.videoPrompt,
+    baseInstruction: prompts.videoScenePrompt,
+    sceneIndex,
+    sceneCount: values.sceneCount,
+    sceneMode: values.sceneMode,
+    videoModel: values.videoModel,
+    product,
+    sceneInstruction: values.sceneVideoPrompts?.[sceneIndex] || "",
+  }) || prompts.videoPrompt;
 }
 
 function renderFlowSuiteSampleBox() {
   const shared = flowSuiteShared();
   const box = document.getElementById("fsSampleBox");
   if (!shared || !box) return;
-  if (!flowSuiteSamplePicks.length) {
-    box.innerHTML = `<p class="fs-muted">\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e43\u0e19 Showcase \u2014 \u0e44\u0e1b\u0e14\u0e36\u0e07\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e01\u0e48\u0e2d\u0e19\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e14\u0e39\u0e15\u0e31\u0e27\u0e2d\u0e22\u0e48\u0e32\u0e07</p>`;
-    return;
-  }
   const values = getFlowSuiteFormValues();
-  box.innerHTML = flowSuiteSamplePicks.map((product, index) => {
-    const mapped = mapShowcaseProductToFlowProduct(product);
+  flowSuiteSampleSceneIndex = Math.max(0, Math.min(values.sceneCount - 1, flowSuiteSampleSceneIndex));
+  const placeholderProduct = {
+    name: "-",
+    brand: "-",
+    category: "-",
+    sellingPoints: ["-"],
+    variations: ["-"],
+    images: [],
+  };
+  const previewRows = flowSuiteSamplePicks.length
+    ? flowSuiteSamplePicks.map((product, index) => ({ product, mapped: mapShowcaseProductToFlowProduct(product), index, placeholder: false }))
+    : [{ product: { id: "prompt-template" }, mapped: placeholderProduct, index: 0, placeholder: true }];
+  box.innerHTML = previewRows.map(({ product, mapped, index, placeholder }) => {
     const prompts = shared.buildPrompt({
       product: mapped, direction: values.direction, videoModel: values.videoModel,
       extraPrompt: values.extraPrompt, textMode: values.textMode,
     });
+    const scenePrompt = flowSuitePreviewVideoPrompt(prompts, values, flowSuiteSampleSceneIndex, mapped);
+    const sceneTabs = Array.from({ length: values.sceneCount }, (_, sceneIndex) => `
+      <button type="button" class="fs-scene-preview-tab${sceneIndex === flowSuiteSampleSceneIndex ? " on" : ""}"
+        data-preview-scene="${sceneIndex}">${escapeHtml(flowSuitePreviewSceneLabel(sceneIndex, values.sceneMode))}</button>
+    `).join("");
     const key = String(product.id || product.itemid || index);
     const cachedTest = flowSuiteTestImages[key];
     // Generating takes ~1 minute, and this box re-renders on any form change —
     // so the pending flag lives in the cache, not in the DOM, or the "กำลัง
     // สร้างรูป" note and the disabled button vanish and it looks like nothing
     // happened.
-    const isPending = !!(cachedTest && cachedTest.pending && cachedTest.textMode === values.textMode);
+    const isPending = !!(cachedTest && cachedTest.pending && cachedTest.textMode === values.textMode && cachedTest.characterMode === values.characterMode);
     const testHtml = values.textMode === "noText"
       ? `<div class="fs-test-image-result"><img src="${escapeHtml(mapped.images[0] || "")}" alt="" /></div>`
       : isPending
         ? `<p class="fs-test-image-status">กำลังสร้างรูป… (ใช้เวลาราว 1 นาที)</p>`
-        : cachedTest && cachedTest.textMode === values.textMode
+        : cachedTest && cachedTest.textMode === values.textMode && cachedTest.characterMode === values.characterMode
           ? cachedTest.error
             ? `<p class="fs-test-image-status" style="color:var(--fs-err)">${escapeHtml(cachedTest.error)}</p>`
             : `<div class="fs-test-image-result"><img src="${escapeHtml(cachedTest.url)}" alt="" /></div>`
@@ -3203,18 +3582,26 @@ function renderFlowSuiteSampleBox() {
     return `
       <div class="fs-sample-card" data-sample-key="${escapeHtml(key)}">
         <div class="fs-sample-card-head">
-          <img src="${escapeHtml(mapped.images[0] || "")}" alt="" />
-          <span>${escapeHtml(mapped.name || "-")}</span>
+          ${placeholder ? "" : `<img src="${escapeHtml(mapped.images[0] || "")}" alt="" />`}
+          <span>${placeholder ? "โครง Prompt · ข้อมูลสินค้าใช้ -" : escapeHtml(mapped.name || "-")}</span>
         </div>
-        <p class="fs-prompt-label">Video Prompt</p>
-        <pre class="fs-preview">${escapeHtml(prompts.videoPrompt)}</pre>
+        <div class="fs-scene-preview-tabs" role="tablist" aria-label="เลือกฉากเพื่อตรวจ Prompt">${sceneTabs}</div>
+        <p class="fs-prompt-label">Video Prompt · ${escapeHtml(flowSuitePreviewSceneLabel(flowSuiteSampleSceneIndex, values.sceneMode))}</p>
+        <pre class="fs-preview">${escapeHtml(scenePrompt)}</pre>
         ${prompts.imagePrompt ? `<p class="fs-prompt-label">Image Prompt</p><pre class="fs-preview">${escapeHtml(prompts.imagePrompt)}</pre>` : ""}
-        ${values.textMode === "withText" ? `<button type="button" class="fs-btn fs-ghost fs-test-image-btn" data-test-image="${escapeHtml(key)}"${isPending ? " disabled" : ""}>\ud83e\uddea ${isPending ? "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e2a\u0e23\u0e49\u0e32\u0e07\u0e23\u0e39\u0e1b\u2026" : "\u0e17\u0e14\u0e2a\u0e2d\u0e1a\u0e2a\u0e23\u0e49\u0e32\u0e07\u0e23\u0e39\u0e1b"}</button>` : ""}
+        ${!placeholder && values.textMode === "withText" ? `<button type="button" class="fs-btn fs-ghost fs-test-image-btn" data-test-image="${escapeHtml(key)}"${isPending ? " disabled" : ""}>\ud83e\uddea ${isPending ? "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e2a\u0e23\u0e49\u0e32\u0e07\u0e23\u0e39\u0e1b\u2026" : "\u0e17\u0e14\u0e2a\u0e2d\u0e1a\u0e2a\u0e23\u0e49\u0e32\u0e07\u0e23\u0e39\u0e1b"}</button>` : ""}
         <div class="fs-test-image-status" data-test-status="${escapeHtml(key)}"></div>
         ${testHtml}
       </div>
     `;
   }).join("");
+
+  box.querySelectorAll("[data-preview-scene]").forEach((button) => {
+    button.addEventListener("click", () => {
+      flowSuiteSampleSceneIndex = Number(button.dataset.previewScene) || 0;
+      renderFlowSuiteSampleBox();
+    });
+  });
 
   box.querySelectorAll("[data-test-image]").forEach((button) => {
     button.addEventListener("click", async () => {
@@ -3225,22 +3612,22 @@ function renderFlowSuiteSampleBox() {
       const values = getFlowSuiteFormValues();
       // Mark pending in the cache first so the state survives the re-render
       // that any form change triggers while the request is still running.
-      flowSuiteSetTestImage(key, { pending: true, textMode: values.textMode });
+      flowSuiteSetTestImage(key, { pending: true, textMode: values.textMode, characterMode: values.characterMode });
       renderFlowSuiteSampleBox();
       try {
         const response = await fetch("/api/flow/test-image", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            product, direction: values.direction, imageModel: values.imageModel,
+            product, direction: values.direction, characterMode: values.characterMode, imageModel: values.imageModel,
             aspect: values.aspect, extraPrompt: values.extraPrompt, platform: activeFlowPlatform,
           }),
         });
         const payload = await readJsonResponse(response);
         if (!response.ok || payload.ok === false) throw new Error(payload.error || "\u0e17\u0e14\u0e2a\u0e2d\u0e1a\u0e2a\u0e23\u0e49\u0e32\u0e07\u0e23\u0e39\u0e1b\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08");
-        flowSuiteSetTestImage(key, { url: payload.url, textMode: values.textMode });
+        flowSuiteSetTestImage(key, { url: payload.url, textMode: values.textMode, characterMode: values.characterMode });
       } catch (error) {
-        flowSuiteSetTestImage(key, { error: String(error.message || error), textMode: values.textMode });
+        flowSuiteSetTestImage(key, { error: String(error.message || error), textMode: values.textMode, characterMode: values.characterMode });
       } finally {
         // `button` belongs to the pre-render DOM and is already detached here;
         // the re-render draws a fresh, enabled one from the cache above.
@@ -3278,6 +3665,20 @@ function flowSuiteDirectionSummary(direction = {}) {
   return parts.join(" \u00b7 ");
 }
 
+function flowSuiteVideoModelLabel(modelId) {
+  const id = String(modelId || "").trim();
+  if (!id) return "ไม่ระบุโมเดล";
+  if (id === "veo_3_1_extension_lite") return "Veo 3.1 Extended 8s";
+  const models = Array.isArray(flowSuiteState.catalog?.videoModels)
+    ? flowSuiteState.catalog.videoModels
+    : [];
+  return models.find((model) => model.id === id)?.label || id;
+}
+
+function flowSuiteSceneModeLabel(mode) {
+  return mode === "continuous" ? "ต่อเนื่อง (Extended)" : "ไม่ต่อเนื่อง";
+}
+
 // In-page video popup (BlueSPite's own design — see flow-suite.css's
 // .fs-video-backdrop/.fs-video-modal) instead of a target="_blank" link.
 // ai_studio's flow pages usually render inside an <iframe> (the main
@@ -3294,10 +3695,7 @@ function ensureFlowSuiteVideoModal() {
   backdrop.hidden = true;
   backdrop.innerHTML = `
     <div class="fs-video-modal" role="dialog" aria-modal="true" aria-label="วิดีโอ">
-      <div class="fs-video-modal-head">
-        <strong id="fsVideoModalTitle">วิดีโอ</strong>
-        <button type="button" class="fs-btn fs-ghost" data-fs-video-close aria-label="ปิด">✕</button>
-      </div>
+      <button type="button" class="fs-video-close" data-fs-video-close aria-label="ปิด">✕</button>
       <div class="fs-video-stage">
         <video id="fsVideoModalPlayer" controls playsinline></video>
       </div>
@@ -3309,16 +3707,20 @@ function ensureFlowSuiteVideoModal() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !backdrop.hidden) closeFlowSuiteVideoModal();
   });
-  document.body.appendChild(backdrop);
+  // The Flow preview styles are deliberately scoped to the active Flow page.
+  // Mount the modal inside that page (instead of document.body), otherwise the
+  // backdrop opens without any of its fixed-position/modal styling.
+  const host = document.querySelector(".flow-page-history")
+    || document.querySelector(".flow-page-queue")
+    || document.body;
+  host.appendChild(backdrop);
   return backdrop;
 }
 
-function openFlowSuiteVideoModal(url, title = "วิดีโอ") {
+function openFlowSuiteVideoModal(url) {
   if (!url) return;
   const backdrop = ensureFlowSuiteVideoModal();
-  const titleEl = backdrop.querySelector("#fsVideoModalTitle");
   const player = backdrop.querySelector("#fsVideoModalPlayer");
-  if (titleEl) titleEl.textContent = title || "วิดีโอ";
   if (player) player.src = url;
   backdrop.hidden = false;
   player?.play?.().catch(() => {});
@@ -3340,12 +3742,33 @@ document.addEventListener("click", (event) => {
   const button = event.target.closest("[data-view-video]");
   if (!button) return;
   event.preventDefault();
-  openFlowSuiteVideoModal(button.dataset.viewVideo, button.dataset.viewVideoTitle);
+  openFlowSuiteVideoModal(button.dataset.viewVideo);
 });
+
+document.addEventListener("error", (event) => {
+  const image = event.target?.closest?.("img[data-flow-product-thumb]");
+  if (!image) return;
+  image.hidden = true;
+  if (image.nextElementSibling?.classList.contains("fs-job-thumb-placeholder")) {
+    image.nextElementSibling.hidden = false;
+  }
+}, true);
 
 function renderFlowSuiteJobRow(job, { showActions = true } = {}) {
   const status = job.status || "queued";
-  const thumb = job.product?.images?.[0] || job.productImage || "";
+  const linkedJob = job.jobId
+    ? flowSuiteState.jobs.find((queueJob) => queueJob.id === job.jobId)
+    : null;
+  const thumb = job.thumb || job.product?.images?.find(Boolean) || job.productImage ||
+    linkedJob?.product?.images?.find(Boolean) || linkedJob?.productImage || "";
+  const sceneMode = FLOW_EXTENDED_ENABLED && job.sceneMode === "continuous" ? "continuous" : "independent";
+  const originalModelLabel = flowSuiteVideoModelLabel(job.videoModel);
+  // Continuous jobs always call Flow's dedicated fZytfe Extended model. Ignore
+  // stale model metadata left on jobs that failed before the mapping was fixed.
+  const extendedModelLabel = flowSuiteVideoModelLabel("veo_3_1_extension_lite");
+  const videoModelLabel = sceneMode === "continuous"
+    ? `${originalModelLabel} (Original) + ${extendedModelLabel} (Extended)`
+    : originalModelLabel;
   const duration = job.startedAt
     ? flowSuiteFormatDuration((job.finishedAt || Date.now()) - job.startedAt)
     : "\u2014";
@@ -3353,15 +3776,20 @@ function renderFlowSuiteJobRow(job, { showActions = true } = {}) {
   if (showActions) {
     if (status === "running") actions.push(`<button type="button" class="fs-btn fs-ghost" data-job-cancel="${escapeHtml(job.id)}">\u0e22\u0e01\u0e40\u0e25\u0e34\u0e01</button>`);
     if (status === "failed") actions.push(`<button type="button" class="fs-btn fs-ghost" data-job-retry="${escapeHtml(job.id)}">\u0e25\u0e2d\u0e07\u0e43\u0e2b\u0e21\u0e48</button>`);
-    if (job.finalVideoUrl || job.videoUrl) actions.push(`<button type="button" class="fs-btn fs-ghost" data-view-video="${escapeHtml(job.finalVideoUrl || job.videoUrl)}" data-view-video-title="${escapeHtml(job.title || "\u0e27\u0e34\u0e14\u0e35\u0e42\u0e2d")}">\u25b6 \u0e14\u0e39\u0e27\u0e34\u0e14\u0e35\u0e42\u0e2d</button>`);
+    if (job.finalVideoUrl || job.videoUrl) actions.push(`<button type="button" class="fs-btn fs-ghost" data-view-video="${escapeHtml(job.finalVideoUrl || job.videoUrl)}">\u25b6 \u0e14\u0e39\u0e27\u0e34\u0e14\u0e35\u0e42\u0e2d</button>`);
   }
   return `
     <div class="fs-job" data-job-id="${escapeHtml(job.id)}">
-      <img src="${escapeHtml(thumb)}" alt="" />
+      ${thumb
+        ? `<img src="${escapeHtml(thumb)}" alt="" data-flow-product-thumb /><span class="fs-job-thumb-placeholder" hidden></span>`
+        : `<span class="fs-job-thumb-placeholder"></span>`}
       <div>
         <h3>${job.orderNumber ? `<span class="fs-order-tag">${escapeHtml(job.orderNumber)}</span>` : ""}${escapeHtml(job.title || "-")}</h3>
         <div class="fs-meta">
           <span class="fs-text-mode-tag ${job.textMode === "noText" ? "fs-noText" : "fs-withText"}">${job.textMode === "noText" ? "\u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21" : "\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21"}</span>
+          <span><b>โมเดล:</b> ${escapeHtml(videoModelLabel)}</span>
+          ${flowGoogleAccountEmail ? `<span><b>บัญชี Flow:</b> ${escapeHtml(flowGoogleAccountEmail)}</span>` : ""}
+          <span><b>เพิ่มฉาก:</b> ${escapeHtml(flowSuiteSceneModeLabel(sceneMode))}</span>
           <span>${escapeHtml(job.sceneCount || 1)} \u0e09\u0e32\u0e01</span>
           <span>${escapeHtml(flowSuiteDirectionSummary(job.direction))}</span>
         </div>
@@ -3380,7 +3808,9 @@ function renderFlowSuiteQueue() {
   const list = document.getElementById("fsJobList");
   const counts = document.getElementById("fsQueueCounts");
   if (!list) return;
-  const jobs = flowSuiteJobsForPlatform().filter((job) => job.status !== "done");
+  const platformJobs = flowSuiteJobsForPlatform();
+  const doneCount = platformJobs.filter((job) => job.status === "done").length;
+  const jobs = platformJobs.filter((job) => job.status !== "done");
   const byStatus = { queued: 0, running: 0, failed: 0, cancelled: 0 };
   for (const job of jobs) if (byStatus[job.status] !== undefined) byStatus[job.status] += 1;
 
@@ -3398,15 +3828,34 @@ function renderFlowSuiteQueue() {
     ? pageJobs.map((job) => renderFlowSuiteJobRow(job)).join("")
     : `<div class="fs-empty">\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e07\u0e32\u0e19\u0e43\u0e19\u0e04\u0e34\u0e27 \u2014 \u0e44\u0e1b\u0e40\u0e25\u0e37\u0e2d\u0e01\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e08\u0e32\u0e01 Showcase \u0e41\u0e25\u0e49\u0e27\u0e01\u0e14 "\u0e2a\u0e48\u0e07\u0e44\u0e1b\u0e04\u0e34\u0e27"</div>`;
 
-  const running = flowSuiteState.runner?.draining;
+  const draining = !!flowSuiteState.runner?.draining;
+  const stopping = !!flowSuiteState.runner?.stopRequested;
+  const activeCount = Math.max(
+    byStatus.running,
+    Array.isArray(flowSuiteState.runner?.currentJobIds) ? flowSuiteState.runner.currentJobIds.length : 0,
+  );
+  const runnerHasWork = activeCount > 0 || byStatus.queued > 0;
+  const canRun = byStatus.queued > 0 || byStatus.failed > 0;
   const runBtn = document.getElementById("fsRunQueue");
   const stopBtn = document.getElementById("fsStopQueue");
-  if (runBtn) runBtn.disabled = !!running;
-  if (stopBtn) stopBtn.disabled = !running;
+  if (runBtn) {
+    runBtn.disabled = !canRun || stopping || (draining && runnerHasWork);
+    runBtn.textContent = byStatus.failed > 0 && byStatus.queued === 0 && activeCount === 0
+      ? "▶ เริ่มงานที่ล้มเหลวอีกครั้ง"
+      : "▶ รันคิว";
+  }
+  if (stopBtn) {
+    stopBtn.disabled = stopping || !draining || !runnerHasWork;
+    stopBtn.textContent = stopping ? "■ กำลังหยุด…" : "■ หยุดคิว";
+  }
+  const clearDoneBtn = document.getElementById("fsClearJobs");
   const clearFailedBtn = document.getElementById("fsClearFailed");
+  const clearCancelledBtn = document.getElementById("fsClearCancelled");
   const retryAllBtn = document.getElementById("fsRetryAllFailed");
   const clearQueuedBtn = document.getElementById("fsClearQueued");
+  if (clearDoneBtn) clearDoneBtn.hidden = doneCount === 0;
   if (clearFailedBtn) clearFailedBtn.hidden = byStatus.failed === 0;
+  if (clearCancelledBtn) clearCancelledBtn.hidden = byStatus.cancelled === 0;
   if (retryAllBtn) retryAllBtn.hidden = byStatus.failed === 0;
   if (clearQueuedBtn) clearQueuedBtn.hidden = byStatus.queued === 0;
 
@@ -3419,7 +3868,7 @@ function renderFlowSuiteQueue() {
   });
   list.querySelectorAll("[data-job-retry]").forEach((button) => {
     button.addEventListener("click", () => {
-      fetch("/api/flow/jobs/retry", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: button.dataset.jobRetry }) }).catch(() => {});
+      flowSuiteQueueCommand("/api/flow/jobs/retry", { id: button.dataset.jobRetry }, button);
     });
   });
 }
@@ -3479,15 +3928,35 @@ function flowSuiteEnsureJobTimer() {
   }, 1000);
 }
 
+async function flowSuiteQueueCommand(path, body = null, button = null) {
+  if (button) button.disabled = true;
+  try {
+    const response = await fetch(path, {
+      method: "POST",
+      headers: body ? { "content-type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok || payload.ok === false) throw new Error(payload.error || "คำสั่งคิวไม่สำเร็จ");
+    return payload;
+  } catch (error) {
+    toast(`คำสั่งคิวไม่สำเร็จ: ${error.message || error}`);
+    return null;
+  } finally {
+    window.setTimeout(renderFlowSuiteQueue, 150);
+  }
+}
+
 function wireFlowSuiteQueueEvents() {
-  document.getElementById("fsRunQueue")?.addEventListener("click", () => {
-    fetch("/api/flow/queue/run", { method: "POST" }).catch(() => {});
+  document.getElementById("fsRunQueue")?.addEventListener("click", (event) => {
+    flowSuiteQueueCommand("/api/flow/queue/run", null, event.currentTarget);
   });
-  document.getElementById("fsStopQueue")?.addEventListener("click", () => {
-    fetch("/api/flow/queue/stop", { method: "POST" }).catch(() => {});
+  document.getElementById("fsStopQueue")?.addEventListener("click", (event) => {
+    flowSuiteQueueCommand("/api/flow/queue/stop", null, event.currentTarget);
   });
   document.getElementById("fsClearJobs")?.addEventListener("click", () => {
-    const ids = flowSuiteJobsForPlatform().filter((j) => ["done", "failed", "cancelled"].includes(j.status)).map((j) => j.id);
+    const ids = flowSuiteJobsForPlatform().filter((j) => j.status === "done").map((j) => j.id);
+    if (!ids.length) return;
     fetch("/api/flow/jobs", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids }) }).catch(() => {});
   });
   // Drops only the jobs still WAITING. A job already running is not touched —
@@ -3499,10 +3968,16 @@ function wireFlowSuiteQueueEvents() {
   });
   document.getElementById("fsClearFailed")?.addEventListener("click", () => {
     const ids = flowSuiteJobsForPlatform().filter((j) => j.status === "failed").map((j) => j.id);
+    if (!ids.length) return;
     fetch("/api/flow/jobs", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids }) }).catch(() => {});
   });
-  document.getElementById("fsRetryAllFailed")?.addEventListener("click", () => {
-    fetch("/api/flow/jobs/retry", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({}) }).catch(() => {});
+  document.getElementById("fsClearCancelled")?.addEventListener("click", () => {
+    const ids = flowSuiteJobsForPlatform().filter((j) => j.status === "cancelled").map((j) => j.id);
+    if (!ids.length) return;
+    fetch("/api/flow/jobs", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids }) }).catch(() => {});
+  });
+  document.getElementById("fsRetryAllFailed")?.addEventListener("click", (event) => {
+    flowSuiteQueueCommand("/api/flow/jobs/retry", {}, event.currentTarget);
   });
 
   const autoPlay = document.getElementById("fsAutoPlay");
@@ -3538,9 +4013,17 @@ function maybeAutoRunFlowSuiteQueue({ requireQueued = false } = {}) {
 function renderFlowSuiteHistory() {
   const list = document.getElementById("fsHistoryList");
   if (!list) return;
+  const showcaseProducts = currentFlowSuiteShowcaseProducts();
+  const showcaseById = new Map(showcaseProducts.map((product) => [String(product.id || product.productid || ""), product]));
+  const showcaseByTitle = new Map(showcaseProducts.map((product) => [String(product.title || "").trim(), product]));
   const rows = flowSuiteState.history
     .filter((row) => row.platform === activeFlowPlatform)
-    .filter((row) => flowSuiteHistoryFilter === "all" || row.status === flowSuiteHistoryFilter);
+    .filter((row) => flowSuiteHistoryFilter === "all" || row.status === flowSuiteHistoryFilter)
+    .map((row) => {
+      if (row.thumb || row.productImage || row.product?.images?.some(Boolean)) return row;
+      const product = showcaseById.get(String(row.productId || "")) || showcaseByTitle.get(String(row.title || "").trim());
+      return product ? { ...row, productImage: product.image || product.images?.find(Boolean) || "" } : row;
+    });
 
   list.innerHTML = rows.length
     ? rows.map((row) => renderFlowSuiteJobRow(row, { showActions: true })).join("")

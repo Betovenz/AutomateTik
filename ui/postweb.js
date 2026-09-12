@@ -142,6 +142,14 @@ function pwSetClipStatus(message, isError = false) {
   el.classList.toggle("is-error", !!isError);
 }
 
+function pwSetCartStatus(message, isError = false) {
+  const el = $("pwCartStatus");
+  if (!el) return;
+  el.hidden = !message;
+  el.textContent = message || "";
+  el.classList.toggle("is-error", !!isError);
+}
+
 function pwParseHashtags(text) {
   return String(text || "")
     .split(/[\s,]+/)
@@ -214,6 +222,7 @@ function pwSelectAccount(key) {
   pwRenderSidebarChannels();
   // The queue, the counters and the Run/Stop buttons all belong to the channel
   // that is selected, so switching re-scopes the workspace to the new one.
+  pwSetCartStatus("");
   pwRenderQueue();
   pwSaveSettings();
 }
@@ -270,11 +279,12 @@ function pwCartEnabled() {
 // straight from the Showcase API using the selected account. There is no manual
 // picker any more — this runs on demand from the add-to-queue flow, and reports
 // through the queue's status line.
-async function pwPullProducts() {
+async function pwPullProducts({ reportError = true } = {}) {
   const account = pwSelectedAccount();
   if (!account) {
-    pwSetClipStatus("เลือกช่องจากแถบ TikTok Channel ทางซ้ายก่อน", true);
-    return;
+    const error = new Error("เลือกช่องจากแถบ TikTok Channel ทางซ้ายก่อน");
+    if (reportError) pwSetClipStatus(error.message, true);
+    return { ok: false, error };
   }
   try {
     const data = await aiStudioApi("/api/tiktok/showcase/pull", {
@@ -289,9 +299,11 @@ async function pwPullProducts() {
         price: product.price || product.format_available_price || "",
       }))
       .filter((product) => product.id);
+    return { ok: true, products: pwProducts };
   } catch (error) {
     pwProducts = [];
-    pwSetClipStatus(`ดึงสินค้าจาก Showcase ไม่สำเร็จ: ${error.message || error}`, true);
+    if (reportError) pwSetClipStatus(`ดึงสินค้าจาก Showcase ไม่สำเร็จ: ${error.message || error}`, true);
+    return { ok: false, error };
   }
 }
 
@@ -345,8 +357,11 @@ function pwRenderQueue() {
     ? jobs
         .map((job) => {
           const selected = pwSelectedJobs.has(job.id);
+          const matchNote = job.matchType === "product-id"
+            ? " (ตรง Product ID)"
+            : job.matchScore ? ` (ตรง ${job.matchScore} ตัว)` : "";
           const cart = job.productId
-            ? `ปักสินค้า: ${job.productCta || job.productId}${job.matchScore ? ` (ตรง ${job.matchScore} ตัว)` : ""}`
+            ? `ปักสินค้า: ${job.productCta || job.productId}${matchNote}`
             : "ไม่ปักสินค้า";
           const detail = [pwFinalizeLabel(job), cart, job.account ? `@${job.account}` : ""].filter(Boolean).join(" • ");
           // The extension's plain success notes only repeat the status pill, so
@@ -568,9 +583,8 @@ async function pwAiCaptionOn() {
 /** The caption and hashtags this clip will actually be posted with.
  *  Falls back to the product name if the AI call fails, so one bad response
  *  never blocks a clip from being queued. */
-// Clip files are named "<timestamp>-<jobId>-<product name>-final" by
-// finalizeScenes, and an order number like AB-0075-029 can appear too. None of
-// that belongs in a hashtag, so strip it back to the product name.
+// New clips are named "<productId>-<product name>". Legacy clips can still use
+// "<timestamp>-<jobId>-<product name>-final", so captions support both shapes.
 const PW_ORDER_NUMBER_RE = /\b[A-Za-z]{2}-\d{4}-\d{3}\b/g;
 // Used to top up to the requested tag count when the name yields too few.
 const PW_FILLER_TAGS = ["fyp", "tiktokshop", "ของดีบอกต่อ", "ราคาถูก", "ส่งไว"];
@@ -578,13 +592,17 @@ const PW_FILLER_TAGS = ["fyp", "tiktokshop", "ของดีบอกต่อ"
 function pwProductNameFromClip(name) {
   let text = String(name || "").trim();
   text = text.replace(/\.[a-z0-9]{2,4}$/i, "");        // file extension
+  text = text.replace(/\s*\(\d+\)\s*$/, "");         // safe duplicate suffix
+  const legacyGeneratedName = /-(final|remix)$/i.test(text);
   text = text.replace(/-(final|remix)$/i, "");         // finalizeScenes suffix
   text = text.replace(PW_ORDER_NUMBER_RE, " ");        // order number, wherever it sits
-  const withoutStamp = text.replace(/^\d{10,}-/, "");  // leading Date.now()
-  if (withoutStamp !== text) {
+  if (!legacyGeneratedName) {
+    text = text.replace(/^\d{6,}[-_\s]+/, "");         // current Product ID prefix
+  } else {
+    const withoutStamp = text.replace(/^\d{10,}-/, ""); // legacy Date.now()
     // Only strip the job id when a timestamp really preceded it — otherwise this
     // would eat the first word of a product name that just starts with letters.
-    text = withoutStamp.replace(/^[a-z0-9]{4,}-/i, "");
+    text = withoutStamp === text ? text : withoutStamp.replace(/^[a-z0-9]{4,}-/i, "");
   }
   return text.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -731,9 +749,34 @@ function pwLongestCommonRun(a, b) {
   return best;
 }
 
-// Best product for one video, or null when nothing shares enough characters.
-function pwMatchProduct(videoName, products) {
-  const name = pwNormalizeName(videoName);
+function pwProductIdFromVideo(video) {
+  const explicit = typeof video === "object"
+    ? video?.productId || video?.productID || video?.product_id || ""
+    : "";
+  if (String(explicit).trim()) return String(explicit).trim();
+  const fileName = typeof video === "string" ? video : video?.filename || video?.name || "";
+  const stem = String(fileName).replace(/\.[a-z0-9]{2,4}$/i, "").trim();
+  // A legacy final starts with Date.now(); only the new ProductID-title shape is
+  // allowed to expose its leading digits as a product id.
+  if (/-(final|remix)$/i.test(stem)) return "";
+  return (/^(\d{6,})(?:[-_\s]|$)/.exec(stem) || [])[1] || "";
+}
+
+function pwHasShowcaseProduct(productId) {
+  const target = String(productId || "").trim();
+  return !!target && pwProducts.some((product) => String(product.id) === target);
+}
+
+// Product ID is authoritative. Fuzzy title matching remains as a compatibility
+// fallback for legacy clips that were created before the ID-prefixed filename.
+function pwMatchProduct(video, products) {
+  const productId = pwProductIdFromVideo(video);
+  if (productId) {
+    const exact = products.find((product) => String(product.id) === productId);
+    if (exact) return { product: exact, score: 0, matchType: "product-id" };
+  }
+  const videoName = typeof video === "string" ? video : video?.name || video?.filename || "";
+  const name = pwNormalizeName(pwProductNameFromClip(videoName));
   if (!name) return null;
   let best = null;
   let bestScore = 0;
@@ -744,14 +787,39 @@ function pwMatchProduct(videoName, products) {
       best = product;
     }
   }
-  return bestScore >= PW_MATCH_MIN_CHARS ? { product: best, score: bestScore } : null;
+  return bestScore >= PW_MATCH_MIN_CHARS ? { product: best, score: bestScore, matchType: "title" } : null;
 }
 
 // ---- add videos from the Video Library into the queue ----------------------
 
+async function pwAddProductsToShowcase(productIds, account) {
+  const ids = [...new Set(productIds.map((id) => String(id || "").trim()).filter(Boolean))];
+  if (!ids.length) return [];
+  const data = await aiStudioApi("/api/tiktok/showcase/add", {
+    method: "POST",
+    body: JSON.stringify({ productIds: ids, account }),
+  });
+  return Array.isArray(data.productIds) && data.productIds.length ? data.productIds.map(String) : ids;
+}
+
+async function pwRefreshShowcaseAfterAdd(productIds) {
+  const ids = [...new Set(productIds.map(String))];
+  const knownProducts = new Map(pwProducts.map((product) => [String(product.id), product]));
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (attempt) await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+    const pulled = await pwPullProducts({ reportError: false });
+    if (pulled.ok) {
+      for (const product of pwProducts) knownProducts.set(String(product.id), product);
+    }
+    pwProducts = [...knownProducts.values()];
+    if (pulled.ok && ids.every((id) => pwHasShowcaseProduct(id))) return true;
+  }
+  return ids.every((id) => pwHasShowcaseProduct(id));
+}
+
 // Called by the library's "Add to Tiktok" button (app.js) with the selected
-// rows. Each video becomes one post job; with the cart on, Showcase is pulled
-// once and each video is paired with its closest-named product.
+// rows. Each video becomes one post job; with the cart on, Showcase is pulled,
+// missing Product IDs are added, and each video is paired by ID (name fallback).
 async function pwAddVideosToQueue(videos) {
   const list = Array.isArray(videos) ? videos.filter((video) => video && video.url) : [];
   if (!list.length) {
@@ -779,15 +847,55 @@ async function pwAddVideosToQueue(videos) {
     }
   }
 
-  // Cart on: make sure the Showcase list is loaded, then pair per video.
+  // Cart on: load this channel's Showcase. Product IDs embedded in current final
+  // filenames are authoritative; any missing IDs are added through the same
+  // cached-channel Showcase API used by the Showcase page, then paired again.
   const cartOn = pwCartEnabled();
   if (cartOn && !pwProducts.length) {
     pwSetClipStatus("กำลังดึงสินค้าจาก Showcase เพื่อจับคู่กับวิดีโอ...");
-    await pwPullProducts();
-    if (!pwProducts.length) {
-      pwSetClipStatus("ดึงสินค้าจาก Showcase ไม่ได้ — ปิดตะกร้า หรือลองกด 'ดึงสินค้า' อีกครั้ง", true);
+    pwSetCartStatus("กำลังตรวจสอบสินค้าใน Showcase...");
+    const pulled = await pwPullProducts();
+    if (!pulled.ok) {
+      pwSetCartStatus("ตรวจสอบ Showcase ไม่สำเร็จ", true);
       return;
     }
+  }
+
+  const videoProductIds = list.map((video) => pwProductIdFromVideo(video)).filter(Boolean);
+  const missingProductIds = [...new Set(videoProductIds.filter((id) => !pwHasShowcaseProduct(id)))];
+  let addedProductIds = [];
+  if (cartOn && missingProductIds.length) {
+    const label = account.uniqueId ? ` ของ @${account.uniqueId}` : "ในช่องนี้";
+    pwSetCartStatus(`กำลังเพิ่มสินค้า ${missingProductIds.length} รายการเข้า Showcase${label}...`);
+    pwSetClipStatus(`ตะกร้า: กำลังเพิ่มสินค้าเข้า Showcase แล้วจะจับคู่อัตโนมัติ...`);
+    try {
+      addedProductIds = await pwAddProductsToShowcase(missingProductIds, account);
+      pwSetCartStatus("เพิ่มสินค้าเข้า Showcase แล้ว — กำลังจับคู่สินค้าอัตโนมัติ...");
+      await pwRefreshShowcaseAfterAdd(addedProductIds);
+
+      // TikTok's list endpoint can lag briefly after a successful add. The post
+      // flow only needs the confirmed ID, so add a temporary local row and let
+      // the next normal pull replace it with the canonical Showcase title.
+      for (const productId of addedProductIds) {
+        if (pwHasShowcaseProduct(productId)) continue;
+        const video = list.find((item) => pwProductIdFromVideo(item) === productId);
+        pwProducts.push({ id: productId, title: pwProductNameFromClip(video?.name || video?.filename || productId), price: "" });
+      }
+    } catch (error) {
+      const message = `เพิ่มสินค้าเข้า Showcase ไม่สำเร็จ: ${error.message || error}`;
+      pwSetCartStatus(message, true);
+      pwSetClipStatus(message, true);
+      return;
+    }
+  }
+
+  if (cartOn && !pwProducts.length) {
+    const message = videoProductIds.length
+      ? "เพิ่มสินค้าแล้วแต่ยังจับคู่ Showcase ไม่ได้ กรุณาลองใหม่"
+      : "ไม่พบ Product ID ในชื่อคลิป และ Showcase ไม่มีสินค้าให้จับคู่";
+    pwSetCartStatus(message, true);
+    pwSetClipStatus(message, true);
+    return;
   }
 
   // Caption is per clip now, not one box shared by the whole batch.
@@ -803,7 +911,7 @@ async function pwAddVideosToQueue(videos) {
   const startIndex = pwJobs.length;
   let matched = 0;
   const jobs = list.map((video, index) => {
-    const hit = cartOn ? pwMatchProduct(video.name, pwProducts) : null;
+    const hit = cartOn ? pwMatchProduct(video, pwProducts) : null;
     if (hit) matched += 1;
     const { caption, hashtags } = written[index];
     return {
@@ -818,6 +926,7 @@ async function pwAddVideosToQueue(videos) {
       productId: hit ? hit.product.id : null,
       productCta: hit ? hit.product.title : "",
       matchScore: hit ? hit.score : 0,
+      matchType: hit ? hit.matchType : "",
       account: account.uniqueId || "",
       accountRaw: account,
       status: "queued",
@@ -832,10 +941,13 @@ async function pwAddVideosToQueue(videos) {
   pwRenderQueue();
 
   if (!cartOn) {
+    pwSetCartStatus("");
     pwSetClipStatus(`เพิ่มลงคิวแล้ว ${jobs.length} วิดีโอ (ไม่ปักสินค้า) — กด Run เพื่อเริ่มโพสต์`);
   } else if (matched === jobs.length) {
+    pwSetCartStatus(`${addedProductIds.length ? `เพิ่มเข้า Showcase ${addedProductIds.length} รายการ • ` : ""}จับคู่สินค้าอัตโนมัติแล้ว ${matched}/${jobs.length}`);
     pwSetClipStatus(`เพิ่มลงคิวแล้ว ${jobs.length} วิดีโอ — จับคู่สินค้าได้ครบทุกตัว`);
   } else {
+    pwSetCartStatus(`จับคู่สินค้าอัตโนมัติได้ ${matched}/${jobs.length}`, true);
     pwSetClipStatus(
       `เพิ่มลงคิวแล้ว ${jobs.length} วิดีโอ — จับคู่สินค้าได้ ${matched} ตัว, อีก ${jobs.length - matched} ตัวจะโพสต์แบบไม่ปักสินค้า`,
       true
@@ -964,7 +1076,10 @@ $("pwSideChannels")?.addEventListener("keydown", (event) => {
 });
 $("pwSideReloadBtn")?.addEventListener("click", () => pwLoadAccounts({ refresh: true }));
 
-$("pwCartEnabled")?.addEventListener("change", pwSaveSettings);
+$("pwCartEnabled")?.addEventListener("change", () => {
+  pwSaveSettings();
+  if (!pwCartEnabled()) pwSetCartStatus("");
+});
 $("pwAiSettingsBtn")?.addEventListener("click", () => pwOpenAiModal());
 $("pwAiModal")?.addEventListener("click", (event) => {
   if (event.target.closest("[data-pw-ai-close]")) { pwCloseAiModal(); return; }

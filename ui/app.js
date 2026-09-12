@@ -1104,6 +1104,35 @@ const AI_STUDIO_ORIGIN = "http://127.0.0.1:18787";
 const channelAccountList = document.getElementById("channelAccountList");
 const channelAccountStatus = document.getElementById("channelAccountStatus");
 const channelScanAccountsBtn = document.getElementById("channelScanAccountsBtn");
+
+function channelAccountIdentityKey(account = {}) {
+  const secUid = String(account.secUid || account.sec_uid || "").trim();
+  if (secUid) return `sec:${secUid}`;
+  const uniqueId = String(account.uniqueId || account.username || "").replace(/^@/, "").trim().toLowerCase();
+  if (uniqueId) return `user:${uniqueId}`;
+  const id = String(account.id || account.userId || account.uid || "").trim();
+  return id ? `id:${id}` : "";
+}
+
+function channelAccountRecordScore(account = {}) {
+  let score = 0;
+  if (account.profileStableId || account.chromeProfileStableId) score += 20;
+  if (account.userDataDir && account.profileDirectory) score += 20;
+  if (account.avatar || account.avatarThumb) score += 5;
+  if (account.session || account.hasCookies) score += 5;
+  if (account.followerCount || account.videoCount) score += 2;
+  return score;
+}
+
+function dedupeChannelAccounts(accounts = []) {
+  const unique = new Map();
+  for (const account of Array.isArray(accounts) ? accounts : []) {
+    const key = channelAccountIdentityKey(account) || `profile:${account.installId || account.socketId || unique.size}`;
+    const current = unique.get(key);
+    if (!current || channelAccountRecordScore(account) > channelAccountRecordScore(current)) unique.set(key, account);
+  }
+  return [...unique.values()];
+}
 // Single source of truth for the TikTok account list.
 //
 // The Channel page and the POST WEB sidebar both read /api/tiktok/accounts, but
@@ -1118,7 +1147,7 @@ const tiktokAccountsStore = {
   loaded: false,
   listeners: new Set(),
   set(list) {
-    this.accounts = Array.isArray(list) ? list : [];
+    this.accounts = dedupeChannelAccounts(list);
     this.loaded = true;
     for (const listener of this.listeners) {
       try { listener(this.accounts); } catch (error) { console.error("[accounts] listener failed", error); }
@@ -1469,6 +1498,8 @@ $("assignBtn").addEventListener("click", async () => {
       .map((video) => ({
         id: numericId(video.id),
         name: video.product_name || video.filename || `video-${video.id}`,
+        filename: video.filename || "",
+        productId: video.product_id || video.productId || "",
         // The caption All Channels would post this clip with. POST WEB reuses it
         // verbatim when AI captioning is off, so both pages post the same text.
         caption: video.caption || "",

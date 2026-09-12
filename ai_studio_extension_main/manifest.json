@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AutoGT Pro Extension",
-  "version": "0.1.11",
+  "version": "0.1.19",
   "description": "AutoGT Pro browser automation bridge",
   "action": {
     "default_title": "AutoGT Pro Extension",
@@ -24,6 +24,7 @@
     "http://127.0.0.1/*",
     "http://localhost/*",
     "https://labs.google/*",
+    "https://flow.google.com/*",
     "https://*.google.com/*",
     "https://*.googleusercontent.com/*",
     "https://flow-content.google/*",
@@ -35,7 +36,8 @@
   "content_scripts": [
     {
       "matches": [
-        "https://labs.google/*"
+        "https://labs.google/*",
+        "https://flow.google.com/*"
       ],
       "js": [
         "src/content/dom.js",

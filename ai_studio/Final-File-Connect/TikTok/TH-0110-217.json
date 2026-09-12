@@ -1,0 +1,35 @@
+{
+  "orderNumber": "TH-0110-217",
+  "productId": "1736796937581069435",
+  "productName": "Fidget Clicker 3D Print Clicker Keychain พวงกุญแจปุ่มกด รูปเค้ก คุกกี้ ขนมหวาน ของเล่นคลายเครียด ของเล่นฟิดเจ็ต ปุ่มกดคลิก บีบเล่นเพลิน พวงกุญแจห้อยกระเป๋า พร้อมส่ง ของ เล่น เพลิน น่ารัก ลูกบอล กด หมุน",
+  "sourceUrl": "https://www.tiktok.com/view/product/1736796937581069435",
+  "videoModel": "veo_3_1_r2v_lite_low_priority",
+  "extendedVideoModel": "veo_3_1_extension_lite",
+  "sceneMode": "continuous",
+  "sceneCount": 3,
+  "textMode": "withText",
+  "scenes": [
+    {
+      "scene": 1,
+      "imageUrl": "https://flow-content.google/image/f615206d-642e-49ea-851c-f48f3c24f19e?Expires=1788974106&KeyName=labs-flow-prod-cdn-key&Signature=oluNleOMssZbcR9qzPwYUMmYf2M",
+      "mediaName": "6635825e-ea38-4f89-a056-75b752092d7e",
+      "url": "https://flow-content.google/video/6b94327a-2ed9-4381-b72b-c3896b859809?Expires=1788974178&KeyName=labs-flow-prod-cdn-key&Signature=dXSfph1Xh70o9D9QRFuhx_vB0MY"
+    },
+    {
+      "scene": 2,
+      "imageUrl": "",
+      "mediaName": "cc2ce278-5b5f-45cf-8878-8402714e7afa",
+      "url": "https://flow-content.google/video/cc2ce278-5b5f-45cf-8878-8402714e7afa?Expires=1788974249&KeyName=labs-flow-prod-cdn-key&Signature=dS6pNbs4aAnoSYGfJBld3RMSArc"
+    },
+    {
+      "scene": 3,
+      "imageUrl": "",
+      "mediaName": "328c7fe5-765c-474e-9418-423d6f2ff336",
+      "url": "https://flow-content.google/video/328c7fe5-765c-474e-9418-423d6f2ff336?Expires=1788974393&KeyName=labs-flow-prod-cdn-key&Signature=tUDJbo6sG6UpLzaWc6Kq5ujNfjo"
+    }
+  ],
+  "finalVideo": "/library-file/1736796937581069435-Fidget%20Clicker%203D%20Print%20Clicker%20Keychain%20%E0%B8%9E%E0%B8%A7%E0%B8%87%E0%B8%81%E0%B8%B8%E0%B8%8D%E0%B9%81%E0%B8%88%E0%B8%9B%E0%B8%B8%E0%B9%88%E0%B8%A1%E0%B8%81%E0%B8%94%20%E0%B8%A3%E0%B8%B9%E0%B8%9B%E0%B9%80%E0%B8%84%E0%B9%89%E0%B8%81%20%E0%B8%84%E0%B8%B8%E0%B8%81%E0%B8%81%E0%B8%B5%E0%B9%89%20%E0%B8%82%E0%B8%99%E0%B8%A1%E0%B8%AB%E0%B8%A7%E0%B8%B2%E0%B8%99%20%E0%B8%82.mp4",
+  "status": "done",
+  "createdAt": 1788952498519,
+  "finishedAt": 1788952861550
+}

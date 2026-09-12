@@ -51,8 +51,8 @@
   {
     "step": 9,
     "action": "search_product_keyword",
-    "description": "ค้นหาสินค้าด้วย keyword จาก product_name",
-    "keyword": "{{product_name}}",
+    "description": "ค้นหาสินค้าด้วย Product ID เท่านั้น",
+    "keyword": "{{product_id}}",
     "wait": 3
   },
   {
@@ -76,8 +76,8 @@
   {
     "step": 9.5,
     "action": "tap_product_viewpager_image",
-    "description": "กดรูปสินค้าใน ViewPager แล้วค้นหาสินค้า",
-    "keyword": "{{ชื่อวิดีโอ}}",
+    "description": "กดรูปสินค้าใน ViewPager แล้วค้นหาด้วย Product ID เท่านั้น",
+    "keyword": "{{product_id}}",
     "wait": 3
   },
   {

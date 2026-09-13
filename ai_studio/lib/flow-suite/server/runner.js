@@ -748,7 +748,7 @@ function createRunner(deps) {
     // prompt instead of re-rolling a different one.
     state.prompts = shared.buildPrompt({
       product: job.product || {}, direction: job.direction || {},
-      videoModel: job.videoModel, extraPrompt: job.extraPrompt || "", textMode,
+      videoModel: job.videoModel, ...shared.promptSetsFrom(job), textMode, sceneIndex,
     });
     if (session.characterMediaId) {
       state.prompts.imagePrompt += "\n\nCHARACTER IDENTITY — STRICT: The first reference image is the approved character identity. Reproduce exactly the same adult person in this scene: same face, hairstyle, apparent age, body proportions, and clothing. The remaining reference image is the real product and must remain exact.";
@@ -1232,7 +1232,8 @@ function createRunner(deps) {
       const completedJob = store.job(job.id) || job;
       const promptLog = {
         defaultBehavior: "Prompt ปัจจุบันเป็นค่าเริ่มต้น และข้อความรายฉากจะแทนส่วนคำสั่งฉากโดยคงข้อมูลสินค้า บทพูด และข้อห้ามของระบบไว้",
-        mandatoryPrompt: job.extraPrompt || shared.DEFAULT_MANDATORY_PROMPT,
+        mandatoryPrompt: shared.resolvePromptSet(job.extraPrompt, shared.DEFAULT_MANDATORY_PROMPT),
+        promptSets: shared.promptSetsFrom(job),
         scenePromptInputs: Array.isArray(job.sceneVideoPrompts) ? job.sceneVideoPrompts.slice(0, sceneCount) : [],
         defaultVideoPrompts: Array.isArray(completedJob.defaultSceneVideoPrompts)
           ? completedJob.defaultSceneVideoPrompts.slice(0, sceneCount)
@@ -1281,14 +1282,15 @@ function createRunner(deps) {
 
   /** Standalone "🧪 ทดสอบสร้างรูป" preview — the same generateImage() call a real
    *  job's phase 1 makes, without any of the video steps after it. Costs credits. */
-  async function testGenerateImage({ product, direction, characterMode, imageModel, aspect, extraPrompt, projectId }) {
+  async function testGenerateImage(payload = {}) {
+    const { product, direction, characterMode, imageModel, aspect, projectId } = payload;
     const shared = await loadShared();
     if (!product) throw new Error("เลือกสินค้าก่อน");
     const images = (product.images || []).slice(0, 3);
     if (!images.length) throw new Error("สินค้านี้ไม่มีรูปสำหรับใช้อ้างอิง");
     const prompts = shared.buildPrompt({
       product, direction: direction || {}, videoModel: shared.DEFAULT_VIDEO_MODEL,
-      extraPrompt: extraPrompt || "", textMode: "withText",
+      ...shared.promptSetsFrom(payload), textMode: "withText",
     });
     const label = `ทดสอบสร้างรูป: ${product.name}`;
     store.log(label, "info", { stage: "test-image.started" });

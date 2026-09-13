@@ -1,6 +1,14 @@
 (function rebuildAutoGTProShell() {
   'use strict';
 
+  // Embedded inside TikTok Manager Pro's iframe: the parent shell owns the
+  // sidebar/title bar, so autotik-glass.css hides this page's own chrome.
+  try {
+    if (window.self !== window.top) document.documentElement.classList.add('autotik-embedded');
+  } catch (_) {
+    document.documentElement.classList.add('autotik-embedded');
+  }
+
   const legacyTikTokMain = document.querySelector('[data-mode-page="tiktok-shop"] .tiktok-content');
   const legacyShopeeMain = document.querySelector('[data-mode-page="shopee-shop"] .tiktok-content');
   const legacyGenericMain = document.querySelector('[data-mode-page="generic"] .blank-main');
@@ -37,11 +45,6 @@
             <span><strong>TikTok Shop</strong><small>Showcase, AI video และการโพสต์</small></span>
             <span class="material-symbols-outlined">arrow_forward</span>
           </button>
-          <button type="button" class="start-mode" data-route="shopee-shop">
-            <span class="material-symbols-outlined">shopping_bag</span>
-            <span><strong>Shopee Shop</strong><small>ค้นหาสินค้า รีวิว และงาน Affiliate</small></span>
-            <span class="material-symbols-outlined">arrow_forward</span>
-          </button>
           <button type="button" class="start-mode" data-route="adb-connect">
             <span class="material-symbols-outlined">android</span>
             <span><strong>ADB Connect</strong><small>จัดการอุปกรณ์ Android</small></span>
@@ -66,9 +69,6 @@
         <nav class="mode-tabs" aria-label="เมนูหลัก">
           <button type="button" data-route="tiktok-shop">
             <span class="material-symbols-outlined">music_note</span>TikTok Shop
-          </button>
-          <button type="button" data-route="shopee-shop">
-            <span class="material-symbols-outlined">shopping_bag</span>Shopee Shop
           </button>
           <button type="button" data-route="adb-connect">
             <span class="material-symbols-outlined">android</span>ADB Connect
@@ -273,16 +273,55 @@
           </div>
         </div>
         <div class="fs-card fs-column">
-          <div class="fs-mandatory-prompt-head">
-            <strong>3. Prompt บังคับใช้</strong>
-            <span id="fsMandatoryPromptState" class="fs-scene-prompt-state" data-state="default">Default ปัจจุบัน</span>
-            <button id="fsResetMandatoryPrompt" class="fs-btn fs-ghost fs-scene-prompt-reset" type="button">↶ กลับ Default</button>
+          <strong>3. Prompt บังคับใช้</strong>
+          <p class="fs-muted fs-scene-prompt-help">แบ่งเป็น 3 ชุด ใส่ในทุกฉาก — ลบข้อความในกล่องจนว่าง = ไม่ส่งชุดนั้นเข้าไปเลย กด “กลับ Default” เพื่อกลับไปใช้ข้อความเดิมของระบบ ชุดตัวหนังสือใช้กับฉาก 1 เท่านั้น ฉาก 2 ขึ้นไปไม่มีตัวหนังสือทุกกรณี ตัวแปร {สินค้า} {จำนวนวินาที} จะถูกแทนค่าอัตโนมัติ</p>
+          <div class="fs-prompt-set" data-prompt-set="textRulesPrompt">
+            <div class="fs-mandatory-prompt-head">
+              <label for="fsTextRulesPrompt">1. ชุดตัวหนังสือ</label>
+              <span id="fsTextRulesState" class="fs-scene-prompt-state" data-state="default">Default ปัจจุบัน</span>
+              <button id="fsResetTextRules" class="fs-btn fs-ghost fs-scene-prompt-reset" type="button">↶ กลับ Default</button>
+            </div>
+            <textarea id="fsTextRulesPrompt" rows="3" maxlength="5000" placeholder="ว่าง = ไม่ส่งชุดตัวหนังสือ"></textarea>
           </div>
-          <p class="fs-muted fs-scene-prompt-help">Prompt นี้จะถูกใส่ในทุกฉาก เปลี่ยนครั้งเดียวมีผลกับทุกฉาก และกลับมาใช้ค่า Default ของระบบได้เสมอ</p>
-          <textarea id="fsExtraPrompt" rows="6" maxlength="5000" placeholder="Prompt บังคับใช้สำหรับทุกฉาก"></textarea>
+          <div class="fs-prompt-set" data-prompt-set="speechRulesPrompt">
+            <div class="fs-mandatory-prompt-head">
+              <label for="fsSpeechRulesPrompt">2. ชุดบทพูด</label>
+              <span id="fsSpeechRulesState" class="fs-scene-prompt-state" data-state="default">Default ปัจจุบัน</span>
+              <button id="fsResetSpeechRules" class="fs-btn fs-ghost fs-scene-prompt-reset" type="button">↶ กลับ Default</button>
+            </div>
+            <textarea id="fsSpeechRulesPrompt" rows="7" maxlength="5000" placeholder="ว่าง = ไม่ส่งชุดบทพูด"></textarea>
+          </div>
+          <div class="fs-prompt-set" data-prompt-set="extraPrompt">
+            <div class="fs-mandatory-prompt-head">
+              <label for="fsExtraPrompt">3. ชุดข้อห้าม</label>
+              <span id="fsMandatoryPromptState" class="fs-scene-prompt-state" data-state="default">Default ปัจจุบัน</span>
+              <button id="fsResetMandatoryPrompt" class="fs-btn fs-ghost fs-scene-prompt-reset" type="button">↶ กลับ Default</button>
+            </div>
+            <textarea id="fsExtraPrompt" rows="4" maxlength="5000" placeholder="ว่าง = ไม่ส่งชุดข้อห้าม"></textarea>
+          </div>
         </div>
         <div class="fs-card fs-column">
-          <strong>4. คำสั่งวิดีโอรายฉาก</strong>
+          <strong>4. แก้ Prompt รูป</strong>
+          <p class="fs-muted fs-scene-prompt-help">Prompt สร้างภาพ Storyboard แบ่งเป็นส่วนเนื้อหาและส่วนข้อห้าม ตัวแปร {ตัวละคร} {ฉากหลัง} {สินค้า} จะถูกแทนค่าอัตโนมัติ และข้อมูลสินค้าจะต่อท้ายให้เอง ลบจนว่าง = ไม่ส่งส่วนนั้น ฉาก 2 ขึ้นไปจะไม่ใส่ตัวหนังสือบนภาพทุกกรณี</p>
+          <div class="fs-prompt-set" data-prompt-set="imageContentPrompt">
+            <div class="fs-mandatory-prompt-head">
+              <label for="fsImageContentPrompt">ส่วนเนื้อหา</label>
+              <span id="fsImageContentState" class="fs-scene-prompt-state" data-state="default">Default ปัจจุบัน</span>
+              <button id="fsResetImageContent" class="fs-btn fs-ghost fs-scene-prompt-reset" type="button">↶ กลับ Default</button>
+            </div>
+            <textarea id="fsImageContentPrompt" rows="14" maxlength="5000" placeholder="ว่าง = ไม่ส่งส่วนเนื้อหา"></textarea>
+          </div>
+          <div class="fs-prompt-set" data-prompt-set="imageMandatoryPrompt">
+            <div class="fs-mandatory-prompt-head">
+              <label for="fsImageMandatoryPrompt">ส่วนข้อห้าม</label>
+              <span id="fsImageMandatoryState" class="fs-scene-prompt-state" data-state="default">Default ปัจจุบัน</span>
+              <button id="fsResetImageMandatory" class="fs-btn fs-ghost fs-scene-prompt-reset" type="button">↶ กลับ Default</button>
+            </div>
+            <textarea id="fsImageMandatoryPrompt" rows="4" maxlength="5000" placeholder="ว่าง = ไม่ส่งส่วนข้อห้าม"></textarea>
+          </div>
+        </div>
+        <div class="fs-card fs-column">
+          <strong>5. คำสั่งวิดีโอรายฉาก</strong>
           <p class="fs-muted fs-scene-prompt-help">แก้คำสั่งของแต่ละฉากได้โดยตรง ข้อความนี้จะแทนส่วนคำสั่งฉาก ส่วนข้อมูลสินค้า บทพูด และข้อห้ามยังประกอบให้อัตโนมัติ กด “กลับ Default” เพื่อใช้ Prompt ปัจจุบันของระบบได้เสมอ</p>
           <div id="fsSceneVideoPrompts" class="fs-scene-prompt-grid"></div>
           <div class="fs-scene-prompt-save-row">

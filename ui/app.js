@@ -88,13 +88,40 @@ function initDesktopShell() {
 
 initDesktopShell();
 
+let navOpen = localStorage.getItem("atg_nav_open") !== "0";
+
 function applyShellPanelState() {
   document.body.classList.toggle("logs-panel-open", logsPanelOpen);
   document.body.classList.toggle("library-panel-collapsed", !libraryPanelOpen);
+  document.body.classList.toggle("nav-collapsed", !navOpen);
   $("toggleLibraryBtn")?.classList.toggle("active", libraryPanelOpen);
-  if ($("closeLogsBtn")) $("closeLogsBtn").textContent = logsPanelOpen ? "expand_more" : "expand_less";
+  if ($("closeLogsBtn")) $("closeLogsBtn").textContent = logsPanelOpen ? "ย่อ" : "เปิด";
+  const navToggle = $("navToggleBtn");
+  if (navToggle) {
+    navToggle.title = navOpen ? "พับเมนู" : "ขยายเมนู";
+    const icon = navToggle.querySelector(".nav-toggle-icon");
+    if (icon) icon.textContent = navOpen ? "‹" : "›";
+  }
   localStorage.setItem("atg_logs_panel_open", logsPanelOpen ? "1" : "0");
   localStorage.setItem("atg_library_panel_open", libraryPanelOpen ? "1" : "0");
+  localStorage.setItem("atg_nav_open", navOpen ? "1" : "0");
+}
+
+function toggleNav(open = !navOpen) {
+  navOpen = Boolean(open);
+  applyShellPanelState();
+}
+
+let toastTimer = null;
+function showToast(message) {
+  const el = $("toast");
+  if (!el) return;
+  el.textContent = message;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.hidden = true;
+  }, 2200);
 }
 
 function toggleLogsPanel(open = !logsPanelOpen) {
@@ -399,38 +426,88 @@ function videoStatusInfo(video) {
 function renderMetrics() {
   const stats = state.stats || {};
   const queued = stats.queued ?? (state.queue || []).filter((item) => ["pending", "running", "transferring", "posting"].includes(item.status)).length;
+  const failed = stats.failed ?? (state.queue || []).filter((item) => item.status === "failed").length;
   $("metricChannels").textContent = stats.channels ?? state.channels.length;
   $("metricQueued").textContent = queued;
   $("metricComplete").textContent = stats.complete ?? 0;
-  $("metricFailed").textContent = stats.failed ?? (state.queue || []).filter((item) => item.status === "failed").length;
+  $("metricFailed").textContent = failed;
+  $("metricFailed").parentElement?.classList.toggle("has-failed", Number(failed) > 0);
   $("pathHint").textContent = `Folder: ${state.paths.library || state.paths.uploads}`;
+  setNavBadge("navBadgeDashboard", queued);
   renderAutoRandomButton();
+}
+
+function setNavBadge(id, count) {
+  const badge = $(id);
+  if (!badge) return;
+  const n = Number(count) || 0;
+  badge.textContent = String(n);
+  badge.hidden = n <= 0;
 }
 
 function renderAutoRandomButton() {
   const btn = $("autoRandomBtn");
   if (!btn) return;
   const enabled = Boolean(state?.auto_random?.enabled);
-  btn.textContent = `Auto random : ${enabled ? "ON" : "OFF"}`;
+  btn.innerHTML = `<i class="dot"></i>Auto random : ${enabled ? "ON" : "OFF"}`;
   btn.classList.toggle("auto-random-on", enabled);
   btn.classList.toggle("auto-random-off", !enabled);
 }
 
+// One sidebar for both layers: the Main App views render here, the AI Studio
+// views are routes inside the embedded iframe (#gtproView). Title/subtitle per
+// view come from the v5 Glass handoff.
+const VIEWS = {
+  dashboard: ["All Channels", "คิวโพสต์ผ่านอุปกรณ์ Android ทุกช่อง"],
+  postweb: ["POST WEB", "โพสต์ TikTok ผ่าน browser extension ด้วยบัญชีที่เก็บ cookie ไว้"],
+  videos: ["Video", "จัดการวิดีโอใน Library และ Bin"],
+  idle: ["Device", "สแกน ADB และเพิ่มอุปกรณ์เป็น Device Channel"],
+  channel: ["Channel", "บัญชี TikTok ที่ extension เก็บ cookie/token ไว้ให้"],
+  "tiktok-shop": ["TikTok Shop", "ดึงสินค้าจากลิงก์ / Showcase แล้วส่งเข้า Flow Queue"],
+  "tiktok-flow-prompt": ["Flow Prompt", "ตั้งค่า Prompt, โมเดล และจำนวนฉากสำหรับทุกสินค้าในคิว"],
+  "tiktok-flow-queue": ["Flow Queue", "คิวสร้างวิดีโอด้วย Google Flow — อัปเดตผ่าน SSE"],
+  "tiktok-flow-history": ["Flow History", "ประวัติงานสร้างวิดีโอ สำเร็จ / ล้มเหลว / ยกเลิก"],
+  "tiktok-post-mobile": ["Mobile Post", "โพสต์ผ่านอุปกรณ์ Android ที่เชื่อม ADB"],
+  "adb-connect": ["ADB Connect", "เชื่อมต่อและจัดการอุปกรณ์ ADB"],
+};
+const AI_STUDIO_VIEWS = new Set(["tiktok-shop", "tiktok-flow-prompt", "tiktok-flow-queue", "tiktok-flow-history", "tiktok-post-mobile", "adb-connect"]);
+const AI_STUDIO_FRAME_ORIGIN = "http://127.0.0.1:18787";
+
+function routeAiStudio(route) {
+  const frame = $("aiStudioFrame");
+  if (!frame) return;
+  const url = `${AI_STUDIO_FRAME_ORIGIN}/#${route}`;
+  // Same document + new fragment = hash navigation inside the frame (no reload);
+  // before first load it simply becomes the URL the frame opens with.
+  if (frame.getAttribute("src") !== url) frame.setAttribute("src", url);
+  try {
+    frame.contentWindow?.postMessage({ type: "autotik:route", route }, AI_STUDIO_FRAME_ORIGIN);
+  } catch (_) {
+    /* frame not ready yet — the src hash above covers it */
+  }
+}
+
 function setActiveView(view) {
+  if (view === "gtpro") view = "tiktok-shop";
+  if (!VIEWS[view]) view = "dashboard";
   activeView = view;
-  document.querySelectorAll(".view-tab").forEach((btn) => {
+  const isAiStudio = AI_STUDIO_VIEWS.has(view);
+  document.querySelectorAll(".nav-item").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.view === view);
   });
   document.querySelectorAll(".view-panel").forEach((panel) => {
-    panel.classList.toggle("active", panel.id === `${view}View`);
+    panel.classList.toggle("active", panel.id === (isAiStudio ? "gtproView" : `${view}View`));
   });
-  document.body.classList.toggle("gtpro-active", view === "gtpro");
-  // POST WEB swaps the left rail from device channels to its TikTok channels.
+  document.body.classList.toggle("gtpro-active", isAiStudio);
+  document.body.dataset.view = view;
+  const [title, subtitle] = VIEWS[view];
+  if ($("pageTitle")) $("pageTitle").textContent = title;
+  if ($("pageSubtitle")) $("pageSubtitle").textContent = subtitle;
+  document.querySelectorAll(".page-actions [data-for-view]").forEach((group) => {
+    group.hidden = group.dataset.forView !== view;
+  });
+  if (isAiStudio) routeAiStudio(view);
   const isPostWeb = view === "postweb";
-  const deviceSidebar = $("deviceSidebar");
-  const postwebSidebar = $("postwebSidebar");
-  if (deviceSidebar) deviceSidebar.hidden = isPostWeb;
-  if (postwebSidebar) postwebSidebar.hidden = !isPostWeb;
   if (view === "channel" && !channelAccountsLoaded) loadChannelAccounts({ refresh: false });
   // postweb.js loads after this file; it owns the POST WEB tab's first paint.
   if (isPostWeb && typeof pwInitPage === "function") pwInitPage();
@@ -511,6 +588,13 @@ function renderChannels() {
 
   wrap.querySelectorAll("[data-delete-channel]").forEach((btn) => {
     btn.addEventListener("click", async () => {
+      const channel = state.channels.find((item) => String(item.id) === String(btn.dataset.deleteChannel));
+      const ok = await confirmDelete(
+        `ช่องนี้มี ${channel?.queue_count || 0} งานในคิว การลบจะเอาช่องและคิวออกจากระบบ`,
+        `ลบ ${channel?.name || "ช่องนี้"}?`,
+        "ลบช่อง"
+      );
+      if (!ok) return;
       await api(`/api/channels/${btn.dataset.deleteChannel}`, { method: "DELETE" });
       if (numericId(selectedChannelId) === Number(btn.dataset.deleteChannel)) selectedChannelId = null;
       await refresh();
@@ -546,10 +630,10 @@ function renderChannels() {
 
 function renderQueue() {
   const channel = currentChannel();
-  $("queueTitle").textContent = channel ? `${channel.name} Queue` : "Channel Queue";
-  $("queueSubtitle").textContent = channel ? `${channel.udid}` : "เลือก channel ทางซ้ายเพื่อดูคิว";
   const wrap = $("queueList");
   const items = queueForSelectedChannel();
+  $("queueTitle").textContent = channel ? `คิวของ ${channel.name}` : "Channel Queue";
+  $("queueSubtitle").textContent = channel ? `${items.length} งาน · ${channel.udid}` : "เลือก channel ทางซ้ายเพื่อดูคิว";
   $("selectAllQueueBtn").textContent =
     items.length > 0 && items.every((item) => selectedQueueItems.has(item.id))
       ? "Deselect All"
@@ -596,6 +680,8 @@ function renderQueue() {
   });
   wrap.querySelectorAll("[data-delete-queue]").forEach((btn) => {
     btn.addEventListener("click", async () => {
+      const ok = await confirmDelete("เอางานนี้ออกจากคิว? ไฟล์วิดีโอยังอยู่ใน Library", "เอางานออกจากคิว", "เอาออก");
+      if (!ok) return;
       selectedQueueItems.delete(Number(btn.dataset.deleteQueue));
       await api(`/api/queue/${btn.dataset.deleteQueue}`, { method: "DELETE" });
       await refresh();
@@ -1056,7 +1142,7 @@ function renderIdle() {
           <strong>${escapeHtml(device.udid)}</strong>
           <code>${escapeHtml(device.state)}</code>
         </div>
-        <button class="ghost" data-use-device="${escapeHtmlAttr(device.udid)}">Use</button>
+        <button class="ghost" data-use-device="${escapeHtmlAttr(device.udid)}">+ เพิ่มเป็นช่อง</button>
       `;
       deviceWrap.appendChild(row);
     });
@@ -1298,8 +1384,11 @@ channelAccountList?.addEventListener("click", (event) => {
     return;
   }
   const deleteBtn = event.target.closest("[data-channel-delete]");
-  if (deleteBtn && confirm(`ลบโปรไฟล์ @${deleteBtn.dataset.channelDelete}?`)) {
-    deleteChannelAccount(deleteBtn.dataset.channelDelete);
+  if (deleteBtn) {
+    confirmDelete("จะเอาบัญชีและ cookie ออกจากระบบ ไม่กระทบวิดีโอในคิว", `ลบบัญชี @${deleteBtn.dataset.channelDelete}?`, "ลบบัญชี")
+      .then((ok) => {
+        if (ok) deleteChannelAccount(deleteBtn.dataset.channelDelete);
+      });
   }
 });
 
@@ -1386,8 +1475,10 @@ function closeVideoModal() {
   $("videoModal").classList.add("hidden");
 }
 
-function confirmDelete(message) {
+function confirmDelete(message, title = "ยืนยันการลบ", cta = "ยืนยันการลบ") {
   $("confirmDeleteMessage").textContent = message || "วิดีโอจะถูกลบออกจากโฟลเดอร์จริง";
+  $("confirmDeleteTitle").textContent = title;
+  $("confirmDeleteOkBtn").textContent = cta;
   $("confirmDeleteModal").classList.remove("hidden");
   return new Promise((resolve) => {
     pendingDeleteConfirm = resolve;
@@ -1463,11 +1554,12 @@ $("closeLogsBtn").addEventListener("click", (event) => {
 });
 $("toggleLibraryBtn").addEventListener("click", () => toggleLibraryPanel());
 
-document.querySelectorAll(".view-tab").forEach((btn) => {
+document.querySelectorAll(".nav-item").forEach((btn) => {
   btn.addEventListener("click", () => {
     setActiveView(btn.dataset.view || "dashboard");
   });
 });
+$("navToggleBtn")?.addEventListener("click", () => toggleNav());
 
 // The AI Studio iframe (#aiStudioFrame, http://127.0.0.1:<ai-studio-port>) has no Channel
 // page of its own anymore — its "ไปหน้า Channel" button asks this parent shell to switch
@@ -1802,6 +1894,13 @@ $("setScheduleBtn").addEventListener("click", async () => {
 
 $("clearQueueBtn").addEventListener("click", async () => {
   if (!selectedChannelId) return;
+  const channel = currentChannel();
+  const ok = await confirmDelete(
+    `${queueForSelectedChannel().length} งานจะถูกเอาออก ไฟล์วิดีโอยังอยู่ใน Library`,
+    `ล้างคิวของ ${channel?.name || "ช่องนี้"}?`,
+    "ล้างคิว"
+  );
+  if (!ok) return;
   selectedQueueItems.clear();
   await api(`/api/queue/${selectedChannelId}/clear`, { method: "DELETE" });
   await refresh();
@@ -1821,11 +1920,13 @@ $("clearLogsBtn").addEventListener("click", async () => {
 $("startAllBtn").addEventListener("click", async () => {
   await api("/api/channels/start-all", { method: "POST", body: "{}" });
   await refresh();
+  showToast("Start All — เริ่มทุกช่องที่ online");
 });
 
 $("stopAllBtn").addEventListener("click", async () => {
   await api("/api/channels/stop-all", { method: "POST", body: "{}" });
   await refresh();
+  showToast("Stop All — ส่ง stop request ทุกช่อง");
 });
 
 $("clearTimeSetBtn").addEventListener("click", async () => {
@@ -1849,6 +1950,8 @@ $("clearTimeSetBtn").addEventListener("click", async () => {
 });
 
 $("clearHistoryBtn").addEventListener("click", async () => {
+  const ok = await confirmDelete("ประวัติการโพสต์ทั้งหมดจะถูกลบ ไฟล์วิดีโอยังอยู่", "ล้างประวัติ?", "ล้างประวัติ");
+  if (!ok) return;
   await api("/api/history/clear", { method: "DELETE" });
   selectedQueueItems.clear();
   selectedVideos.clear();
@@ -1865,6 +1968,52 @@ $("selectAllQueueBtn").addEventListener("click", () => {
   }
   renderQueue();
 });
+
+// ---- Sidebar extras: extension status card + Flow Queue badge ----------------
+// Both read the AI Studio server directly (it sends Access-Control-Allow-Origin: *),
+// so the sidebar reflects the same extension/flow state the iframe shows.
+const NAV_EXPECTED_EXTENSION_VERSION = "0.1.19";
+
+function renderNavExtension(status) {
+  const card = $("navExtensionCard");
+  if (!card) return;
+  const connected = Boolean(status?.connected);
+  const version = String(status?.version || "");
+  const stale = connected && version && version !== NAV_EXPECTED_EXTENSION_VERSION;
+  const flowEmail = String(status?.mainExtension?.accountEmail || status?.flowAccountEmail || "").trim();
+  const stateName = !connected ? "offline" : stale ? "stale" : "connected";
+  card.dataset.ext = stateName;
+  const label = stateName === "connected" ? "Extension connected" : stateName === "stale" ? `Reload extension v${NAV_EXPECTED_EXTENSION_VERSION}` : "Extension offline";
+  $("navExtLabel").textContent = label;
+  $("navExtVersion").textContent = version || "—";
+  $("navExtFlow").textContent = `Flow: ${flowEmail || "—"}`;
+  card.title = `${label}${version ? ` · v${version}` : ""}${flowEmail ? ` · ${flowEmail}` : ""}`;
+}
+
+async function refreshNavExtension() {
+  try {
+    const resp = await fetch(`${AI_STUDIO_ORIGIN}/api/extension-status`, { cache: "no-store" });
+    renderNavExtension(await resp.json());
+  } catch {
+    renderNavExtension(null);
+  }
+}
+
+async function refreshFlowBadge() {
+  try {
+    const resp = await fetch(`${AI_STUDIO_ORIGIN}/api/flow/state`, { cache: "no-store" });
+    const data = await resp.json();
+    const jobs = Array.isArray(data.jobs) ? data.jobs : [];
+    setNavBadge("navBadgeFlow", jobs.filter((job) => ["queued", "running"].includes(job.status)).length);
+  } catch {
+    /* AI Studio not up yet — keep the last badge */
+  }
+}
+
+refreshNavExtension();
+refreshFlowBadge();
+setInterval(refreshNavExtension, 5000);
+setInterval(refreshFlowBadge, 5000);
 
 // Login removed: the app starts straight into the workspace, with no license
 // check gating startup and no periodic revalidation.

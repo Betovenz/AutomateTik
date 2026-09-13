@@ -1,0 +1,225 @@
+/* AutoTik AI Studio — Glass theme overrides (AutoTik UI v5 handoff).
+   Loaded last: re-points autogt-ui.css / flow-suite.css tokens at the same
+   palette TikTok Manager Pro uses, so the embedded workspaces read as one app. */
+
+:root {
+  --bg: transparent;
+  --bg-deep: #F3F2FA;
+  --surface: rgba(255, 255, 255, .72);
+  --surface-2: #F3F2FA;
+  --surface-3: #ECEAF6;
+  --surface-hover: #F3F2FA;
+  --line: rgba(80, 70, 140, .14);
+  --line-strong: rgba(80, 70, 140, .24);
+  --text: #1E1B3A;
+  --text-soft: #3E3A5C;
+  --muted: #6E6A8A;
+  --muted-2: #9A96B4;
+  --primary: oklch(0.55 0.22 285);
+  --primary-2: oklch(0.62 0.2 320);
+  --primary-soft: oklch(0.9 0.08 300 / .55);
+  --success: oklch(0.65 0.17 150);
+  --success-soft: oklch(0.65 0.17 150 / .15);
+  --danger: oklch(0.6 0.2 20);
+  --danger-soft: oklch(0.6 0.2 20 / .08);
+  --warning: oklch(0.78 0.16 80);
+  --warning-soft: oklch(0.78 0.16 80 / .25);
+  --info: oklch(0.62 0.16 45);
+  --radius: 20px;
+  --radius-sm: 12px;
+  --shadow: 0 8px 30px rgba(60, 50, 120, .08);
+  --sidebar: 236px;
+  --font: "Noto Sans Thai", "Prompt", "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", Consolas, monospace;
+  --ag-grad: linear-gradient(135deg, oklch(0.55 0.22 285), oklch(0.62 0.2 320));
+  --ag-peach: oklch(0.62 0.16 45);
+  --ag-ink: #1E1B3A;
+}
+
+html { background: transparent; }
+body {
+  background:
+    radial-gradient(900px 520px at 8% 0%, oklch(0.92 0.07 300), transparent 65%),
+    radial-gradient(800px 520px at 100% 100%, oklch(0.92 0.06 200), transparent 65%),
+    radial-gradient(600px 400px at 60% 40%, oklch(0.95 0.05 40), transparent 70%),
+    #F3F2FA;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13.5px;
+}
+html.autotik-embedded, html.autotik-embedded body { background: transparent !important; }
+.autogt-app, .app-content, .app-frame { background: transparent !important; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: rgba(80, 70, 140, .18); }
+::-webkit-scrollbar-thumb:hover { background: rgba(80, 70, 140, .32); }
+
+h1, h2, h3, .workspace-heading h1, .start-copy h1, .sidebar-context h2 { font-family: "Prompt", var(--font); }
+.eyebrow, .workspace-eyebrow, .sidebar-context__mode, .side-section-label { color: var(--muted); font-family: var(--font); letter-spacing: .08em; }
+.start-brand em, .app-brand em { color: var(--primary); }
+
+/* Shell (standalone mode) */
+.app-sidebar {
+  margin: 16px 0 16px 16px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--surface);
+  backdrop-filter: blur(24px);
+  box-shadow: var(--shadow);
+}
+.app-frame { height: 100vh; }
+.side-nav button, .side-nav a { border-radius: 12px; font-family: "Prompt", var(--font); font-weight: 500; color: var(--text); }
+.side-nav button:hover, .side-nav a:hover { color: var(--text); background: #F3F2FA; }
+.side-nav button.active, .side-nav a.active, .side-nav [aria-current="page"] {
+  color: var(--text);
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(80, 70, 140, .12);
+}
+.side-nav .active .material-symbols-outlined { color: var(--ag-peach); }
+.system-health { border-radius: 14px; background: #fff; box-shadow: var(--shadow); border: 0; }
+.system-health strong { font-size: 10px; }
+.start-brand__mark, .app-brand__mark { background: var(--ag-grad); border-radius: 999px; box-shadow: 0 4px 14px oklch(0.55 0.22 285 / .35); }
+.start-mode, .mode-card { border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); border: 0; }
+.start-mode > .material-symbols-outlined:first-child { border-radius: 12px; background: #F3F2FA; color: var(--primary); }
+.start-view { background: transparent; }
+
+/* Controls */
+button, .primary-btn, .secondary-btn, .danger-btn, .ghost-btn, .outline-btn {
+  min-height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  padding: 0 14px;
+  background: #fff;
+  color: var(--text);
+  font-family: "Prompt", var(--font);
+  font-weight: 500;
+  font-size: 13px;
+  transition: background .15s, border-color .15s, filter .15s;
+}
+button:hover, .secondary-btn:hover, .ghost-btn:hover, .outline-btn:hover { border-color: var(--line); background: #F3F2FA; }
+.primary-btn, button.primary, [class*="primary-btn"],
+.showcase-actions button:not(.danger-btn):not(#clearShowcaseBtn):not(#clearShopeeBtn),
+.bulk-actions #queueSelectedBtn, .bulk-actions #shopeeQueueSelectedBtn, .bulk-actions #addShowcaseSelectedBtn,
+.activate-button {
+  background: var(--ag-grad);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+}
+.primary-btn:hover, button.primary:hover, [class*="primary-btn"]:hover,
+.showcase-actions button:not(.danger-btn):not(#clearShowcaseBtn):not(#clearShopeeBtn):hover,
+.bulk-actions #queueSelectedBtn:hover, .bulk-actions #addShowcaseSelectedBtn:hover { background: var(--ag-grad); filter: brightness(1.08); }
+.danger-btn, button.danger, [class*="danger-btn"], .outline-btn.danger { border-color: var(--line); color: var(--danger); background: #fff; }
+.danger-btn:hover, button.danger:hover, .outline-btn.danger:hover { border-color: var(--danger); background: #fff; }
+.showcase-actions #clearShowcaseBtn, .showcase-actions #clearShopeeBtn { background: #fff; border-color: var(--line); }
+.icon-button, .icon-btn { border-radius: 999px; }
+.icon-button:hover { color: var(--text); background: #F3F2FA; }
+.profile-avatar { background: var(--ag-grad); }
+.mode-tabs button { border-radius: 0; border-left: 1px solid var(--line); }
+button:disabled { opacity: .45; }
+
+input[type="text"], input[type="search"], input[type="number"], input[type="datetime-local"], input[type="date"], input[type="time"], input[type="url"], input[type="password"], textarea, select {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text);
+  font-family: var(--font);
+}
+input:focus, textarea:focus, select:focus { border-color: var(--primary); box-shadow: none; }
+input::placeholder, textarea::placeholder { color: rgba(110, 106, 138, .7); }
+input[type="checkbox"] { accent-color: var(--ag-ink); }
+.serial-control input { border-radius: 12px; }
+.license-state { border-radius: 999px; color: oklch(0.45 0.15 150); background: var(--success-soft); border-color: transparent; }
+
+/* Panels / cards */
+.workspace-panel, .panel, .showcase-panel, .post-account-card {
+  border: 0;
+  border-radius: 20px;
+  background: var(--surface);
+  backdrop-filter: blur(24px);
+  box-shadow: var(--shadow);
+}
+.post-account-card { border-radius: 14px; background: #fff; box-shadow: none; border: 1px solid var(--line); }
+.showcase-results-controls { background: transparent; }
+.showcase-summary-row .summary-card, .showcase-summary-row > div:first-child, .stat-card { border-radius: 14px; background: #fff; border: 1px solid var(--line); }
+.showcase-card { border-radius: 14px; background: #fff; border: 1px solid rgba(80, 70, 140, .1); }
+.showcase-card:hover { border-color: var(--line); background: #fff; }
+.showcase-card.selected, .showcase-card.is-selected { border-color: var(--primary); background: var(--primary-soft); }
+.showcase-card img { border-radius: 10px; background: #E4E2F0; }
+.showcase-card a { color: var(--primary); }
+.showcase-info > .showcase-url { background: #F3F2FA; border-radius: 8px; }
+.showcase-heading .selected-count, #selectedCount, #shopeeSelectedCount {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  font-family: var(--mono);
+}
+#showcaseStatus, #shopeeStatus { border-left: 0; border-radius: 12px; background: var(--primary-soft); color: var(--text); }
+.tiktok-warning {
+  border-radius: 14px;
+  background: var(--warning-soft);
+  color: oklch(0.45 0.12 80);
+}
+.source-input textarea { border-radius: 12px; }
+.status-dot { background: var(--danger); }
+.extension-pill.is-connected .status-dot, .extension-pill[data-extension-status="connected"] .status-dot { background: var(--success); box-shadow: 0 0 0 4px var(--success-soft); }
+
+/* Flow suite pages (Prompt / Queue / History) */
+.flow-page-prompt,
+.flow-page-queue,
+.flow-page-history {
+  --fs-bg: transparent;
+  --fs-panel: rgba(255, 255, 255, .72);
+  --fs-panel-2: #F3F2FA;
+  --fs-ink: #1E1B3A;
+  --fs-ink-dim: #6E6A8A;
+  --fs-line: rgba(80, 70, 140, .14);
+  --fs-brand: oklch(0.55 0.22 285);
+  --fs-brand-ink: #ffffff;
+  --fs-ok: oklch(0.65 0.17 150);
+  --fs-warn: oklch(0.78 0.16 80);
+  --fs-err: oklch(0.6 0.2 20);
+  --fs-radius: 18px;
+  font-family: var(--font);
+}
+.flow-page-prompt .fs-card, .flow-page-queue .fs-card, .flow-page-history .fs-card {
+  border: 0;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(24px);
+}
+.flow-page-prompt .fs-btn, .flow-page-queue .fs-btn, .flow-page-history .fs-btn,
+.flow-page-queue .fs-pager button, .flow-page-history #fsHistoryFilter button {
+  border-radius: 999px;
+  font-family: "Prompt", var(--font);
+  font-weight: 500;
+}
+.flow-page-prompt .fs-btn.fs-primary, .flow-page-queue .fs-btn.fs-primary, .flow-page-history .fs-btn.fs-primary {
+  background: var(--ag-grad);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+}
+.flow-page-prompt .fs-btn.fs-primary:hover, .flow-page-queue .fs-btn.fs-primary:hover { filter: brightness(1.08); }
+.flow-page-queue .fs-btn.fs-ghost.fs-danger, .flow-page-history .fs-btn.fs-ghost.fs-danger { color: var(--fs-err); }
+.flow-page-history #fsHistoryFilter button.fs-on, .flow-page-queue .fs-mode-toggle button.fs-on {
+  background: var(--ag-grad);
+  border-color: transparent;
+  color: #fff;
+}
+.flow-page-prompt input, .flow-page-prompt select, .flow-page-prompt textarea,
+.flow-page-queue input, .flow-page-queue select, .flow-page-queue textarea,
+.flow-page-history input, .flow-page-history select, .flow-page-history textarea { border-radius: 12px; background: #fff; }
+.flow-page-queue .fs-switch-slider { border-radius: 999px; }
+.flow-page-queue .fs-switch input:checked + .fs-switch-slider { background: var(--ag-peach); }
+
+/* Mobile post / ADB workspaces inherit the panel look */
+.mobile-workspace-layout .workspace-column > *, .adb-device-workbench .workspace-panel { border-radius: 20px; }
+
+/* Modals */
+.modal-backdrop, .autogt-modal-backdrop { background: rgba(40, 30, 80, .35); backdrop-filter: blur(6px); }
+
+/* Keep the showcase action labels on one line inside the narrower embedded column */
+.showcase-actions button { white-space: nowrap; flex: 1 1 auto; }

@@ -1,4 +1,4 @@
-/* AutoTik embeds only the four requested AutoGT workspaces. */
+/* AutoTik embeds only the TikTok / Flow / Mobile Post / ADB workspaces. */
 .start-view,
 .app-topbar,
 .mode-tabs [data-route="shopee-shop"],
@@ -19,35 +19,28 @@
 
 .extension-sidebar-status i {
   background: var(--danger);
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+  box-shadow: 0 0 0 4px oklch(0.6 0.2 20 / .15);
 }
 
 .extension-sidebar-status strong {
-  color: #f87171;
+  color: var(--danger);
   line-height: 1.35;
 }
 
 .extension-sidebar-status.is-connected i {
   background: var(--success);
-  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+  box-shadow: 0 0 0 4px oklch(0.65 0.17 150 / .2);
 }
 
 .extension-sidebar-status.is-connected strong {
-  color: var(--success);
+  color: oklch(0.45 0.15 150);
 }
 
-@media (max-width: 760px) {
-  .system-health.extension-sidebar-status {
-    display: grid !important;
-    place-items: center;
-    padding: 10px 4px;
-  }
-
-  .extension-sidebar-status span {
-    font-size: 0;
-  }
-
-  .extension-sidebar-status strong {
-    display: none;
-  }
-}
+/* Inside TikTok Manager Pro's iframe the parent shell provides the sidebar,
+   title bar and page heading — this page shows only its workspace. */
+html.autotik-embedded .app-sidebar { display: none !important; }
+html.autotik-embedded .app-frame { grid-template-columns: minmax(0, 1fr) !important; }
+html.autotik-embedded .platform-main,
+html.autotik-embedded .blank-main { padding: 2px 2px 24px !important; }
+html.autotik-embedded .workspace-heading > div:first-child { display: none; }
+html.autotik-embedded .workspace-heading { margin-bottom: 6px; justify-content: flex-end; }

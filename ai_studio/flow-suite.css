@@ -514,3 +514,10 @@
   font-size: 12px;
   color: var(--fs-muted, inherit);
 }
+
+/* Section 3/4 prompt sets: label + state badge + reset per box */
+.flow-page-prompt .fs-prompt-set { display: flex; flex-direction: column; gap: 6px; }
+.flow-page-prompt .fs-prompt-set + .fs-prompt-set { margin-top: 4px; }
+.flow-page-prompt .fs-prompt-set label { font-weight: 700; color: var(--fs-ink); margin-right: auto; }
+.flow-page-prompt .fs-prompt-set textarea { background: #fff; line-height: 1.5; }
+.flow-page-prompt .fs-scene-prompt-state[data-state="omitted"] { color: #92400e; background: #fef3c7; }

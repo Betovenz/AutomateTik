@@ -177,7 +177,10 @@ async function cleanupProfileBindTabs() {
 }
 
 async function getExtensionProfileInfo() {
-  const stored = await chrome.storage.local.get(["installId", "profileLabel", "installCreatedAt", "flowAccountEmail"]);
+  const stored = await chrome.storage.local.get(["installId", "profileLabel", "installCreatedAt"]);
+  // Older builds pinned the Flow Google account here; the account is now read
+  // live from the Flow tab on every harvest, so drop any remembered value.
+  chrome.storage.local.remove("flowAccountEmail").catch(() => {});
   let installId = String(stored.installId || "").trim();
   if (!installId) {
     installId = crypto?.randomUUID ? crypto.randomUUID() : `ext-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -197,7 +200,7 @@ async function getExtensionProfileInfo() {
     profileLabel,
     installCreatedAt: stored.installCreatedAt || "",
     bindToken,
-    flowAccountEmail: String(stored.flowAccountEmail || "").trim(),
+    flowAccountEmail: "",
   };
 }
 
@@ -658,8 +661,9 @@ async function runHarvestLabs(jobId) {
   try {
     let labs = null;
     let labsTabOpened = false;
-    const stored = await chrome.storage.local.get("flowAccountEmail").catch(() => ({}));
-    let accountEmail = String(stored.flowAccountEmail || "").trim();
+    // Whatever Google account the Flow tab is signed in with right now — no
+    // remembered fallback, so switching accounts in Chrome takes effect at once.
+    let accountEmail = "";
 
     // Connection/session capture must visit labs.google first. Generation is
     // kept on flow.google.com by the normal project-tab path below.
@@ -670,11 +674,7 @@ async function runHarvestLabs(jobId) {
         await sleep(attempt === 0 ? 400 : 1000);
         labs = await currentCookiesIfSignedIn(CAPTURE.google_labs);
       }
-      const detectedEmail = await readFlowAccountEmail(tabId);
-      if (detectedEmail) {
-        accountEmail = detectedEmail;
-        await chrome.storage.local.set({ flowAccountEmail: detectedEmail });
-      }
+      accountEmail = await readFlowAccountEmail(tabId);
       if (!labs) {
         try {
           const tab = await chrome.tabs.get(tabId);

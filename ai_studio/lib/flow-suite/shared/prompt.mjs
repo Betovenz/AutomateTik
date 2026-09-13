@@ -47,6 +47,8 @@ const SILENT_STYLES = new Set(["silent-product"]);
 
 // Hard safety rails — non-negotiable, always appended regardless of picks.
 export const SAFETY_RULES = [
+  "มนุษย์มี 2 มือห้ามเพิ่มอวัยวะดูดีๆ",
+  "สินค้าห้ามเปลี่ยนขนาด ใช้ขนาดจริง",
   "ตัวละครต้องเป็นผู้ใหญ่ (อายุ 18 ปีขึ้นไป) เท่านั้น — ห้ามมีเด็ก ทารก หรือผู้เยาว์ในภาพและวิดีโอเด็ดขาด",
   "ห้ามอ้างสรรพคุณทางการแพทย์ หรือการันตีผลลัพธ์",
   "ห้ามสร้างราคา ส่วนลด หรือโปรโมชันที่ไม่มีจริง และห้ามพูดตัวเลขราคา",
@@ -54,7 +56,121 @@ export const SAFETY_RULES = [
   "ห้ามใส่โลโก้ ข้อความ หรือลายน้ำของแพลตฟอร์มอื่นในภาพ",
 ];
 
-export const DEFAULT_MANDATORY_PROMPT = `ข้อห้าม: ${SAFETY_RULES.join(" | ")}`;
+// The first two rules are phrased as a list; the mandatory prompt joins them
+// with commas and the rest with " | ", matching the operator-facing default.
+export const DEFAULT_MANDATORY_PROMPT = `ข้อห้าม: ${SAFETY_RULES.slice(0, 2).join(", ")}, ${SAFETY_RULES.slice(2).join(" | ")}`;
+
+// ---- Editable prompt sets ---------------------------------------------------
+// Five operator-editable blocks. Each saved value is one of:
+//   ""              → use the current system default (a later default update is
+//                     picked up automatically instead of freezing an old copy)
+//   PROMPT_OMITTED  → the operator emptied the box: leave that block out entirely
+//   any other text  → custom text, used verbatim (variables below are filled in)
+// Variables usable in custom text: {สินค้า} {จำนวนวินาที} {ตัวละคร} {ฉากหลัง}
+export const PROMPT_OMITTED = "__omit__";
+export const PROMPT_SET_KEYS = [
+  "textRulesPrompt",      // ชุดตัวหนังสือ (video)
+  "speechRulesPrompt",    // ชุดบทพูด (video)
+  "extraPrompt",          // ชุดข้อห้าม (video) — legacy key name kept for stored settings/jobs
+  "imageContentPrompt",   // Prompt รูป — ส่วนเนื้อหา
+  "imageMandatoryPrompt", // Prompt รูป — ส่วนข้อห้าม
+];
+
+export function promptSetsFrom(source = {}) {
+  const out = {};
+  for (const key of PROMPT_SET_KEYS) out[key] = source?.[key] == null ? "" : String(source[key]);
+  return out;
+}
+
+export function isPromptSetOmitted(value) {
+  return String(value ?? "").trim() === PROMPT_OMITTED;
+}
+
+/** "" → default text, PROMPT_OMITTED → "", anything else → the custom text. */
+export function resolvePromptSet(value, defaultText) {
+  const v = String(value ?? "").trim();
+  if (v === PROMPT_OMITTED) return "";
+  return v ? v.slice(0, 5000) : String(defaultText || "");
+}
+
+export const TEXT_RULES_WITH_TEXT =
+  "ถ้าในภาพมีข้อความปรากฏอยู่ (เช่น หัวข้อโปรโมชั่นหรือป้ายราคา) ข้อความนั้นต้องอยู่นิ่ง ชัดเจน อ่านออก "
+  + "และคงอยู่ตลอดทั้งคลิปจนจบวิดีโอ ห้ามข้อความเลือนหาย บิดเบี้ยว หรือหายไปกลางคลิปเด็ดขาด";
+export const TEXT_RULES_NO_TEXT =
+  "ห้ามเพิ่ม caption หัวข้อโฆษณา ป้ายราคา คำ ตัวเลข หรือลายน้ำใดๆ บนจอ "
+  + "ยกเว้นข้อความและโลโก้ที่พิมพ์อยู่บนบรรจุภัณฑ์สินค้าต้นฉบับ ซึ่งต้องคงเดิมและอ่านได้";
+
+export function defaultTextRulesPrompt(textMode) {
+  return textMode === "noText" ? TEXT_RULES_NO_TEXT : TEXT_RULES_WITH_TEXT;
+}
+
+export function defaultSpeechRulesPrompt(videoModel) {
+  const seconds = modelSeconds(videoModel);
+  const lo = Math.round(seconds * 2.5);
+  const hi = Math.round(seconds * 3.5);
+  return [
+    `บทพูดภาษาไทย ${lo}-${hi} คำ พูดจบพอดีใน ${seconds} วินาที`,
+    "ต้องเอ่ยชื่อสินค้าอย่างน้อย 1 ครั้ง",
+    "พูดเหมือนคนจริงที่ใช้สินค้าแล้วอยากบอกต่อ ไม่ใช่พรีเซนเตอร์อ่านสคริปต์ — ใช้ภาษาพูดจริงของคนไทย",
+    "เน้นความรู้สึก 1 อย่างที่ใช้แล้วรู้สึกได้ ไม่ต้องไล่ลิสต์คุณสมบัติ",
+    "ปิดท้ายให้คนดูอยากซื้อ พูดมั่นใจมีพลัง ห้ามจบเบาๆ แบบ \"ลองดูนะ\"",
+    "ห้ามพูดตัวเลขราคาหรือส่วนลด",
+  ].join("\n");
+}
+
+const IMAGE_CONTENT_BASE = [
+  "Realistic photo, UGC style, natural lighting. {ตัวละคร} is featured in a completely randomized, "
+    + "high-quality lifestyle environment suitable for the reference product's usage. The background "
+    + "context should be dynamic and varied, not fixed to any specific room type like a kitchen, and "
+    + "determined solely by the nature of the product itself. The background is blurred to keep focus "
+    + "on the subject. The character is positioned slightly lower in the frame to leave empty space at "
+    + "the top for the text header. The character is holding or presenting the reference product in an "
+    + "engaging, enthusiastic manner suitable to the product's size and weight.",
+  "",
+  "PRODUCT FIDELITY — STRICT: Reproduce the reference product EXACTLY as shown in the reference "
+    + "image. Keep the packaging shape, colours, logo, brand name and EVERY piece of text/label on "
+    + "the product 100% identical to the reference. Do NOT recolor the product or shift its colour "
+    + "temperature — never add a gold, amber, or warm tint; the product's own colour must match the "
+    + "reference exactly. Do NOT redraw, restyle, translate, rephrase, blur or invent any text on the "
+    + "product — all characters (including Thai text) must stay sharp, legible and pixel-faithful to "
+    + "the original. Do not alter the product label layout or branding in any way.",
+  "",
+  "High quality, 4k, sharp focus on the product.",
+  "",
+  "Background style hint: {ฉากหลัง}.",
+];
+const IMAGE_CONTENT_WITH_TEXT = [
+  ...IMAGE_CONTENT_BASE,
+  "",
+  "Add a professional graphic design text overlay positioned strictly at the top center of the frame (Header/Banner style).",
+  "Compose a short, punchy Thai advertising headline (large, bold, max ~8 words) from supplied facts only. Write real ad copy, not a plain repeat of the product name.",
+  "Below it, add one smaller supporting subtitle. Do not invent features, claims, prices, or discounts.",
+  "The typography and color palette must match the product packaging. Keep it at the very top, clear of the character's face.",
+  "⚠️ CRITICAL: Render only the finished Thai headline and subtitle. Do not include prefix labels, codes, brackets, template markers, captions, watermarks, or unrelated logos.",
+].join("\n");
+const IMAGE_NO_AD_OVERLAY = "NO AD OVERLAY: Do not add any headline, subtitle, caption, price tag, promotional badge, watermark, or extra logo anywhere in the image. Text already printed on the physical reference product must remain unchanged and legible.";
+const IMAGE_CONTENT_NO_TEXT = [
+  ...IMAGE_CONTENT_BASE,
+  "",
+  IMAGE_NO_AD_OVERLAY,
+].join("\n");
+
+export function defaultImageContentPrompt(textMode) {
+  return textMode === "noText" ? IMAGE_CONTENT_NO_TEXT : IMAGE_CONTENT_WITH_TEXT;
+}
+
+export function defaultImageMandatoryPrompt() {
+  return `Mandatory instruction for every scene: ${DEFAULT_MANDATORY_PROMPT}`;
+}
+
+function fillPromptVariables(text, vars = {}) {
+  let out = String(text || "");
+  for (const [name, value] of Object.entries(vars)) {
+    const pattern = new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}|\\{\\s*${name}\\s*\\}`, "g");
+    out = out.replace(pattern, () => String(value ?? ""));
+  }
+  return out;
+}
 
 function clean(v) {
   return String(v ?? "").replace(/\s+/g, " ").trim();
@@ -339,9 +455,11 @@ function productBlock(product) {
  * @param {object} input.product   product record {name, brand, category, sellingPoints[], variations[], images[]}
  * @param {object} input.direction { videoStyle, character, background, speakingStyle, voiceType, speechContentStyle }
  * @param {string} input.videoModel model id — decides the clip length the speech must fit
- * @param {string} input.extraPrompt mandatory prompt override; blank uses DEFAULT_MANDATORY_PROMPT
+ * @param {string} input.textRulesPrompt / speechRulesPrompt / extraPrompt / imageContentPrompt /
+ *   imageMandatoryPrompt — editable prompt sets; "" uses the default, PROMPT_OMITTED drops the block
  * @param {string} input.textMode "withText" (default, AI-composed header banner) or
  *   "noText" (still generate a storyboard frame, but forbid added on-screen text)
+ * @param {number} input.sceneIndex zero-based scene; every scene after the first is forced to noText
  * @returns {{ imagePrompt: string, videoPrompt: string, seconds: number, silent: boolean, textMode: string }}
  */
 export function buildPrompt(input = {}) {
@@ -350,7 +468,12 @@ export function buildPrompt(input = {}) {
   const seconds = modelSeconds(input.videoModel);
   const style = clean(direction.videoStyle);
   const silent = SILENT_STYLES.has(style);
-  const textMode = input.textMode === "noText" ? "noText" : DEFAULT_TEXT_MODE;
+  // Scene 2 onward never carries on-screen text: the header banner belongs to
+  // scene 1 only, so later scenes are forced to noText no matter what the
+  // operator picked, and the editable "ชุดตัวหนังสือ" box is not used there.
+  const sceneIndex = Math.max(0, Number(input.sceneIndex) || 0);
+  const laterScene = sceneIndex > 0;
+  const textMode = laterScene || input.textMode === "noText" ? "noText" : DEFAULT_TEXT_MODE;
 
   const picks = [];
   for (const [field] of DIRECTION_FIELDS) {
@@ -363,68 +486,48 @@ export function buildPrompt(input = {}) {
   }
 
   const facts = productBlock(product);
-  const mandatoryPrompt = String(input.extraPrompt || "").trim().slice(0, 5000)
-    || DEFAULT_MANDATORY_PROMPT;
+  const sets = promptSetsFrom(input);
+  const mandatoryPrompt = resolvePromptSet(sets.extraPrompt, DEFAULT_MANDATORY_PROMPT);
 
   // ---- image prompt: every scene gets a storyboard frame ----
   const characterText = directionText("character", direction.character) || "The person";
   const backgroundText = directionText("background", direction.background)
     || `${pickRandom(TIME_VARIATIONS)}, ${pickRandom(MOOD_VARIATIONS)}`;
+  const vars = {
+    "ตัวละคร": characterText,
+    "ฉากหลัง": `${backgroundText} — ${pickRandom(CAMERA_VARIATIONS)}`,
+    "จำนวนวินาที": seconds,
+    "สินค้า": clean(product?.name) || "สินค้าชิ้นนี้",
+  };
 
-  const imageParts = [
-    `Realistic photo, UGC style, natural lighting. ${characterText} is featured in a completely `
-      + "randomized, high-quality lifestyle environment suitable for the reference product's usage. "
-      + "The background context should be dynamic and varied, not fixed to any specific room type "
-      + "like a kitchen, and determined solely by the nature of the product itself. The background "
-      + "is blurred to keep focus on the subject. The character is positioned slightly lower in the "
-      + "frame to leave empty space at the top for the text header. The character is holding or "
-      + "presenting the reference product in an engaging, enthusiastic manner suitable to the "
-      + "product's size and weight.",
-    "",
-    "PRODUCT FIDELITY — STRICT: Reproduce the reference product EXACTLY as shown in the reference "
-      + "image. Keep the packaging shape, colours, logo, brand name and EVERY piece of text/label on "
-      + "the product 100% identical to the reference. Do NOT recolor the product or shift its colour "
-      + "temperature — never add a gold, amber, or warm tint; the product's own colour must match the "
-      + "reference exactly. Do NOT redraw, restyle, translate, rephrase, blur or invent any text on the "
-      + "product — all characters (including Thai text) must stay sharp, legible and pixel-faithful to "
-      + "the original. Do not alter the product label layout or branding in any way.",
-    "",
-    "High quality, 4k, sharp focus on the product.",
-    "",
-    `Background style hint: ${backgroundText} — ${pickRandom(CAMERA_VARIATIONS)}.`,
-  ];
-  if (textMode === "withText") {
-    imageParts.push(
-      "",
-      "Add a professional graphic design text overlay positioned strictly at the top center of the frame (Header/Banner style).",
-      "Compose a short, punchy Thai advertising headline (large, bold, max ~8 words) from supplied facts only. Write real ad copy, not a plain repeat of the product name.",
-      "Below it, add one smaller supporting subtitle. Do not invent features, claims, prices, or discounts.",
-      "The typography and color palette must match the product packaging. Keep it at the very top, clear of the character's face.",
-      "⚠️ CRITICAL: Render only the finished Thai headline and subtitle. Do not include prefix labels, codes, brackets, template markers, captions, watermarks, or unrelated logos.",
-    );
-  } else {
-    imageParts.push(
-      "",
-      "NO AD OVERLAY: Do not add any headline, subtitle, caption, price tag, promotional badge, watermark, or extra logo anywhere in the image. Text already printed on the physical reference product must remain unchanged and legible.",
-    );
+  let imageContent = fillPromptVariables(
+    resolvePromptSet(sets.imageContentPrompt, defaultImageContentPrompt(textMode)), vars,
+  );
+  if (laterScene && imageContent && String(sets.imageContentPrompt || "").trim() && !isPromptSetOmitted(sets.imageContentPrompt)) {
+    // Custom image text may still describe a header banner — pin the no-text rule after it.
+    imageContent += `\n\n${IMAGE_NO_AD_OVERLAY}`;
   }
+  const imageMandatory = fillPromptVariables(
+    resolvePromptSet(sets.imageMandatoryPrompt, defaultImageMandatoryPrompt()), vars,
+  );
+  const imageParts = [];
+  if (imageContent) imageParts.push(imageContent);
   if (facts.length) imageParts.push("", `Product details: ${facts.join(" / ")}`);
-  imageParts.push("", `Mandatory instruction for every scene: ${mandatoryPrompt}`);
+  if (imageMandatory) imageParts.push("", imageMandatory);
 
   // NOT filter(Boolean) — imageParts intentionally includes "" entries as
   // blank-line paragraph separators; filtering them out would collapse every
   // section onto one dense block.
-  const imagePrompt = imageParts.join("\n");
+  const imagePrompt = imageParts.join("\n").replace(/^\n+/, "");
 
   // ---- video prompt: how that frame moves, plus the speech spec ----
   const videoScenePrompt = buildBaseSceneInstruction(input.videoModel);
+  const textRules = laterScene
+    ? TEXT_RULES_NO_TEXT
+    : fillPromptVariables(resolvePromptSet(sets.textRulesPrompt, defaultTextRulesPrompt(textMode)), vars);
   const videoParts = [
     videoScenePrompt,
-    textMode === "withText"
-      ? "ถ้าในภาพมีข้อความปรากฏอยู่ (เช่น หัวข้อโปรโมชั่นหรือป้ายราคา) ข้อความนั้นต้องอยู่นิ่ง ชัดเจน อ่านออก "
-        + "และคงอยู่ตลอดทั้งคลิปจนจบวิดีโอ ห้ามข้อความเลือนหาย บิดเบี้ยว หรือหายไปกลางคลิปเด็ดขาด"
-      : "ห้ามเพิ่ม caption หัวข้อโฆษณา ป้ายราคา คำ ตัวเลข หรือลายน้ำใดๆ บนจอ "
-        + "ยกเว้นข้อความและโลโก้ที่พิมพ์อยู่บนบรรจุภัณฑ์สินค้าต้นฉบับ ซึ่งต้องคงเดิมและอ่านได้",
+    textRules,
     ...facts,
     ...picks,
   ];
@@ -432,18 +535,11 @@ export function buildPrompt(input = {}) {
   if (silent) {
     videoParts.push("ไม่มีบทพูดและไม่มีเสียงคนพูดในคลิป — เล่าเรื่องด้วยภาพและการเคลื่อนไหวเท่านั้น");
   } else {
-    const lo = Math.round(seconds * 2.5);
-    const hi = Math.round(seconds * 3.5);
-    videoParts.push(
-      `บทพูดภาษาไทย ${lo}-${hi} คำ พูดจบพอดีใน ${seconds} วินาที`,
-      "ต้องเอ่ยชื่อสินค้าอย่างน้อย 1 ครั้ง",
-      "พูดเหมือนคนจริงที่ใช้สินค้าแล้วอยากบอกต่อ ไม่ใช่พรีเซนเตอร์อ่านสคริปต์ — ใช้ภาษาพูดจริงของคนไทย",
-      "เน้นความรู้สึก 1 อย่างที่ใช้แล้วรู้สึกได้ ไม่ต้องไล่ลิสต์คุณสมบัติ",
-      "ปิดท้ายให้คนดูอยากซื้อ พูดมั่นใจมีพลัง ห้ามจบเบาๆ แบบ \"ลองดูนะ\"",
-      "ห้ามพูดตัวเลขราคาหรือส่วนลด",
-    );
+    videoParts.push(fillPromptVariables(
+      resolvePromptSet(sets.speechRulesPrompt, defaultSpeechRulesPrompt(input.videoModel)), vars,
+    ));
   }
-  videoParts.push(mandatoryPrompt);
+  videoParts.push(fillPromptVariables(mandatoryPrompt, vars));
 
   return {
     imagePrompt,

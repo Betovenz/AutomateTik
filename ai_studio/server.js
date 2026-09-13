@@ -3342,8 +3342,8 @@ const server = http.createServer((req, res) => {
         const shared = await loadFlowSuiteShared();
         return shared.buildPrompt({
           product: payload.product || {}, direction: payload.direction || {},
-          videoModel: payload.videoModel, extraPrompt: payload.extraPrompt || "",
-          textMode: payload.textMode,
+          videoModel: payload.videoModel, ...shared.promptSetsFrom(payload),
+          textMode: payload.textMode, sceneIndex: payload.sceneIndex,
         });
       })
       .then((result) => {
@@ -3424,7 +3424,11 @@ const server = http.createServer((req, res) => {
             Number(item.sceneCount) || 1,
           )),
           textMode: item.textMode === "noText" ? "noText" : "withText",
-          extraPrompt: item.extraPrompt || "",
+          textRulesPrompt: String(item.textRulesPrompt || "").slice(0, 5000),
+          speechRulesPrompt: String(item.speechRulesPrompt || "").slice(0, 5000),
+          extraPrompt: String(item.extraPrompt || "").slice(0, 5000),
+          imageContentPrompt: String(item.imageContentPrompt || "").slice(0, 5000),
+          imageMandatoryPrompt: String(item.imageMandatoryPrompt || "").slice(0, 5000),
           sceneVideoPrompts: Array.isArray(item.sceneVideoPrompts)
             ? item.sceneVideoPrompts.slice(0, 10).map((prompt) => String(prompt || "").slice(0, 5000))
             : [],
@@ -3889,27 +3893,28 @@ function toCookieHeader(value) {
     .join("; ");
 }
 
+// The Flow account is never pinned: whichever Google account is signed in on
+// the Chrome profile's Flow tab at harvest time is the one used, and the email
+// shown in the UI is only a live label for that. Nothing is persisted, and a
+// leftover flow-account.json from older builds is removed so it cannot seed
+// a stale identity.
 function loadRememberedFlowAccountEmail() {
   try {
-    const saved = JSON.parse(fs.readFileSync(FLOW_ACCOUNT_FILE, "utf8"));
-    return String(saved?.accountEmail || "").trim().toLowerCase();
+    if (fs.existsSync(FLOW_ACCOUNT_FILE)) fs.unlinkSync(FLOW_ACCOUNT_FILE);
   } catch (_) {
-    return "";
+    /* best effort */
   }
+  return "";
 }
 
+/** Update the live Flow account label (in-memory only). Passing a blank value
+ *  clears it — a harvest that cannot see an account must not keep showing the
+ *  previous one. */
 function rememberFlowAccountEmail(value) {
   const accountEmail = String(value || "").trim().toLowerCase();
-  if (!accountEmail) return "";
   extensionState.flowAccountEmail = accountEmail;
   const socket = activeExtensionSocket(EXTENSION_ROLE_MAIN);
   if (socket) touchExtensionSocket(socket, { flowAccountEmail: accountEmail });
-  try {
-    fs.mkdirSync(RUNTIME_DIR, { recursive: true });
-    fs.writeFileSync(FLOW_ACCOUNT_FILE, JSON.stringify({ accountEmail, updatedAt: new Date().toISOString() }, null, 2), "utf8");
-  } catch (error) {
-    addBackendLog("warn", "flow", "Could not persist Flow account email", { error: String(error.message || error) });
-  }
   return accountEmail;
 }
 
@@ -3986,8 +3991,9 @@ async function harvestGoogleLabsSession(signal = null) {
     }
     throw new Error(`Main Extension could not read Google Labs cookies.${harvest.error ? ` ${harvest.error}` : ""}`);
   }
-  let accountEmail = rememberFlowAccountEmail(harvest.accountEmail);
-  if (!accountEmail) accountEmail = rememberFlowAccountEmail(await detectFlowAccountEmail(cookie, signal));
+  let accountEmail = String(harvest.accountEmail || "").trim().toLowerCase();
+  if (!accountEmail) accountEmail = await detectFlowAccountEmail(cookie, signal);
+  accountEmail = rememberFlowAccountEmail(accountEmail);
   addBackendLog("info", "flow", "Google Labs session harvested", {
     cookieLength: cookie.length,
     hasCookieInject: !!harvest.cookieInject,
@@ -6786,7 +6792,7 @@ function refreshExtensionStateFromMain() {
   extensionState.lastSeen = meta.lastSeen || (latest ? new Date().toISOString() : extensionState.lastSeen);
   extensionState.version = meta.version || null;
   extensionState.lastMessage = latest ? (meta.lastMessage || "connected") : "disconnected";
-  extensionState.flowAccountEmail = meta.flowAccountEmail || extensionState.flowAccountEmail || "";
+  extensionState.flowAccountEmail = meta.flowAccountEmail || "";
   return { socket: latest, meta };
 }
 

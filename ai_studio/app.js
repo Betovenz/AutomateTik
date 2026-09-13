@@ -71,24 +71,20 @@ Object.assign(modes, PLATFORM_UNIT_MODES);
 // list — the previous hardcoded list only covered 5 of 21 known routes
 // (missing shopee-shop and every shopee-flow-* route among others), silently
 // bouncing any unlisted-but-valid route back to tiktok-shop.
-const AUTOTIK_ALLOWED_ROUTES = new Set(Object.keys(modes));
+// Shopee Shop / Product Search / Shopee Remix (and the rest of the shopee-*
+// workspace) are retired from the UI: their routes are no longer reachable and
+// bounce to tiktok-shop. The code paths behind them stay in place, unwired.
+const AUTOTIK_ALLOWED_ROUTES = new Set(Object.keys(modes).filter((route) => !route.startsWith("shopee-")));
 
 const PLATFORM_UNITS = {
   tiktok: [
-    { route: "tiktok-shop", icon: "inventory_2", label: "\u0e14\u0e36\u0e07\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32Showcase" },
-    { route: "tiktok-flow-prompt", icon: "tune", label: "\u0e15\u0e31\u0e49\u0e07\u0e04\u0e48\u0e32 Prompt" },
-    { route: "tiktok-flow-queue", icon: "movie_creation", label: "\u0e04\u0e34\u0e27" },
-    { route: "tiktok-flow-history", icon: "history", label: "\u0e1b\u0e23\u0e30\u0e27\u0e31\u0e15\u0e34" }
+    { route: "tiktok-shop", icon: "inventory_2", label: "TikTok Shop" },
+    { route: "tiktok-flow-prompt", icon: "tune", label: "Flow Prompt" },
+    { route: "tiktok-flow-queue", icon: "movie_creation", label: "Flow Queue" },
+    { route: "tiktok-flow-history", icon: "history", label: "Flow History" },
+    { route: "tiktok-post-mobile", icon: "smartphone", label: "Mobile Post" }
   ],
-  shopee: [
-    { route: "shopee-shop", icon: "inventory_2", label: "\u0e14\u0e36\u0e07\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32Shopee" },
-    { route: "shopee-product-search", icon: "manage_search", label: "หาสินค้า" },
-    { route: "shopee-flow-prompt", icon: "tune", label: "\u0e15\u0e31\u0e49\u0e07\u0e04\u0e48\u0e32 Prompt" },
-    { route: "shopee-flow-queue", icon: "movie_creation", label: "\u0e04\u0e34\u0e27" },
-    { route: "shopee-flow-history", icon: "history", label: "\u0e1b\u0e23\u0e30\u0e27\u0e31\u0e15\u0e34" },
-    { route: "shopee-remix-review", icon: "video_settings", label: "Remix\u0e27\u0e34\u0e14\u0e35\u0e42\u0e2d\u0e23\u0e35\u0e27\u0e34\u0e27" },
-    { route: "shopee-post-mobile", icon: "smartphone", label: "Post Shopee(\u0e21\u0e37\u0e2d\u0e16\u0e37\u0e2d)" }
-  ],
+  shopee: [],
   adb: [
     { route: "adb-connect", icon: "phonelink_setup", label: "\u0e40\u0e0a\u0e37\u0e48\u0e2d\u0e21 ADB" }
   ]
@@ -406,6 +402,16 @@ document.addEventListener("click", (event) => {
 });
 
 window.addEventListener("hashchange", () => setRoute(location.hash.slice(1) || "home"));
+
+// TikTok Manager Pro's unified sidebar drives this page while it is embedded:
+// the parent posts the route it wants shown (it also updates the iframe hash,
+// so this is the fast path when the frame is already loaded).
+window.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || data.type !== "autotik:route" || typeof data.route !== "string") return;
+  if (!/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(event.origin || "")) return;
+  setRoute(data.route);
+});
 
 async function refreshExtensionStatus() {
   try {
@@ -2829,7 +2835,11 @@ async function queueProductsForFlow(products, platform, statusSetter) {
       sceneMode: FLOW_EXTENDED_ENABLED && settings.sceneMode === "continuous" ? "continuous" : "independent",
       sceneCount: settings.sceneCount || 1,
       textMode: settings.textMode || "withText",
+      textRulesPrompt: settings.textRulesPrompt || "",
+      speechRulesPrompt: settings.speechRulesPrompt || "",
       extraPrompt: settings.extraPrompt || "",
+      imageContentPrompt: settings.imageContentPrompt || "",
+      imageMandatoryPrompt: settings.imageMandatoryPrompt || "",
       sceneVideoPrompts: Array.isArray(settings.sceneVideoPrompts)
         ? settings.sceneVideoPrompts.slice(0, Math.max(1, Number(settings.sceneCount) || 1))
         : [],
@@ -3044,6 +3054,7 @@ function wireFlowSuitePromptEvents() {
     document.getElementById(id)?.addEventListener("change", () => {
       applyFlowSuiteSceneModeRestriction();
       applyFlowSuiteConcurrencyRestriction();
+      refreshFlowSuitePromptSetDefaults();
       persistFlowSuiteSettings();
       refreshFlowSuiteSampleBox();
     });
@@ -3056,26 +3067,22 @@ function wireFlowSuitePromptEvents() {
     applyFlowSuiteConcurrencyRestriction();
     debouncedPersist();
   });
-  document.getElementById("fsExtraPrompt")?.addEventListener("input", (event) => {
-    event.currentTarget.dataset.usesDefault = "false";
-    const badge = document.getElementById("fsMandatoryPromptState");
-    if (badge) {
-      badge.textContent = "กำหนดเอง";
-      badge.dataset.state = "custom";
-    }
-    debouncedPersist();
-  });
-  document.getElementById("fsResetMandatoryPrompt")?.addEventListener("click", () => {
-    const input = document.getElementById("fsExtraPrompt");
-    if (!input) return;
-    input.value = input.dataset.defaultPrompt || flowSuiteDefaultMandatoryPrompt();
-    input.dataset.usesDefault = "true";
-    const badge = document.getElementById("fsMandatoryPromptState");
-    if (badge) {
-      badge.textContent = "Default ปัจจุบัน";
-      badge.dataset.state = "default";
-    }
-    debouncedPersist();
+  FLOW_PROMPT_SETS.forEach((set) => {
+    document.getElementById(set.input)?.addEventListener("input", (event) => {
+      event.currentTarget.dataset.usesDefault = "false";
+      flowSuiteSetPromptSetBadge(set, event.currentTarget.value.trim() ? "custom" : "omitted");
+      debouncedPersist();
+    });
+    document.getElementById(set.reset)?.addEventListener("click", () => {
+      const input = document.getElementById(set.input);
+      if (!input) return;
+      const defaultText = flowSuitePromptSetDefault(set);
+      input.dataset.defaultPrompt = defaultText;
+      input.value = defaultText;
+      input.dataset.usesDefault = "true";
+      flowSuiteSetPromptSetBadge(set, "default");
+      debouncedPersist();
+    });
   });
   document.getElementById("fsSceneVideoPrompts")?.addEventListener("input", (event) => {
     const input = event.target.closest("[data-scene-video-prompt]");
@@ -3188,26 +3195,80 @@ function flowSuiteDefaultScenePrompt(sceneIndex, sceneCount, sceneMode, videoMod
   }) || "";
 }
 
-function flowSuiteDefaultMandatoryPrompt() {
+// ---- Editable prompt sets (sections 3 + 4 of the Prompt page) ----
+// Saved value contract (see shared/prompt.mjs): "" = system default,
+// PROMPT_OMITTED = box emptied on purpose (block dropped), else custom text.
+const FLOW_PROMPT_SETS = [
+  { key: "textRulesPrompt", input: "fsTextRulesPrompt", badge: "fsTextRulesState", reset: "fsResetTextRules",
+    defaultText: (shared, ctx) => shared.defaultTextRulesPrompt(ctx.textMode) },
+  { key: "speechRulesPrompt", input: "fsSpeechRulesPrompt", badge: "fsSpeechRulesState", reset: "fsResetSpeechRules",
+    defaultText: (shared, ctx) => shared.defaultSpeechRulesPrompt(ctx.videoModel) },
+  { key: "extraPrompt", input: "fsExtraPrompt", badge: "fsMandatoryPromptState", reset: "fsResetMandatoryPrompt",
+    defaultText: (shared) => shared.DEFAULT_MANDATORY_PROMPT },
+  { key: "imageContentPrompt", input: "fsImageContentPrompt", badge: "fsImageContentState", reset: "fsResetImageContent",
+    defaultText: (shared, ctx) => shared.defaultImageContentPrompt(ctx.textMode) },
+  { key: "imageMandatoryPrompt", input: "fsImageMandatoryPrompt", badge: "fsImageMandatoryState", reset: "fsResetImageMandatory",
+    defaultText: (shared) => shared.defaultImageMandatoryPrompt() },
+];
+const FLOW_PROMPT_OMITTED = "__omit__";
+
+function flowSuitePromptSetDefault(set) {
   const shared = flowSuiteShared();
-  if (shared?.DEFAULT_MANDATORY_PROMPT) return shared.DEFAULT_MANDATORY_PROMPT;
-  return "ข้อห้าม: ตัวละครต้องเป็นผู้ใหญ่ (อายุ 18 ปีขึ้นไป) เท่านั้น — ห้ามมีเด็ก ทารก หรือผู้เยาว์ในภาพและวิดีโอเด็ดขาด | ห้ามอ้างสรรพคุณทางการแพทย์ หรือการันตีผลลัพธ์ | ห้ามสร้างราคา ส่วนลด หรือโปรโมชันที่ไม่มีจริง และห้ามพูดตัวเลขราคา | ห้ามอ้างข้อมูลที่ยืนยันไม่ได้ (อันดับ 1, ขายดีที่สุด, ของแท้ 100%, ส่งฟรี) | ห้ามใส่โลโก้ ข้อความ หรือลายน้ำของแพลตฟอร์มอื่นในภาพ";
+  if (!shared) return "";
+  const ctx = {
+    textMode: document.getElementById("fsTextMode")?.value || "withText",
+    videoModel: document.getElementById("fsVideoModel")?.value || "",
+  };
+  try {
+    return String(set.defaultText(shared, ctx) || "");
+  } catch {
+    return "";
+  }
 }
 
-function applyFlowSuiteMandatoryPromptToForm(savedPrompt) {
-  const input = document.getElementById("fsExtraPrompt");
+function flowSuiteSetPromptSetBadge(set, state) {
+  const badge = document.getElementById(set.badge);
+  if (!badge) return;
+  badge.dataset.state = state;
+  badge.textContent = state === "default" ? "Default ปัจจุบัน" : state === "omitted" ? "ว่าง — ไม่ส่งชุดนี้" : "กำหนดเอง";
+}
+
+function applyFlowSuitePromptSetToForm(set, savedValue) {
+  const input = document.getElementById(set.input);
   if (!input) return;
-  const saved = String(savedPrompt || "");
+  const saved = String(savedValue || "");
+  const omitted = saved.trim() === FLOW_PROMPT_OMITTED;
   const usesDefault = !saved.trim();
-  const defaultPrompt = flowSuiteDefaultMandatoryPrompt();
-  input.dataset.defaultPrompt = defaultPrompt;
+  const defaultText = flowSuitePromptSetDefault(set);
+  input.dataset.defaultPrompt = defaultText;
   input.dataset.usesDefault = usesDefault ? "true" : "false";
-  input.value = usesDefault ? defaultPrompt : saved;
-  const badge = document.getElementById("fsMandatoryPromptState");
-  if (badge) {
-    badge.textContent = usesDefault ? "Default ปัจจุบัน" : "กำหนดเอง";
-    badge.dataset.state = usesDefault ? "default" : "custom";
-  }
+  input.value = omitted ? "" : usesDefault ? defaultText : saved;
+  flowSuiteSetPromptSetBadge(set, omitted ? "omitted" : usesDefault ? "default" : "custom");
+}
+
+function readFlowSuitePromptSet(set) {
+  const input = document.getElementById(set.input);
+  if (!input) return "";
+  if (input.dataset.usesDefault === "true") return "";
+  return input.value.trim() ? input.value : FLOW_PROMPT_OMITTED;
+}
+
+function readFlowSuitePromptSets() {
+  const out = {};
+  FLOW_PROMPT_SETS.forEach((set) => { out[set.key] = readFlowSuitePromptSet(set); });
+  return out;
+}
+
+/** Defaults depend on the video model (speech length) and text mode — boxes
+ *  still on "Default" follow those controls instead of freezing old text. */
+function refreshFlowSuitePromptSetDefaults() {
+  FLOW_PROMPT_SETS.forEach((set) => {
+    const input = document.getElementById(set.input);
+    if (!input || input.dataset.usesDefault !== "true") return;
+    const defaultText = flowSuitePromptSetDefault(set);
+    input.dataset.defaultPrompt = defaultText;
+    input.value = defaultText;
+  });
 }
 
 function renderFlowSuiteScenePromptInputs(savedPrompts = null) {
@@ -3347,9 +3408,7 @@ function getFlowSuiteFormValues() {
     )),
     textMode: document.getElementById("fsTextMode")?.value || "withText",
     concurrency: Math.max(1, Math.min(150, Number(document.getElementById("fsConcurrency")?.value) || 1)),
-    extraPrompt: document.getElementById("fsExtraPrompt")?.dataset.usesDefault === "true"
-      ? ""
-      : (document.getElementById("fsExtraPrompt")?.value || ""),
+    ...readFlowSuitePromptSets(),
     sceneVideoPrompts: flowSuiteScenePromptDrafts.slice(0, 10),
     direction: getFlowSuiteDirectionValues(),
   };
@@ -3467,7 +3526,7 @@ function applyFlowSuiteSettingsToForm() {
   if (sceneCount && settings.sceneCount) sceneCount.value = settings.sceneCount;
   const concurrency = document.getElementById("fsConcurrency");
   if (concurrency && settings.concurrency) concurrency.value = settings.concurrency;
-  applyFlowSuiteMandatoryPromptToForm(settings.extraPrompt);
+  FLOW_PROMPT_SETS.forEach((set) => applyFlowSuitePromptSetToForm(set, settings[set.key]));
   flowSuiteScenePromptDrafts = normalizeFlowSuiteSceneVideoPrompts(settings.sceneVideoPrompts);
 
   const direction = settings.direction || {};
@@ -3556,7 +3615,8 @@ function renderFlowSuiteSampleBox() {
   box.innerHTML = previewRows.map(({ product, mapped, index, placeholder }) => {
     const prompts = shared.buildPrompt({
       product: mapped, direction: values.direction, videoModel: values.videoModel,
-      extraPrompt: values.extraPrompt, textMode: values.textMode,
+      ...shared.promptSetsFrom(values), textMode: values.textMode,
+      sceneIndex: flowSuiteSampleSceneIndex,
     });
     const scenePrompt = flowSuitePreviewVideoPrompt(prompts, values, flowSuiteSampleSceneIndex, mapped);
     const sceneTabs = Array.from({ length: values.sceneCount }, (_, sceneIndex) => `
@@ -3620,7 +3680,7 @@ function renderFlowSuiteSampleBox() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             product, direction: values.direction, characterMode: values.characterMode, imageModel: values.imageModel,
-            aspect: values.aspect, extraPrompt: values.extraPrompt, platform: activeFlowPlatform,
+            aspect: values.aspect, ...shared.promptSetsFrom(values), platform: activeFlowPlatform,
           }),
         });
         const payload = await readJsonResponse(response);

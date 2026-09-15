@@ -273,7 +273,27 @@
           </div>
         </div>
         <div class="fs-card fs-column">
-          <strong>3. Prompt บังคับใช้</strong>
+          <strong>3. แก้ Prompt รูป</strong>
+          <p class="fs-muted fs-scene-prompt-help">Prompt สร้างภาพ Storyboard แบ่งเป็นส่วนเนื้อหาและส่วนข้อห้าม ตัวแปร {ตัวละคร} {ฉากหลัง} {สินค้า} จะถูกแทนค่าอัตโนมัติ และข้อมูลสินค้าจะต่อท้ายให้เอง ลบจนว่าง = ไม่ส่งส่วนนั้น ฉาก 2 ขึ้นไปจะไม่ใส่ตัวหนังสือบนภาพทุกกรณี</p>
+          <div class="fs-prompt-set" data-prompt-set="imageContentPrompt">
+            <div class="fs-mandatory-prompt-head">
+              <label for="fsImageContentPrompt">ส่วนเนื้อหา</label>
+              <span id="fsImageContentState" class="fs-scene-prompt-state" data-state="default">Default ปัจจุบัน</span>
+              <button id="fsResetImageContent" class="fs-btn fs-ghost fs-scene-prompt-reset" type="button">↶ กลับ Default</button>
+            </div>
+            <textarea id="fsImageContentPrompt" rows="14" maxlength="5000" placeholder="ว่าง = ไม่ส่งส่วนเนื้อหา"></textarea>
+          </div>
+          <div class="fs-prompt-set" data-prompt-set="imageMandatoryPrompt">
+            <div class="fs-mandatory-prompt-head">
+              <label for="fsImageMandatoryPrompt">ส่วนข้อห้าม</label>
+              <span id="fsImageMandatoryState" class="fs-scene-prompt-state" data-state="default">Default ปัจจุบัน</span>
+              <button id="fsResetImageMandatory" class="fs-btn fs-ghost fs-scene-prompt-reset" type="button">↶ กลับ Default</button>
+            </div>
+            <textarea id="fsImageMandatoryPrompt" rows="4" maxlength="5000" placeholder="ว่าง = ไม่ส่งส่วนข้อห้าม"></textarea>
+          </div>
+        </div>
+        <div class="fs-card fs-column">
+          <strong>4. Prompt บังคับใช้</strong>
           <p class="fs-muted fs-scene-prompt-help">แบ่งเป็น 3 ชุด ใส่ในทุกฉาก — ลบข้อความในกล่องจนว่าง = ไม่ส่งชุดนั้นเข้าไปเลย กด “กลับ Default” เพื่อกลับไปใช้ข้อความเดิมของระบบ ชุดตัวหนังสือใช้กับฉาก 1 เท่านั้น ฉาก 2 ขึ้นไปไม่มีตัวหนังสือทุกกรณี ตัวแปร {สินค้า} {จำนวนวินาที} จะถูกแทนค่าอัตโนมัติ</p>
           <div class="fs-prompt-set" data-prompt-set="textRulesPrompt">
             <div class="fs-mandatory-prompt-head">
@@ -298,26 +318,6 @@
               <button id="fsResetMandatoryPrompt" class="fs-btn fs-ghost fs-scene-prompt-reset" type="button">↶ กลับ Default</button>
             </div>
             <textarea id="fsExtraPrompt" rows="4" maxlength="5000" placeholder="ว่าง = ไม่ส่งชุดข้อห้าม"></textarea>
-          </div>
-        </div>
-        <div class="fs-card fs-column">
-          <strong>4. แก้ Prompt รูป</strong>
-          <p class="fs-muted fs-scene-prompt-help">Prompt สร้างภาพ Storyboard แบ่งเป็นส่วนเนื้อหาและส่วนข้อห้าม ตัวแปร {ตัวละคร} {ฉากหลัง} {สินค้า} จะถูกแทนค่าอัตโนมัติ และข้อมูลสินค้าจะต่อท้ายให้เอง ลบจนว่าง = ไม่ส่งส่วนนั้น ฉาก 2 ขึ้นไปจะไม่ใส่ตัวหนังสือบนภาพทุกกรณี</p>
-          <div class="fs-prompt-set" data-prompt-set="imageContentPrompt">
-            <div class="fs-mandatory-prompt-head">
-              <label for="fsImageContentPrompt">ส่วนเนื้อหา</label>
-              <span id="fsImageContentState" class="fs-scene-prompt-state" data-state="default">Default ปัจจุบัน</span>
-              <button id="fsResetImageContent" class="fs-btn fs-ghost fs-scene-prompt-reset" type="button">↶ กลับ Default</button>
-            </div>
-            <textarea id="fsImageContentPrompt" rows="14" maxlength="5000" placeholder="ว่าง = ไม่ส่งส่วนเนื้อหา"></textarea>
-          </div>
-          <div class="fs-prompt-set" data-prompt-set="imageMandatoryPrompt">
-            <div class="fs-mandatory-prompt-head">
-              <label for="fsImageMandatoryPrompt">ส่วนข้อห้าม</label>
-              <span id="fsImageMandatoryState" class="fs-scene-prompt-state" data-state="default">Default ปัจจุบัน</span>
-              <button id="fsResetImageMandatory" class="fs-btn fs-ghost fs-scene-prompt-reset" type="button">↶ กลับ Default</button>
-            </div>
-            <textarea id="fsImageMandatoryPrompt" rows="4" maxlength="5000" placeholder="ว่าง = ไม่ส่งส่วนข้อห้าม"></textarea>
           </div>
         </div>
         <div class="fs-card fs-column">

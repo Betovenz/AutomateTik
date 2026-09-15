@@ -285,6 +285,9 @@ async function handleAppMessage(msg) {
   if (action === ACTION.FLOW_ROOM_CREATE) return runFlowRoomCreate(jobId, data);
   if (action === ACTION.FLOW_ROOM_CREATE_BATCH) return runFlowRoomCreateBatch(jobId, data);
   if (action === ACTION.FLOW_EXTEND_SUBMIT) return runFlowExtendSubmit(jobId, data);
+  if (action === ACTION.FLOW_VIDEO_SUBMIT) return runFlowVideoSubmit(jobId, data);
+  if (action === ACTION.FLOW_MEDIA_STATUS) return runFlowMediaStatus(jobId, data);
+  if (action === ACTION.RELOAD_EXTENSION) return runReloadExtension(jobId);
   if (action === ACTION.HARVEST_LABS) return runHarvestLabs(jobId);
   if (action === ACTION.MINT_CAPTCHA) return runMintCaptcha(jobId, data);
   if (action === ACTION.REFRESH_CAPTCHA) return runRefreshCaptcha(jobId, data);
@@ -3304,6 +3307,87 @@ async function runFlowExtendSubmit(jobId, data) {
   }
 }
 
+// chrome.scripting.executeScript swallows an exception thrown by the injected
+// function: `result` is simply undefined (newer Chrome also fills `error`). Turn
+// that into a readable failure instead of a bare "submit failed".
+function injectionResult(out, label) {
+  const frame = Array.isArray(out) ? out[0] : null;
+  if (frame && frame.result !== undefined && frame.result !== null) return frame.result;
+  const detail = frame?.error?.message || frame?.error || (frame ? "injected function returned nothing" : "no injection frame");
+  return { ok: false, error: `${label}: ${String(detail)} (in-page script threw — check the Flow tab console)` };
+}
+
+// Dev helper: reload this unpacked extension so a rebuilt background.js loads
+// without a trip to chrome://extensions. The WS bridge reconnects on its own.
+async function runReloadExtension(jobId) {
+  bus.send(envelope(MSG.EXT_RESULT, jobId, { action: ACTION.RELOAD_EXTENSION, ok: true, version: chrome.runtime.getManifest().version }));
+  setTimeout(() => chrome.runtime.reload(), 300);
+}
+
+// Video generation through the same in-page Boq RPCs the Flow web app uses
+// (captured 2026-09-14): MZZa6b = reference-to-video, eb1hJf = image-to-video.
+// The aisandbox-pa REST path started answering every captcha-gated call with
+// HTTP 429 "reCAPTCHA evaluation failed / PUBLIC_ERROR_UNUSUAL_ACTIVITY_TOO_MUCH_TRAFFIC"
+// even for freshly minted tokens, while the same token inside batchexecute is
+// accepted — so submit, poll and resolve all run inside the project tab now.
+async function runFlowVideoSubmit(jobId, data) {
+  const reply = (extra) =>
+    bus.send(envelope(MSG.EXT_RESULT, jobId, { action: ACTION.FLOW_VIDEO_SUBMIT, ...extra }));
+  try {
+    const projectId = String(data?.projectId || "").trim();
+    const prompt = String(data?.prompt || "").trim();
+    const captchaToken = String(data?.captchaToken || "").trim();
+    const videoModel = String(data?.videoModel || "").trim();
+    const mode = data?.mode === "i2v" ? "i2v" : "r2v";
+    const referenceMediaIds = (Array.isArray(data?.referenceMediaIds) ? data.referenceMediaIds : [])
+      .map((id) => String(id || "").trim()).filter(Boolean).slice(0, 3);
+    const startImageMediaId = String(data?.startImageMediaId || "").trim();
+    if (!projectId || !prompt || !captchaToken || !videoModel) {
+      throw new Error("projectId, prompt, captchaToken and videoModel are required");
+    }
+    if (mode === "r2v" && !referenceMediaIds.length) throw new Error("referenceMediaIds are required for R2V");
+    if (mode === "i2v" && !startImageMediaId) throw new Error("startImageMediaId is required for I2V");
+    if (!/^[A-Za-z0-9_.:-]{2,100}$/.test(videoModel)) throw new Error("videoModel contains unsupported characters");
+    const tabId = await ensureLabsTab({ projectId });
+    const out = await chrome.scripting.executeScript({
+      target: { tabId }, world: "MAIN", func: flowVideoRpcInPage,
+      args: [{
+        op: "submit",
+        mode, projectId, prompt, captchaToken, videoModel, referenceMediaIds, startImageMediaId,
+        aspect: data?.aspect === "landscape" ? "landscape" : "portrait",
+      }],
+    });
+    const result = injectionResult(out, "flowVideoSubmit");
+    if (!result?.ok || !result.mediaId) {
+      const detail = String(result?.body || "").replace(/\s+/g, " ").slice(0, 240);
+      throw new Error(`${result?.error || "Flow video submit failed"}${detail ? ` — ${detail}` : ""}`);
+    }
+    reply({ ok: true, tabId, ...result });
+  } catch (error) {
+    reply({ ok: false, error: String(error?.message || error) });
+  }
+}
+
+async function runFlowMediaStatus(jobId, data) {
+  const reply = (extra) =>
+    bus.send(envelope(MSG.EXT_RESULT, jobId, { action: ACTION.FLOW_MEDIA_STATUS, ...extra }));
+  try {
+    const projectId = String(data?.projectId || "").trim();
+    const mediaId = String(data?.mediaId || "").trim();
+    if (!mediaId) throw new Error("mediaId is required");
+    const tabId = await ensureLabsTab({ projectId });
+    const out = await chrome.scripting.executeScript({
+      target: { tabId }, world: "MAIN", func: flowVideoRpcInPage,
+      args: [{ op: "status", projectId, mediaId }],
+    });
+    const result = injectionResult(out, "flowMediaStatus");
+    if (!result?.ok) throw new Error(result?.error || "Flow media status failed");
+    reply({ ok: true, tabId, ...result });
+  } catch (error) {
+    reply({ ok: false, error: String(error?.message || error) });
+  }
+}
+
 // One shared labs.google tab across all jobs. Without this, N parallel jobs each
 // find "no labs tab" at the same instant and every one opens its own — so count=4
 // would spawn 4 tabs. The in-flight create promise dedupes concurrent callers so
@@ -3634,6 +3718,193 @@ async function submitFlowExtendInPage(input) {
     };
   } catch (error) {
     return { ok: false, error: `parse failed: ${error?.message || error}`, body: text.slice(0, 300) };
+  }
+}
+
+// Injected into the Flow project page (MAIN world) — SELF-CONTAINED: executeScript
+// serialises only this one function, so every helper lives inside it and it may
+// reference page globals only (window.WIZ_global_data, fetch, crypto).
+//
+//   op "submit": mirrors the request the web app sends for "Generate" with
+//     reference images (MZZa6b) or a first frame (eb1hJf). Shapes from a
+//     2026-09-14 HAR:
+//     R2V: [[[ [null,null,[[[prompt]]]], [[null,refId],…], model, aspect, null, [null,null,null,null,U,U] ]],
+//           [null,22,null,null,null,projectId,null,null,null,null,[captcha,1]], [U,2]]
+//     I2V: [[[ [null,null,[[[prompt]]]], model, aspect, null, [null,startId,null,null,null,[top,left,bottom,right]],
+//           [null,null,null,null,U,U] ]], <same clientContext>, [U,2]]
+//     aspect 1 = portrait, 2 = landscape — both confirmed against real clips on
+//     2026-09-15 (720x1280 and 1280x720 respectively).
+//   op "status": jwpduf reports the state (record[5][8][0]: 6 queued, 2 generating,
+//     3 done, 4 error — "Media not found." right after submit is only index lag the
+//     web app itself tolerates); as29s returns the signed flow-content.google URLs.
+async function flowVideoRpcInPage(input) {
+  const uuidLike = (value) => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+  const collectStrings = (value, out = []) => {
+    if (typeof value === "string") out.push(value);
+    else if (Array.isArray(value)) for (const child of value) collectStrings(child, out);
+    return out;
+  };
+
+  async function rpc(rpcId, requestBody, sourcePath) {
+    const page = (typeof window !== "undefined" && window.WIZ_global_data) || {};
+    const at = String(page.SNlM0e || "");
+    const sid = String(page.FdrFJe || "");
+    const bl = String(page.cfb2h || "");
+    if (!at || !bl) return { ok: false, error: `page tokens missing at=${Boolean(at)} bl=${Boolean(bl)} url=${location.href}` };
+    const freq = JSON.stringify([[[rpcId, JSON.stringify(requestBody), null, "generic"]]]);
+    const params = new URLSearchParams({
+      rpcids: rpcId,
+      "source-path": sourcePath || "/",
+      bl,
+      hl: document.documentElement.lang || "en",
+      _reqid: String(Math.floor(Math.random() * 900000) + 100000),
+      rt: "c",
+    });
+    if (sid) params.set("f.sid", sid);
+    let text = "";
+    try {
+      const response = await fetch(`/_/AiSandboxAngularFrontend/data/batchexecute?${params}`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+          "X-Same-Domain": "1",
+        },
+        body: `f.req=${encodeURIComponent(freq)}&at=${encodeURIComponent(at)}&`,
+      });
+      text = await response.text();
+      if (!response.ok) return { ok: false, error: `HTTP ${response.status}`, body: text.slice(0, 300) };
+    } catch (error) {
+      return { ok: false, error: String(error?.message || error) };
+    }
+    let payload;
+    let rpcError = "";
+    const visit = (value) => {
+      if (payload !== undefined || !Array.isArray(value)) return;
+      if (value[0] === "wrb.fr" && value[1] === rpcId) {
+        if (typeof value[2] === "string") {
+          try { payload = JSON.parse(value[2]); } catch (_) { payload = value[2]; }
+        } else {
+          // Boq reports an RPC error as a frame with a null payload and the
+          // error details further along the tuple — keep them for the caller.
+          payload = value[2] === undefined ? null : value[2];
+          if (payload === null) rpcError = JSON.stringify(value.slice(3)).slice(0, 300);
+        }
+        return;
+      }
+      for (const child of value) visit(child);
+    };
+    for (const rawLine of String(text || "").replace(/^\)\]\}'\s*/, "").split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line.startsWith("[")) continue;
+      try { visit(JSON.parse(line)); } catch (_) { /* length or partial chunk */ }
+      if (payload !== undefined) break;
+    }
+    if (payload === undefined) {
+      const preview = text.replace(/\s+/g, " ").slice(0, 240);
+      return { ok: false, error: `${rpcId} response frame missing${preview ? ` — ${preview}` : ""}` };
+    }
+    if (payload === null) return { ok: false, error: `${rpcId} rpc error${rpcError ? ` — ${rpcError}` : ""}`, body: text.slice(0, 300) };
+    return { ok: true, payload, text };
+  }
+
+  async function submit() {
+    const projectId = String(input?.projectId || "").trim();
+    const prompt = String(input?.prompt || "").trim();
+    const captchaToken = String(input?.captchaToken || "").trim();
+    const videoModel = String(input?.videoModel || "").trim();
+    const mode = input?.mode === "i2v" ? "i2v" : "r2v";
+    const referenceMediaIds = (Array.isArray(input?.referenceMediaIds) ? input.referenceMediaIds : [])
+      .map((id) => String(id || "").trim()).filter(Boolean);
+    const startImageMediaId = String(input?.startImageMediaId || "").trim();
+    if (!projectId || !prompt || !captchaToken || !videoModel) return { ok: false, error: "video request fields are incomplete" };
+    const aspectCode = input?.aspect === "landscape" ? 2 : 1;
+    const uuid = () => crypto.randomUUID().toUpperCase();
+    const textInput = [null, null, [[[prompt]]]];
+    const batchRef = [null, null, null, null, uuid(), uuid()];
+    let rpcId;
+    let generation;
+    if (mode === "i2v") {
+      rpcId = "eb1hJf";
+      // Full-frame crop {top:0,left:0,bottom:1,right:1} — zero fields are omitted (null).
+      generation = [textInput, videoModel, aspectCode, null, [null, startImageMediaId, null, null, null, [null, null, 1, 1]], batchRef];
+    } else {
+      rpcId = "MZZa6b";
+      generation = [textInput, referenceMediaIds.map((id) => [null, id]), videoModel, aspectCode, null, batchRef];
+    }
+    const request = [
+      [generation],
+      [null, 22, null, null, null, projectId, null, null, null, null, [captchaToken, 1]],
+      [uuid(), 2],
+    ];
+    const res = await rpc(rpcId, request, `/project/${encodeURIComponent(projectId)}`);
+    if (!res.ok) return res;
+    const payload = res.payload;
+    const payloadText = JSON.stringify(payload);
+    // payload = [null, credits, [[workflowId, null, null, [prompt, ts, null, null, mediaId, batchUuid, ts], projectId]],
+    //            [[mediaId, projectId, workflowId, "CAE", …]]]
+    const record = Array.isArray(payload?.[3]?.[0]) ? payload[3][0] : null;
+    const workflow = Array.isArray(payload?.[2]?.[0]) ? payload[2][0] : null;
+    let mediaId = uuidLike(record?.[0]) ? record[0] : "";
+    if (!mediaId && uuidLike(workflow?.[3]?.[4])) mediaId = workflow[3][4];
+    const creditWarning = /PUBLIC_ERROR_USER_QUOTA_REACHED|USER_QUOTA_REACHED/i.test(payloadText);
+    if (!mediaId && creditWarning) {
+      if (videoModel === "veo_3_1_r2v_lite_low_priority") {
+        return { ok: false, error: "FLOW_FREE_MODEL_CREDIT_WARNING: retry free model without pausing queue" };
+      }
+      return { ok: false, error: "FLOW_USER_QUOTA_REACHED: Google Flow quota exhausted" };
+    }
+    if (!mediaId) return { ok: false, error: `no mediaId in ${rpcId} response`, body: res.text.slice(0, 300) };
+    return {
+      ok: true,
+      mediaId,
+      mediaName: mediaId,
+      pendingMediaName: mediaId,
+      projectId: uuidLike(record?.[1]) ? record[1] : projectId,
+      workflowId: uuidLike(record?.[2]) ? record[2] : (uuidLike(workflow?.[0]) ? workflow[0] : ""),
+      model: videoModel,
+      rpcId,
+    };
+  }
+
+  async function status() {
+    const mediaId = String(input?.mediaId || "").trim();
+    const projectId = String(input?.projectId || "").trim();
+    if (!mediaId) return { ok: false, error: "mediaId is required" };
+    const sourcePath = projectId ? `/project/${encodeURIComponent(projectId)}` : "/";
+    const poll = await rpc("jwpduf", [null, null, [[mediaId]]], sourcePath);
+    if (!poll.ok) return poll;
+    const records = Array.isArray(poll.payload?.[2]) ? poll.payload[2] : [];
+    const record = records.find((row) => Array.isArray(row) && row[0] === mediaId) || records[0];
+    if (!Array.isArray(record)) return { ok: true, done: false, status: "UNKNOWN", raw: JSON.stringify(poll.payload).slice(0, 300) };
+    const statusArr = Array.isArray(record?.[5]?.[8]) ? record[5][8] : null;
+    const code = Number(statusArr?.[0]);
+    const messages = statusArr ? collectStrings(statusArr.slice(1)).filter((v) => v && !uuidLike(v)) : [];
+    const reason = [...new Set(messages)].join(", ");
+    if (code === 3) {
+      const detail = await rpc("as29s", [mediaId], sourcePath);
+      if (!detail.ok) return { ok: true, done: true, status: "SUCCESS", url: "", error: detail.error };
+      const strings = collectStrings(detail.payload);
+      const videoUrl = strings.find((v) => /^https:\/\/[^\s"]+\/video\/[^\s"]+/i.test(v)) || "";
+      const imageUrl = strings.find((v) => /^https:\/\/[^\s"]+\/image\/[^\s"]+/i.test(v)) || "";
+      return { ok: true, done: true, status: "SUCCESS", url: videoUrl, thumbnailUrl: imageUrl };
+    }
+    if (code === 4) {
+      if (/not found/i.test(reason)) return { ok: true, done: false, status: "INDEXING", reason };
+      return { ok: true, done: false, failed: true, status: "FAILED", reason: reason || "unknown" };
+    }
+    if (Number.isFinite(code) && code >= 7) {
+      return { ok: true, done: false, failed: true, status: `FAILED_${code}`, reason: reason || "unknown" };
+    }
+    return { ok: true, done: false, status: code === 6 ? "QUEUED" : code === 2 ? "GENERATING" : `CODE_${code}`, reason };
+  }
+
+  try {
+    if (input?.op === "status") return await status();
+    if (input?.op === "submit") return await submit();
+    return { ok: false, error: `unknown op ${String(input?.op)}` };
+  } catch (error) {
+    return { ok: false, error: `in-page failure: ${error?.message || error}` };
   }
 }
 

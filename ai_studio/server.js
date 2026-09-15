@@ -40,8 +40,8 @@ const UPLOADS_DIR = path.join(ROOT, "uploads");
 const clients = new Set();
 const extensionSockets = new Set();
 const extensionSocketMeta = new Map();
-const EXPECTED_MAIN_EXTENSION_VERSION = "0.1.19";
-const SUPPORTED_MAIN_EXTENSION_VERSIONS = new Set([EXPECTED_MAIN_EXTENSION_VERSION, "0.1.18"]);
+const EXPECTED_MAIN_EXTENSION_VERSION = "0.1.21";
+const SUPPORTED_MAIN_EXTENSION_VERSIONS = new Set([EXPECTED_MAIN_EXTENSION_VERSION, "0.1.20"]);
 const FLOW_EXTENDED_ENABLED = true;
 const chromeProfileHintsBySocketId = new Map();
 const pendingChromeProfileBindings = new Map();
@@ -2499,6 +2499,12 @@ function getFlowSuiteRunner() {
       refreshFlowCaptcha,
       createFlowRoom,
       submitExtendedVideo,
+      // Since 2026-09 the captcha-gated aisandbox-pa REST calls answer HTTP 429
+      // "reCAPTCHA evaluation failed" for every token; the Flow web app only
+      // talks batchexecute from its own page, so video submit + status go
+      // through the project tab as well (same pattern as Extended).
+      submitFlowVideo,
+      checkFlowMedia,
     });
   }
   return flowSuiteRunnerInstance;
@@ -3813,6 +3819,44 @@ async function submitExtendedVideo(payload, signal = null) {
   const mediaId = String(result?.mediaId || result?.pendingMediaName || result?.mediaName || "").trim();
   if (!mediaId) throw new Error(result?.error || "Main Extension did not return an Extended mediaId");
   return { ...result, mediaId, mediaName: mediaId, pendingMediaName: mediaId };
+}
+
+/** Submit one R2V / I2V generation through the Flow project page (MZZa6b / eb1hJf). */
+async function submitFlowVideo(payload, signal = null) {
+  const result = await sendExtensionCommand(
+    "flowVideoSubmit",
+    payload,
+    180000,
+    null,
+    EXTENSION_ROLE_MAIN,
+    signal,
+  );
+  const mediaId = String(result?.mediaId || result?.pendingMediaName || result?.mediaName || "").trim();
+  if (!mediaId) throw new Error(result?.error || "Main Extension did not return a video mediaId");
+  return { ...result, mediaId, mediaName: mediaId, pendingMediaName: mediaId };
+}
+
+/** One in-page status check (jwpduf) for a media id; resolves the signed clip
+ *  URL (as29s) once Flow reports the clip done. Returns
+ *  {done, url, failed, reason, status}. */
+async function checkFlowMedia(payload, signal = null) {
+  const result = await sendExtensionCommand(
+    "flowMediaStatus",
+    payload,
+    90000,
+    null,
+    EXTENSION_ROLE_MAIN,
+    signal,
+  );
+  if (!result || result.ok === false) throw new Error(result?.error || "Main Extension could not read Flow media status");
+  return {
+    done: result.done === true,
+    url: String(result.url || ""),
+    thumbnailUrl: String(result.thumbnailUrl || ""),
+    failed: result.failed === true,
+    reason: String(result.reason || ""),
+    status: String(result.status || ""),
+  };
 }
 
 /** Mint one reCAPTCHA token through the Main Extension. Shared by the Python
@@ -5904,7 +5948,7 @@ function extensionWakeTargetUrl(action, data = {}, role = EXTENSION_ROLE_MAIN) {
   if (command === "fetchShopeeReviewVideos") {
     return productUrl || "https://shopee.co.th/";
   }
-  if (["ensureFlowTab", "flowRoomCreate", "flowRoomCreateBatch", "flowExtendSubmit", "harvestLabs", "mintCaptcha", "refreshCaptcha", "hud"].includes(command) || command === "generate") {
+  if (["ensureFlowTab", "flowRoomCreate", "flowRoomCreateBatch", "flowExtendSubmit", "flowVideoSubmit", "flowMediaStatus", "harvestLabs", "mintCaptcha", "refreshCaptcha", "hud"].includes(command) || command === "generate") {
     return "https://labs.google/fx/tools/flow";
   }
   if (["checkTikTok", "checkTikTokLinks", "getTikTokProfiles", "pullProducts", "addToShowcase"].includes(command)) {

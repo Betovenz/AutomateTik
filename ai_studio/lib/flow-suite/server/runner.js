@@ -67,6 +67,12 @@ const POLL_TIMEOUT_MS = 12 * 60 * 1000;
 const MAX_RETRIES_PER_STEP = 10;
 const MAX_FRESH_ROOMS_PER_JOB = 10;
 const STEP_RETRY_DELAY_MS = Number(process.env.FLOW_SUITE_STEP_RETRY_MS || 2000);
+// Cool-down after Flow answers "reCAPTCHA evaluation failed" with reason
+// PUBLIC_ERROR_UNUSUAL_ACTIVITY_TOO_MUCH_TRAFFIC. That is a traffic-shaping
+// verdict on the account, not a bad token: re-minting and resubmitting within
+// a second (the 2026-09-13 logs show 9 retries x 3 rooms in 12 minutes) only
+// keeps the account flagged. Wait it out instead, and never burn a room on it.
+const TRAFFIC_FLAG_COOLDOWN_MS = Number(process.env.FLOW_SUITE_TRAFFIC_COOLDOWN_MS || 45_000);
 const REST_ROOM_MIN_GAP_MS = Number(process.env.FLOW_SUITE_ROOM_MIN_GAP_MS || 4000);
 const REST_ROOM_MAX_GAP_MS = Number(process.env.FLOW_SUITE_ROOM_MAX_GAP_MS || 8000);
 // A job names its Flow project after its order number (AB-0075-029), so a project
@@ -83,6 +89,10 @@ const CONTINUOUS_EXTENDED_VIDEO_MODEL = "veo_3_1_extension_lite_low_priority";
 // small project cache — without one, every click would litter the Flow account
 // with a brand-new project.
 const testImageProjectCache = { projectId: null };
+
+function isTrafficFlag(message = "") {
+  return /UNUSUAL_ACTIVITY_TOO_MUCH_TRAFFIC|too much traffic/i.test(String(message || ""));
+}
 
 function isRecaptchaRejection(message = "") {
   return /recaptcha\s+(evaluation|assessment)\s+failed/i.test(message)
@@ -145,13 +155,19 @@ function sleep(ms, signal) {
 }
 
 function createRunner(deps) {
-  const { finalizeScenes, finalPlatformKey, harvestFlowCookies, mintFlowCaptcha, refreshFlowCaptcha, createFlowRoom, submitExtendedVideo } = deps;
+  const { finalizeScenes, finalPlatformKey, harvestFlowCookies, mintFlowCaptcha, refreshFlowCaptcha, createFlowRoom, submitExtendedVideo, submitFlowVideo, checkFlowMedia } = deps;
   if (typeof finalizeScenes !== "function") throw new Error("runner requires finalizeScenes(payload)");
   if (typeof finalPlatformKey !== "function") throw new Error("runner requires finalPlatformKey(platform, sourceUrl)");
   if (typeof harvestFlowCookies !== "function") throw new Error("runner requires harvestFlowCookies(signal)");
   if (typeof mintFlowCaptcha !== "function") throw new Error("runner requires mintFlowCaptcha(action, projectId, signal)");
   if (typeof refreshFlowCaptcha !== "function") throw new Error("runner requires refreshFlowCaptcha(projectId, signal)");
   if (typeof submitExtendedVideo !== "function") throw new Error("runner requires submitExtendedVideo(payload, signal)");
+  // Optional page-RPC deps. When present, video submit and status polling go
+  // through the Flow project tab (batchexecute) instead of aisandbox-pa REST —
+  // the REST generation endpoints reject every captcha since 2026-09 with
+  // HTTP 429 "reCAPTCHA evaluation failed". Missing deps keep the REST path.
+  const pageVideoSubmit = typeof submitFlowVideo === "function" ? submitFlowVideo : null;
+  const pageMediaStatus = typeof checkFlowMedia === "function" ? checkFlowMedia : null;
 
   let draining = false;
   let stopRequested = false;
@@ -516,7 +532,13 @@ function createRunner(deps) {
         return attempt(captcha);
       }
       if (!cls) throw err;
-      if (cls === "captcha") {
+      if (cls === "captcha" && isTrafficFlag(err.message)) {
+        store.log(`${label}: Flow แจ้ง traffic ผิดปกติ (too much traffic) — พัก ${Math.round(TRAFFIC_FLAG_COOLDOWN_MS / 1000)} วิ ก่อนขอ captcha ใหม่`, "warn", {
+          stage: "flow.traffic-flag",
+        });
+        await sleep(TRAFFIC_FLAG_COOLDOWN_MS, signal);
+        captcha = await mintFlowCaptcha(captchaAction, session.projectId, signal);
+      } else if (cls === "captcha") {
         store.log(`${label}: เจอ captcha/unusual-activity — refresh หน้า Flow แล้วขอ captcha ใหม่`, "warn");
         await refreshFlowCaptcha(session.projectId, signal);
         captcha = await mintFlowCaptcha(captchaAction, session.projectId, signal);
@@ -571,7 +593,9 @@ function createRunner(deps) {
         if (attemptsInRoom < MAX_RETRIES_PER_STEP - 1) {
           attemptsInRoom += 1;
           store.log(`${label}: ล้มเหลวในห้องเดิม (${attemptsInRoom}/${MAX_RETRIES_PER_STEP - 1}) — ${err.message}`, "warn");
-          await sleep(STEP_RETRY_DELAY_MS * attemptsInRoom, signal);
+          // A traffic flag is per account, so a new room cannot help and quick
+          // retries keep it lit — back off for the full cool-down each time.
+          await sleep(isTrafficFlag(err.message) ? TRAFFIC_FLAG_COOLDOWN_MS : STEP_RETRY_DELAY_MS * attemptsInRoom, signal);
           continue;
         }
         await openNewFlowRoom(session, label, signal);
@@ -588,6 +612,57 @@ function createRunner(deps) {
     return mediaIds;
   }
 
+  /** R2V submit. Page RPC (MZZa6b inside the Flow tab) when the extension offers
+   *  it, otherwise the legacy aisandbox-pa REST call. Both return the same
+   *  checkpoint shape ({pendingMediaName, workflowId, seed, …}). */
+  async function submitSceneVideo({ session, captcha, prompt, videoModel, aspect, referenceMediaIds, seed, jobId, signal }) {
+    if (pageVideoSubmit) {
+      const result = await pageVideoSubmit({
+        mode: "r2v",
+        jobId,
+        projectId: session.projectId,
+        prompt,
+        captchaToken: captcha,
+        videoModel,
+        aspect: aspect === "landscape" ? "landscape" : "portrait",
+        referenceMediaIds,
+      }, signal);
+      const mediaName = String(result?.mediaId || result?.pendingMediaName || "").trim();
+      if (!mediaName) throw new Error(result?.error || "Flow ไม่คืนชื่อ media ของงานที่ส่ง");
+      return {
+        accepted: true,
+        pendingMediaName: mediaName,
+        mediaName,
+        workflowId: String(result?.workflowId || ""),
+        seed,
+        via: "page",
+      };
+    }
+    return flow.submitR2V({
+      accessToken: session.accessToken, projectId: session.projectId, recaptchaToken: captcha,
+      prompt, videoModel, aspect, referenceMediaIds, seed, signal,
+    });
+  }
+
+  /** One status check. Prefers the in-page jwpduf/as29s path (returns the final
+   *  URL along with done=true); falls back to REST when the extension call itself
+   *  fails (tab gone, socket down) so an accepted checkpoint is never abandoned. */
+  async function checkVideoStatus(session, projectId, mediaName, label, signal) {
+    if (pageMediaStatus) {
+      try {
+        const status = await pageMediaStatus({ projectId, mediaId: mediaName }, signal);
+        if (status.failed) {
+          throw new Error(`Flow แจ้งว่างานล้มเหลว: ${status.status || "FAILED"} — ${status.reason || "unknown"}`);
+        }
+        return status;
+      } catch (error) {
+        if (definitiveGenerationFailure(error) || signal?.aborted) throw error;
+        store.log(`${label}: เช็กสถานะผ่านหน้า Flow ไม่ได้ (${error.message}) — ใช้ REST แทนรอบนี้`, "warn");
+      }
+    }
+    return flow.pollStatus(session.accessToken, projectId, mediaName, signal);
+  }
+
   // ------------------------------------------------------------------ poll
   async function pollUntilDone({ session, projectId, mediaName }, job, onChange, label, signal) {
     const deadline = Date.now() + POLL_TIMEOUT_MS;
@@ -599,7 +674,7 @@ function createRunner(deps) {
       let status;
       try {
         status = await withRateLimitRetry(
-          () => flow.pollStatus(session.accessToken, projectId, mediaName, signal),
+          () => checkVideoStatus(session, projectId, mediaName, label, signal),
           label,
           signal,
         );
@@ -614,6 +689,9 @@ function createRunner(deps) {
         continue;
       }
       if (status.done) {
+        // The page path hands back the signed flow-content.google URL directly;
+        // the REST path still resolves it through media.getMediaUrlRedirect.
+        if (status.url) return status.url;
         try {
           return await flow.resolveVideoUrl(session.cookieHeader, mediaName, signal);
         } catch (error) {
@@ -835,10 +913,9 @@ function createRunner(deps) {
     store.log(`${label}: สร้างวิดีโอ ${model.label || model.id}`, "info", { stage: "video.started", scene: sceneIndex + 1 });
     const videoUrl = await withRoomAutoRecovery(session, label, signal, async () => {
       if (!checkpoint?.pendingMediaName) {
-        checkpoint = await withFlowErrorModel(flow.RECAPTCHA_ACTION_VIDEO, session, (captcha) => flow.submitR2V({
-          accessToken: session.accessToken, projectId: session.projectId, recaptchaToken: captcha,
-          prompt: state.prompts.videoPrompt, videoModel: model.id, aspect: job.aspect || "portrait",
-          referenceMediaIds: [startImageMediaId], seed: videoSeed, signal,
+        checkpoint = await withFlowErrorModel(flow.RECAPTCHA_ACTION_VIDEO, session, (captcha) => submitSceneVideo({
+          session, captcha, prompt: state.prompts.videoPrompt, videoModel: model.id,
+          aspect: job.aspect || "portrait", referenceMediaIds: [startImageMediaId], seed: videoSeed, jobId: job.id, signal,
         }), label, signal, { videoModel: model.id });
         checkpoint = { ...checkpoint, projectId: session.projectId, acceptedAt: Date.now() };
         writeCheckpoint(job, "videos", sceneIndex, checkpoint);

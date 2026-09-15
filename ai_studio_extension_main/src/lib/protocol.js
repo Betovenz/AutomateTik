@@ -77,6 +77,9 @@ export const ACTION = {
   FLOW_ROOM_CREATE: "flowRoomCreate", // app -> ext: create one Flow room through in-page jHPbke
   FLOW_ROOM_CREATE_BATCH: "flowRoomCreateBatch", // app -> ext: create many independent rooms in one concurrent in-page batch
   FLOW_EXTEND_SUBMIT: "flowExtendSubmit", // app -> ext: submit Flow's fZytfe Extended scene RPC
+  FLOW_VIDEO_SUBMIT: "flowVideoSubmit", // app -> ext: submit Flow's MZZa6b (R2V) / eb1hJf (I2V) video RPC in-page
+  FLOW_MEDIA_STATUS: "flowMediaStatus", // app -> ext: poll jwpduf + resolve as29s for one media id in-page
+  RELOAD_EXTENSION: "reloadExtension", // app -> ext: chrome.runtime.reload() so a rebuilt unpacked build loads without clicking
   MINT_CAPTCHA: "mintCaptcha", // app -> ext: mint in a flow.google.com/project/<id> page
   REFRESH_CAPTCHA: "refreshCaptcha", // app -> ext: bounce home then return to the project page
   HUD: "hud", // app -> ext: drive the on-page "managed tab" HUD (start/stage/done/hide)

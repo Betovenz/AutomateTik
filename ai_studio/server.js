@@ -40,8 +40,8 @@ const UPLOADS_DIR = path.join(ROOT, "uploads");
 const clients = new Set();
 const extensionSockets = new Set();
 const extensionSocketMeta = new Map();
-const EXPECTED_MAIN_EXTENSION_VERSION = "0.1.21";
-const SUPPORTED_MAIN_EXTENSION_VERSIONS = new Set([EXPECTED_MAIN_EXTENSION_VERSION, "0.1.20"]);
+const EXPECTED_MAIN_EXTENSION_VERSION = "0.1.22";
+const SUPPORTED_MAIN_EXTENSION_VERSIONS = new Set([EXPECTED_MAIN_EXTENSION_VERSION, "0.1.21"]);
 const FLOW_EXTENDED_ENABLED = true;
 const chromeProfileHintsBySocketId = new Map();
 const pendingChromeProfileBindings = new Map();
@@ -2763,6 +2763,21 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Dev helper: ask the connected Main Extension to chrome.runtime.reload() so a
+  // rebuilt unpacked build comes up without a trip to chrome://extensions.
+  if (requestUrl.pathname === "/api/extension/reload" && req.method === "POST") {
+    sendExtensionCommand("reloadExtension", {}, 15000, null, EXTENSION_ROLE_MAIN)
+      .then((result) => {
+        res.writeHead(200, noCacheHeaders(types[".json"]));
+        res.end(JSON.stringify({ ok: true, previousVersion: result?.version || "" }));
+      })
+      .catch((error) => {
+        res.writeHead(503, noCacheHeaders(types[".json"]));
+        res.end(JSON.stringify({ ok: false, error: String(error.message || error) }));
+      });
+    return;
+  }
+
   if (requestUrl.pathname === "/api/extension-status" && req.method === "GET") {
     const captures = captureSummary();
     const mainSocket = activeExtensionSocket(EXTENSION_ROLE_MAIN);
@@ -3964,6 +3979,30 @@ function rememberFlowAccountEmail(value) {
 
 async function detectFlowAccountEmail(cookieHeader, signal = null) {
   if (!cookieHeader) return "";
+  // The NextAuth session on labs.google carries the signed-in user — the same
+  // call the Flow client already makes for its access_token. Cheapest and most
+  // reliable source; the HTML scrape below is only the fallback.
+  try {
+    const response = await fetch("https://labs.google/fx/api/auth/session", {
+      signal,
+      headers: {
+        Accept: "application/json",
+        Cookie: cookieHeader,
+        Referer: "https://labs.google/fx",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+      },
+    });
+    const data = response.ok ? await response.json().catch(() => null) : null;
+    addBackendLog("debug", "flow", "labs session probe for account email", {
+      status: response.status,
+      keys: data && typeof data === "object" ? Object.keys(data) : [],
+      userKeys: data?.user && typeof data.user === "object" ? Object.keys(data.user) : [],
+    });
+    const email = String(data?.user?.email || data?.email || "").trim().toLowerCase();
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return email;
+  } catch (_) {
+    /* fall through to the HTML scrape */
+  }
   try {
     const response = await fetch("https://flow.google.com/", {
       redirect: "follow",
@@ -3991,7 +4030,9 @@ async function detectFlowAccountEmail(cookieHeader, signal = null) {
 
 async function harvestGoogleLabsSession(signal = null) {
   addBackendLog("info", "flow", "Harvesting Google Labs session from extension");
-  let harvest = await sendExtensionCommand("harvestLabs", {}, 45000, null, EXTENSION_ROLE_MAIN, signal);
+  // Up to 75s of that is the extension waiting on https://labs.google/fx for the
+  // session cookie (SSO settle / operator sign-in), so give it head-room.
+  let harvest = await sendExtensionCommand("harvestLabs", {}, 150000, null, EXTENSION_ROLE_MAIN, signal);
   let cookieInject = harvest.cookieInject || "";
   let labsCookie = harvest.cookie || "";
   let cookie = cookieInject || labsCookie;
@@ -4005,7 +4046,7 @@ async function harvestGoogleLabsSession(signal = null) {
       await sendExtensionCommand("ensureFlowTab", { connectLabs: true }, 90000, null, EXTENSION_ROLE_MAIN, signal);
       flowTabWarmed = true;
       await sleep(1200);
-      const retryHarvest = await sendExtensionCommand("harvestLabs", {}, 45000, null, EXTENSION_ROLE_MAIN, signal);
+      const retryHarvest = await sendExtensionCommand("harvestLabs", {}, 150000, null, EXTENSION_ROLE_MAIN, signal);
       harvest = {
         ...retryHarvest,
         labsTabOpened: retryHarvest.labsTabOpened === true || flowTabWarmed,
@@ -4031,12 +4072,17 @@ async function harvestGoogleLabsSession(signal = null) {
       extensionError: harvest.error || "",
     });
     if (harvest.requiresLogin || harvest.labsTabOpened) {
-      throw new Error("Main Extension opened Google Flow, but this Chrome profile is not signed in. Sign in on the opened Flow tab, then retry.");
+      throw new Error("เปิด https://labs.google/fx ให้แล้ว แต่ Chrome โปรไฟล์นี้ยังไม่ได้ล็อกอิน Google — ล็อกอินในแท็บที่เปิดขึ้นมา แล้วกดเชื่อม Flow / เริ่มคิวอีกครั้ง");
     }
     throw new Error(`Main Extension could not read Google Labs cookies.${harvest.error ? ` ${harvest.error}` : ""}`);
   }
   let accountEmail = String(harvest.accountEmail || "").trim().toLowerCase();
-  if (!accountEmail) accountEmail = await detectFlowAccountEmail(cookie, signal);
+  // Try the labs-only jar first: the combined labs+google-sso jar is the one
+  // the session endpoint sometimes answers with an empty {} for.
+  for (const candidate of [labsCookie, cookieInject].map(toCookieHeader).filter(Boolean)) {
+    if (accountEmail) break;
+    accountEmail = await detectFlowAccountEmail(candidate, signal);
+  }
   accountEmail = rememberFlowAccountEmail(accountEmail);
   addBackendLog("info", "flow", "Google Labs session harvested", {
     cookieLength: cookie.length,
@@ -5949,7 +5995,7 @@ function extensionWakeTargetUrl(action, data = {}, role = EXTENSION_ROLE_MAIN) {
     return productUrl || "https://shopee.co.th/";
   }
   if (["ensureFlowTab", "flowRoomCreate", "flowRoomCreateBatch", "flowExtendSubmit", "flowVideoSubmit", "flowMediaStatus", "harvestLabs", "mintCaptcha", "refreshCaptcha", "hud"].includes(command) || command === "generate") {
-    return "https://labs.google/fx/tools/flow";
+    return "https://labs.google/fx";
   }
   if (["checkTikTok", "checkTikTokLinks", "getTikTokProfiles", "pullProducts", "addToShowcase"].includes(command)) {
     return "https://www.tiktok.com/";
@@ -5957,7 +6003,7 @@ function extensionWakeTargetUrl(action, data = {}, role = EXTENSION_ROLE_MAIN) {
   if (command === "captureLogin") {
     if (provider.includes("shopee")) return "https://affiliate.shopee.co.th/";
     if (provider.includes("google") || provider.includes("labs") || provider.includes("flow")) {
-      return "https://labs.google/fx/tools/flow";
+      return "https://labs.google/fx";
     }
     if (provider.includes("tiktok")) return "https://www.tiktok.com/";
   }

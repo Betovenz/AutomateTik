@@ -6,7 +6,14 @@ import { MSG, ACTION, envelope, resolveWsUrl, discoverPort } from "./lib/protoco
 
 const EXTENSION_ROLE = chrome.runtime.getManifest().name.includes("TikTok") ? "tiktok" : "main";
 const FLOW_URL = "https://flow.google.com/";
-const LABS_CONNECT_URL = "https://labs.google/fx/tools/flow";
+// Cookie harvest page. The NextAuth session-token for labs.google is minted by
+// the /fx app shell itself; /fx/tools/flow now bounces straight to
+// flow.google.com, so a tab parked there never lands on labs.google and the
+// harvest finds no session cookie. Park on /fx and stay there.
+const LABS_CONNECT_URL = "https://labs.google/fx";
+// How long a harvest waits for the session cookie after (re)opening /fx — long
+// enough for SSO to settle or for the operator to sign in on the surfaced tab.
+const LABS_SIGNIN_WAIT_MS = 75_000;
 
 // ---- Site routing -----------------------------------------------------------
 // TODO: confirm exact tool URLs against the live sites; these are the entry
@@ -677,15 +684,27 @@ async function runHarvestLabs(jobId) {
         await sleep(attempt === 0 ? 400 : 1000);
         labs = await currentCookiesIfSignedIn(CAPTURE.google_labs);
       }
-      accountEmail = await readFlowAccountEmail(tabId);
       if (!labs) {
+        // No session cookie yet: open https://labs.google/fx for real (a fresh
+        // load, in front, so the operator sees it) — the /fx shell mints the
+        // session-token on load once Google SSO is present, and it is also the
+        // page to sign in on when it is not. Then wait for the cookie to appear.
         try {
           const tab = await chrome.tabs.get(tabId);
-          await chrome.tabs.update(tabId, { active: true });
+          await chrome.tabs.update(tabId, { url: `${LABS_CONNECT_URL}?connect=${Date.now()}`, active: true });
           if (tab?.windowId != null) await chrome.windows.update(tab.windowId, { focused: true });
+          await waitForTabComplete(tabId, 45000);
         } catch (_) {
           /* tab disappeared while trying to surface sign-in */
         }
+        const deadline = Date.now() + LABS_SIGNIN_WAIT_MS;
+        while (!labs && Date.now() < deadline) {
+          await sleep(2000);
+          labs = await currentCookiesIfSignedIn(CAPTURE.google_labs);
+        }
+      }
+      accountEmail = await readFlowAccountEmail(tabId);
+      if (!labs) {
         reply = {
           ...reply,
           labsTabOpened,
@@ -3132,7 +3151,7 @@ function isOnAnyFlowProject(url) {
 function isOnLabsConnectPage(url) {
   try {
     const parsed = new URL(String(url || ""));
-    return parsed.hostname === "labs.google" && parsed.pathname.startsWith("/fx/tools/flow");
+    return parsed.hostname === "labs.google" && /^\/fx(?:\/|$)/.test(parsed.pathname);
   } catch (_) {
     return false;
   }

@@ -1975,7 +1975,7 @@ $("selectAllQueueBtn").addEventListener("click", () => {
 // Fallback only — the AI Studio server reports the version it was built against
 // in /api/extension-status (expectedVersion), so the sidebar never goes stale
 // when the extension is bumped without touching this file.
-const NAV_EXPECTED_EXTENSION_VERSION = "0.1.22";
+const NAV_EXPECTED_EXTENSION_VERSION = "0.1.23";
 
 function renderNavExtension(status) {
   const card = $("navExtensionCard");

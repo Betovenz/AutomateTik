@@ -1,39 +1,51 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Same Prompt / Noto Sans Thai / JetBrains Mono faces the app ships; served by
+         the app itself so nothing is duplicated into the extension. Falls back to
+         Segoe UI while the app is down. -->
+    <link rel="stylesheet" href="http://127.0.0.1:18787/fonts/fonts.css" />
     <link rel="stylesheet" href="popup.css" />
-    <title>AutoGT Pro TikTok Extension</title>
+    <title>AutoTik TikTok Extension</title>
   </head>
-  <body>
-    <header class="head">
-      <div>
-        <h1>AutoGT Pro TikTok Extension</h1>
-        <p>TikTok channel bridge</p>
+  <body data-state="offline">
+    <header class="hero">
+      <div class="hero-top">
+        <div class="brand">
+          <span class="brand-pill">AutoTik</span>
+          <span class="brand-name">TikTok Extension</span>
+        </div>
+        <span class="version mono" id="version"></span>
       </div>
-      <span class="version" id="version"></span>
+      <div class="hero-body">
+        <span class="ring" id="ring" aria-hidden="true">
+          <svg class="ring-on" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+          <svg class="ring-off" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7 7 17"></path></svg>
+          <svg class="ring-wait" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6"></path><path d="M20 4v5h-5"></path></svg>
+        </span>
+        <div class="hero-text">
+          <span class="hero-title" id="heroText">รอแอปเปิด</span>
+          <span class="hero-sub">TikTok Manager Pro</span>
+          <span class="hero-meta mono" id="heroMeta">127.0.0.1:18787</span>
+        </div>
+      </div>
     </header>
 
     <main class="content">
-      <div class="hero" id="hero">
-        <div class="hero-name">AutoGT Pro App</div>
-        <div class="hero-state">
-          <span class="status-mark" id="heroDot"></span>
-          <span id="heroText">Waiting for app</span>
-        </div>
-      </div>
-
-      <ul class="status-grid" id="statusGrid">
-        <li class="status-row off">
-          <span class="status-mark" id="dotBridge"></span>
-          <span class="status-label">AutoGT Pro App</span>
-          <span class="status-value" id="valBridge">&times;</span>
-        </li>
-      </ul>
-
-      <button class="btn btn-primary btn-full" id="reconnect" title="Reconnect">re-connect</button>
+      <div class="tiles" id="tiles"></div>
     </main>
+
+    <footer class="actions">
+      <button class="btn btn-primary" id="reconnect" type="button">
+        <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6"></path><path d="M20 4v5h-5"></path></svg>
+        <span id="reconnectText">เชื่อมต่อใหม่</span>
+      </button>
+      <div class="links">
+        <a href="#" id="openApp">เปิดแอป</a>
+      </div>
+    </footer>
 
     <script src="popup.js"></script>
   </body>

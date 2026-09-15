@@ -4,7 +4,7 @@ so the 16 px toolbar icon stays crisp."""
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter
 
-ROOT = Path(r"C:\Users\Blue\Documents\Automate Tik")
+ROOT = Path(__file__).resolve().parent.parent  # repo root
 S = 1024
 
 

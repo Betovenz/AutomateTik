@@ -84,10 +84,8 @@ def image_model_value(value, labs_generate):
     lower = text.lower()
     if "nano" in lower or "banana" in lower:
         return "NARWHAL"
-    if "imagen 4" in lower:
-        return "IMAGEN_4"
-    if "imagen 3" in lower:
-        return "IMAGEN_3"
+    if "gem" in lower or "pix" in lower:
+        return "GEM_PIX_2"
     return text
 
 

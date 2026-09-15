@@ -204,7 +204,6 @@ const MODEL_DOT = "ยท ";
 const FLOW_IMAGE_MODELS = [
   ["NARWHAL", MODEL_DOT + "Nano Banana 2"],
   ["GEM_PIX_2", MODEL_DOT + "Nano Banana Pro"],
-  ["IMAGEN_3_5", MODEL_DOT + "Imagen 4"],
 ];
 // Flow video codenames CONFIRMED from generate traffic (videoModelName). Only these
 // three are wired (Quality / Omni Flash intentionally omitted). Both the credit COST

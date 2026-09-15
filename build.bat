@@ -102,8 +102,8 @@ rem Ship a short readme next to the exe so whoever receives the folder knows wha
   echo   1. Open Chrome and go to  chrome://extensions
   echo   2. Turn on "Developer mode" ^(top right^)
   echo   3. Click "Load unpacked" and pick EACH of these folders:
-  echo        _internali_studio_extension_main    ^(AutoGT Pro Extension^)
-  echo        _internali_studio_extension         ^(AutoGT Pro TikTok Extension^)
+  echo        _internal\ai_studio_extension_main    ^(AutoGT Pro Extension^)
+  echo        _internal\ai_studio_extension         ^(AutoGT Pro TikTok Extension^)
   echo   4. Sign in to TikTok and to Google Flow in that same Chrome profile.
   echo.
   echo NOTES

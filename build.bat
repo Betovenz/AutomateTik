@@ -106,13 +106,18 @@ rem Ship a short readme next to the exe so whoever receives the folder knows wha
   echo        _internal\ai_studio_extension         ^(AutoGT Pro TikTok Extension^)
   echo   4. Sign in to TikTok and to Google Flow in that same Chrome profile.
   echo.
+  echo PHONE POSTING ^(optional^)
+  echo   Posting from an Android phone needs Python + the OCR model on this PC.
+  echo   Run install_ocr.bat ^(next to the exe^) once - it installs everything.
+  echo   Then plug in the phone with USB debugging on.
+  echo.
   echo NOTES
   echo   - Keep the folder together. Moving the .exe out on its own will not work.
   echo   - Your data ^(autopost.db, settings, generated clips^) is created inside
   echo     this folder on first run, so copying the folder carries your work.
   echo   - This build ships with NO API keys and NO TikTok cookies. Set your own
   echo     under POST WEB ^> "ตั้งค่า API".
-  echo   - Phone features still need ADB.
+  echo   - Phone features still need ADB ^(Android Platform Tools on PATH^).
 )
 
 echo.

@@ -106,6 +106,9 @@ datas.extend(entry for entry in [
     data("license-config.js", "."),
     data("main.py", "."),
     data("requirements.txt", "."),
+    # Target-PC helper: phone posting runs main.py through the system Python,
+    # so this installs Python packages + the EasyOCR model there once.
+    data("install_ocr.bat", "."),
 ] if entry)
 
 # Ship the Node runtime so ai_studio works without Node installed. Landed at

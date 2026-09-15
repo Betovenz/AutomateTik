@@ -1,71 +1,44 @@
+"""Build dist/TikTokManagerPro/ from TikTokManagerPro.spec.
+
+The spec is the single source of truth for what ships: it bundles both Chrome
+extensions (ai_studio_extension_main, ai_studio_extension), the node.exe
+runtime for the AI Studio server, and skips runtime/ (this machine's API keys
+and cookies) plus the operator's generated clips. This script used to carry
+its own --add-data list, which had drifted from the spec — it shipped no
+extensions and no node, and did ship runtime/.
+"""
 import subprocess
 import sys
 from pathlib import Path
 
 
 BASE_DIR = Path(__file__).resolve().parent
-APP_FILE = BASE_DIR / "desktop_app.py"
-ICON_FILE = BASE_DIR / "assets" / "app.ico"
+SPEC_FILE = BASE_DIR / "TikTokManagerPro.spec"
+DIST_EXE = BASE_DIR / "dist" / "TikTokManagerPro" / "TikTokManagerPro.exe"
 
 
 def main():
     try:
-        import PyInstaller.__main__
+        import PyInstaller  # noqa: F401
     except ImportError as exc:
         raise SystemExit(
             "PyInstaller is not installed. Install it first with: "
             "python -m pip install pyinstaller"
         ) from exc
+    if not SPEC_FILE.is_file():
+        raise SystemExit(f"Spec file is missing: {SPEC_FILE}")
 
-    PyInstaller.__main__.run(
-        [
-            str(APP_FILE),
-            "--name",
-            "TikTokManagerPro",
-            "--noconsole",
-            "--icon",
-            str(ICON_FILE),
-            "--add-data",
-            f"{BASE_DIR / 'ui'};ui",
-            "--add-data",
-            f"{BASE_DIR / 'ai_studio'};ai_studio",
-            "--add-data",
-            f"{BASE_DIR / 'gtpro_extension'};gtpro_extension",
-            "--add-data",
-            f"{BASE_DIR / 'assets'};assets",
-            "--add-data",
-            f"{BASE_DIR / 'caption'};caption",
-            "--add-data",
-            f"{BASE_DIR / 'tasks.json'};.",
-            "--add-data",
-            f"{BASE_DIR / 'config.json'};.",
-            "--add-data",
-            f"{BASE_DIR / 'library_source.json'};.",
-            "--add-data",
-            f"{BASE_DIR / 'license-config.js'};.",
-            "--add-data",
-            f"{BASE_DIR / 'lib'};lib",
-            "--add-data",
-            f"{BASE_DIR / 'main.py'};.",
-            "--add-data",
-            f"{BASE_DIR / 'requirements.txt'};.",
-            "--hidden-import",
-            "uiautomator2",
-            "--hidden-import",
-            "webview",
-            "--hidden-import",
-            "clr_loader",
-            "--hidden-import",
-            "pythonnet",
-            "--clean",
-        ]
+    result = subprocess.run(
+        [sys.executable, "-m", "PyInstaller", str(SPEC_FILE), "--noconfirm", "--clean"],
+        cwd=str(BASE_DIR),
     )
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
 
-    dist = BASE_DIR / "dist" / "TikTokManagerPro" / "TikTokManagerPro.exe"
-    if dist.exists():
-        print(f"Built: {dist}")
+    if DIST_EXE.exists():
+        print(f"Built: {DIST_EXE}")
     else:
-        print(f"Build output not found. Check folder: {BASE_DIR / 'dist'}")
+        raise SystemExit(f"Build output not found. Check folder: {BASE_DIR / 'dist'}")
 
 
 if __name__ == "__main__":

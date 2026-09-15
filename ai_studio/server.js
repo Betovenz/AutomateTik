@@ -2800,6 +2800,7 @@ const server = http.createServer((req, res) => {
       connected: !!mainMeta,
       lastSeen: mainMeta?.lastSeen || null,
       version: mainMeta?.version || null,
+      expectedVersion: EXPECTED_MAIN_EXTENSION_VERSION,
       sockets: extensionSockets.size,
       lastMessage: extensionState.lastMessage,
       extensionProfiles: extensionProfilesSnapshot(),

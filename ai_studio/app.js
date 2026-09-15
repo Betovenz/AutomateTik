@@ -3698,8 +3698,16 @@ function renderFlowSuiteSampleBox() {
 }
 
 // ---------------------------------------------------------------- Queue page
+// Queue order = submission order, first in at the top. The store keeps the
+// newest job at index 0 (unshift), while the runner claims from the END of that
+// array (oldest first), so rendering the store order as-is made the queue look
+// like it was being worked from the bottom up. Reverse it here once so the
+// running job sits at the top and the next ones follow downward, page 1 = the
+// first 100 submitted, page 2 the next 100, and so on.
 function flowSuiteJobsForPlatform() {
-  return flowSuiteState.jobs.filter((job) => job.platform === activeFlowPlatform);
+  return flowSuiteState.jobs
+    .filter((job) => job.platform === activeFlowPlatform)
+    .reverse();
 }
 
 const FLOW_SUITE_STATUS_LABEL = { queued: "\u0e23\u0e2d\u0e04\u0e34\u0e27", running: "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e17\u0e33", done: "\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08", failed: "\u0e25\u0e49\u0e21\u0e40\u0e2b\u0e25\u0e27", cancelled: "\u0e22\u0e01\u0e40\u0e25\u0e34\u0e01" };

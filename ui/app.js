@@ -1972,18 +1972,22 @@ $("selectAllQueueBtn").addEventListener("click", () => {
 // ---- Sidebar extras: extension status card + Flow Queue badge ----------------
 // Both read the AI Studio server directly (it sends Access-Control-Allow-Origin: *),
 // so the sidebar reflects the same extension/flow state the iframe shows.
-const NAV_EXPECTED_EXTENSION_VERSION = "0.1.19";
+// Fallback only — the AI Studio server reports the version it was built against
+// in /api/extension-status (expectedVersion), so the sidebar never goes stale
+// when the extension is bumped without touching this file.
+const NAV_EXPECTED_EXTENSION_VERSION = "0.1.22";
 
 function renderNavExtension(status) {
   const card = $("navExtensionCard");
   if (!card) return;
   const connected = Boolean(status?.connected);
   const version = String(status?.version || "");
-  const stale = connected && version && version !== NAV_EXPECTED_EXTENSION_VERSION;
+  const expectedVersion = String(status?.expectedVersion || NAV_EXPECTED_EXTENSION_VERSION);
+  const stale = connected && version && version !== expectedVersion;
   const flowEmail = String(status?.mainExtension?.accountEmail || status?.flowAccountEmail || "").trim();
   const stateName = !connected ? "offline" : stale ? "stale" : "connected";
   card.dataset.ext = stateName;
-  const label = stateName === "connected" ? "Extension connected" : stateName === "stale" ? `Reload extension v${NAV_EXPECTED_EXTENSION_VERSION}` : "Extension offline";
+  const label = stateName === "connected" ? "Extension connected" : stateName === "stale" ? `Reload extension v${expectedVersion}` : "Extension offline";
   $("navExtLabel").textContent = label;
   $("navExtVersion").textContent = version || "—";
   $("navExtFlow").textContent = `Flow: ${flowEmail || "—"}`;

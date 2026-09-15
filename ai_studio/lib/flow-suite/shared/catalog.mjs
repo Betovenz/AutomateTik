@@ -15,7 +15,6 @@
 export const FLOW_IMAGE_MODELS = [
   { id: "NARWHAL", label: "Nano Banana 2" },
   { id: "GEM_PIX_2", label: "Nano Banana Pro" },
-  { id: "IMAGEN_3_5", label: "Imagen 4" },
 ];
 
 // ---------------------------------------------------------------- video models

@@ -163,7 +163,7 @@ const tiktokWarning = document.querySelector("[data-tiktok-warning]");
 const tiktokWarningTitle = document.querySelector("[data-tiktok-warning-title]");
 const tiktokWarningText = document.querySelector("[data-tiktok-warning-text]");
 const openTikTokButton = document.querySelector("[data-open-tiktok]");
-const EXPECTED_EXTENSION_VERSION = "0.1.23";
+const EXPECTED_EXTENSION_VERSION = "0.1.24";
 let flowGoogleAccountEmail = "";
 
 function setOptionLabels(selectId, labels) {
